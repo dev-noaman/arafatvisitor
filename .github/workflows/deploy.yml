@@ -269,8 +269,9 @@ jobs:
           # Rebuild backend
           npm run build
 
-          # Restart backend
-          pm2 restart arafatvisitor-api
+          # Restart backend (or start if not running)
+          pm2 restart arafatvisitor-api 2>/dev/null || pm2 start dist/src/main.js --name arafatvisitor-api
+          pm2 save
 
           # Update Nginx config
           DOMAIN="${{ secrets.VPS_DOMAIN }}"
