@@ -63,18 +63,11 @@ jobs:
         run: |
           sshpass -p '${{ secrets.VPS_PASSWORD }}' rsync -avz --delete --exclude 'node_modules' --exclude '.env' --exclude 'dist' -e "ssh -o StrictHostKeyChecking=no" backend/ ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }}:${{ env.VPS_PATH }}/backend/
 
-      - name: Initial Setup (first deployment)
+      - name: Initial Setup - Install dependencies
         if: github.event.inputs.init == 'true'
-        env:
-          SSHPASS: ${{ secrets.VPS_PASSWORD }}
-          VPS_USER: ${{ secrets.VPS_USER }}
-          VPS_IP: ${{ secrets.VPS_IP }}
-          VPS_DOMAIN: ${{ secrets.VPS_DOMAIN }}
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
         run: |
-          sshpass -e ssh -o StrictHostKeyChecking=no ${VPS_USER}@${VPS_IP} "bash -s" << 'ENDSSH'
+          sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} << 'ENDSSH'
           set -e
-          cd /var/www/arafatvisitor/backend
 
           # Install Node.js if not present
           if ! command -v node &> /dev/null; then
@@ -99,24 +92,45 @@ jobs:
           # Install PM2 globally
           npm install -g pm2
 
-          # Install dependencies
-          npm install
+          echo "DEPENDENCIES_INSTALLED"
+          ENDSSH
+
+      - name: Initial Setup - Configure database
+        if: github.event.inputs.init == 'true'
+        run: |
+          sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} << ENDSSH
+          set -e
 
           # Setup PostgreSQL database
-          sudo -u postgres psql -c "CREATE DATABASE arafatvisitor;" 2>/dev/null || echo "Database exists"
-          sudo -u postgres psql -c "CREATE USER arafatvisitor WITH PASSWORD 'DBPASSWORD_PLACEHOLDER';" 2>/dev/null || echo "User exists"
-          sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE arafatvisitor TO arafatvisitor;"
-          sudo -u postgres psql -c "ALTER DATABASE arafatvisitor OWNER TO arafatvisitor;"
-          sudo -u postgres psql -d arafatvisitor -c "GRANT ALL ON SCHEMA public TO arafatvisitor;"
+          sudo -u postgres psql -c "CREATE DATABASE ${{ env.DB_NAME }};" 2>/dev/null || echo "Database exists"
+          sudo -u postgres psql -c "CREATE USER ${{ env.DB_USER }} WITH PASSWORD '${{ secrets.DB_PASSWORD }}';" 2>/dev/null || echo "User exists"
+          sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE ${{ env.DB_NAME }} TO ${{ env.DB_USER }};"
+          sudo -u postgres psql -c "ALTER DATABASE ${{ env.DB_NAME }} OWNER TO ${{ env.DB_USER }};"
+          sudo -u postgres psql -d ${{ env.DB_NAME }} -c "GRANT ALL ON SCHEMA public TO ${{ env.DB_USER }};"
 
           # Create .env file for backend
-          JWT_SECRET=$(openssl rand -base64 32)
-          echo "DATABASE_URL=postgresql://arafatvisitor:DBPASSWORD_PLACEHOLDER@localhost:5432/arafatvisitor" > .env
-          echo "JWT_SECRET=${JWT_SECRET}" >> .env
+          cd /var/www/arafatvisitor/backend
+          JWT_SECRET=\$(openssl rand -base64 32)
+          echo "DATABASE_URL=postgresql://${{ env.DB_USER }}:${{ secrets.DB_PASSWORD }}@localhost:5432/${{ env.DB_NAME }}" > .env
+          echo "JWT_SECRET=\${JWT_SECRET}" >> .env
           echo "PORT=3000" >> .env
+          cat .env
 
-          # Export for current session
-          export DATABASE_URL="postgresql://arafatvisitor:DBPASSWORD_PLACEHOLDER@localhost:5432/arafatvisitor"
+          echo "DATABASE_CONFIGURED"
+          ENDSSH
+
+      - name: Initial Setup - Build and migrate
+        if: github.event.inputs.init == 'true'
+        run: |
+          sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} << 'ENDSSH'
+          set -e
+          cd /var/www/arafatvisitor/backend
+
+          # Load env
+          export $(grep -v '^#' .env | xargs)
+
+          # Install dependencies
+          npm install
 
           # Run database migrations
           npx prisma generate
@@ -125,26 +139,35 @@ jobs:
           # Build backend
           npm run build
 
+          echo "BUILD_COMPLETE"
+          ENDSSH
+
+      - name: Initial Setup - Configure Nginx
+        if: github.event.inputs.init == 'true'
+        run: |
+          sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} << ENDSSH
+          set -e
+
           # Setup Nginx
           cat > /etc/nginx/sites-available/arafatvisitor << 'NGINXCONF'
           server {
               listen 80;
-              server_name DOMAIN_PLACEHOLDER www.DOMAIN_PLACEHOLDER;
+              server_name ${{ secrets.VPS_DOMAIN }} www.${{ secrets.VPS_DOMAIN }};
 
               location / {
                   root /var/www/arafatvisitor/frontend;
-                  try_files $uri $uri/ /index.html;
+                  try_files \$uri \$uri/ /index.html;
               }
 
               location /api {
-                  rewrite ^/api/(.*) /$1 break;
+                  rewrite ^/api/(.*) /\$1 break;
                   proxy_pass http://localhost:3000;
                   proxy_http_version 1.1;
-                  proxy_set_header Upgrade $http_upgrade;
+                  proxy_set_header Upgrade \$http_upgrade;
                   proxy_set_header Connection 'upgrade';
-                  proxy_set_header Host $host;
-                  proxy_set_header X-Real-IP $remote_addr;
-                  proxy_cache_bypass $http_upgrade;
+                  proxy_set_header Host \$host;
+                  proxy_set_header X-Real-IP \$remote_addr;
+                  proxy_cache_bypass \$http_upgrade;
               }
           }
           NGINXCONF
@@ -153,39 +176,47 @@ jobs:
           rm -f /etc/nginx/sites-enabled/default
           nginx -t && systemctl reload nginx
 
+          echo "NGINX_CONFIGURED"
+          ENDSSH
+
+      - name: Initial Setup - Start PM2
+        if: github.event.inputs.init == 'true'
+        run: |
+          sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} << 'ENDSSH'
+          set -e
+          cd /var/www/arafatvisitor/backend
+
           # Start backend with PM2
           pm2 delete arafatvisitor-api 2>/dev/null || true
           pm2 start dist/src/main.js --name arafatvisitor-api
           pm2 save
           pm2 startup
 
+          echo "PM2_STARTED"
+          ENDSSH
+
+      - name: Initial Setup - SSL Certificate
+        if: github.event.inputs.init == 'true'
+        run: |
+          sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} << ENDSSH
+          set -e
+
           # Install SSL
           apt-get install -y certbot python3-certbot-nginx
-          certbot --nginx -d DOMAIN_PLACEHOLDER --non-interactive --agree-tos --email admin@DOMAIN_PLACEHOLDER --redirect || echo "Certbot failed - check DNS"
+          certbot --nginx -d ${{ secrets.VPS_DOMAIN }} --non-interactive --agree-tos --email admin@${{ secrets.VPS_DOMAIN }} --redirect || echo "Certbot failed - check DNS"
 
           # Auto-renewal cron (daily at 6 AM)
           (crontab -l 2>/dev/null | grep -v certbot; echo "0 6 * * * certbot renew --quiet --post-hook 'systemctl reload nginx'") | crontab -
 
-          echo "INIT_COMPLETE"
+          echo "SSL_CONFIGURED"
           ENDSSH
-
-          # Replace placeholders with actual values
-          sshpass -e ssh -o StrictHostKeyChecking=no ${VPS_USER}@${VPS_IP} "sed -i 's/DBPASSWORD_PLACEHOLDER/${DB_PASSWORD}/g' /var/www/arafatvisitor/backend/.env"
-          sshpass -e ssh -o StrictHostKeyChecking=no ${VPS_USER}@${VPS_IP} "sed -i 's/DOMAIN_PLACEHOLDER/${VPS_DOMAIN}/g' /etc/nginx/sites-available/arafatvisitor"
-          sshpass -e ssh -o StrictHostKeyChecking=no ${VPS_USER}@${VPS_IP} "nginx -t && systemctl reload nginx"
-          sshpass -e ssh -o StrictHostKeyChecking=no ${VPS_USER}@${VPS_IP} "cd /var/www/arafatvisitor/backend && pm2 restart arafatvisitor-api"
 
       - name: Update Deployment
         if: github.event.inputs.init != 'true'
-        env:
-          SSHPASS: ${{ secrets.VPS_PASSWORD }}
-          VPS_USER: ${{ secrets.VPS_USER }}
-          VPS_IP: ${{ secrets.VPS_IP }}
         run: |
-          sshpass -e ssh -o StrictHostKeyChecking=no ${VPS_USER}@${VPS_IP} "bash -s" << 'ENDSSH'
+          sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} << 'ENDSSH'
           set -e
           cd /var/www/arafatvisitor/backend
-          source .env 2>/dev/null || true
           export $(grep -v '^#' .env | xargs) 2>/dev/null || true
 
           # Install any new dependencies
