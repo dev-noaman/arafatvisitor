@@ -81,6 +81,20 @@ jobs:
               apt-get install -y nodejs
           fi
 
+          # Install PostgreSQL if not present
+          if ! command -v psql &> /dev/null; then
+              apt-get install -y postgresql postgresql-contrib
+              systemctl start postgresql
+              systemctl enable postgresql
+          fi
+
+          # Install Nginx if not present
+          if ! command -v nginx &> /dev/null; then
+              apt-get install -y nginx
+              systemctl start nginx
+              systemctl enable nginx
+          fi
+
           # Install PM2 globally
           npm install -g pm2
 
