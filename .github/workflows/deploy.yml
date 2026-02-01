@@ -118,12 +118,12 @@ jobs:
           sudo -u postgres psql -c "DROP DATABASE IF EXISTS ${{ env.DB_NAME }};"
           sudo -u postgres psql -c "DROP USER IF EXISTS ${{ env.DB_USER }};"
 
-          # Create fresh database and user
-          sudo -u postgres psql -c "CREATE USER ${{ env.DB_USER }} WITH PASSWORD '${{ secrets.DB_PASSWORD }}';"
+          # Create fresh database and user (use raw password)
+          sudo -u postgres psql -c "CREATE USER ${{ env.DB_USER }} WITH PASSWORD '${{ secrets.DB_PASSWORD_RAW }}';"
           sudo -u postgres psql -c "CREATE DATABASE ${{ env.DB_NAME }} OWNER ${{ env.DB_USER }};"
           sudo -u postgres psql -d ${{ env.DB_NAME }} -c "GRANT ALL ON SCHEMA public TO ${{ env.DB_USER }};"
 
-          # Delete old .env and create fresh one
+          # Delete old .env and create fresh one (use URL-encoded password)
           cd /var/www/arafatvisitor/backend
           rm -f .env
           JWT_SECRET=\$(openssl rand -base64 32)
