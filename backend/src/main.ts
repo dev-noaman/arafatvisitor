@@ -52,8 +52,9 @@ async function bootstrap() {
   try {
     // @ts-ignore - dynamic ESM imports work at runtime
     const AdminJS = (await import('adminjs')).default;
-    // @ts-ignore
-    const AdminJSExpress = await import('@adminjs/express');
+    // @ts-ignore - v5.x is CommonJS, need to handle default export
+    const AdminJSExpressModule = await import('@adminjs/express');
+    const AdminJSExpress = AdminJSExpressModule.default || AdminJSExpressModule;
     // @ts-ignore
     const AdminJSPrisma = await import('@adminjs/prisma');
     // @ts-ignore
