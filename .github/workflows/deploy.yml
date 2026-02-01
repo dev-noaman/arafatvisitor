@@ -164,28 +164,31 @@ jobs:
           DOMAIN="${DOMAIN%%/*}"
 
           # Setup Nginx
-          cat > /etc/nginx/sites-available/arafatvisitor << NGINXCONF
+          cat > /etc/nginx/sites-available/arafatvisitor << 'NGINXCONF'
           server {
               listen 80;
-              server_name $DOMAIN www.$DOMAIN;
+              server_name _DOMAIN_ www._DOMAIN_;
 
               location / {
                   root /var/www/arafatvisitor/frontend;
-                  try_files \$uri \$uri/ /index.html;
+                  try_files $uri $uri/ /index.html;
               }
 
               location /api {
-                  rewrite ^/api/(.*) /\$1 break;
+                  rewrite ^/api/(.*) /$1 break;
                   proxy_pass http://localhost:3000;
                   proxy_http_version 1.1;
-                  proxy_set_header Upgrade \$http_upgrade;
+                  proxy_set_header Upgrade $http_upgrade;
                   proxy_set_header Connection 'upgrade';
-                  proxy_set_header Host \$host;
-                  proxy_set_header X-Real-IP \$remote_addr;
-                  proxy_cache_bypass \$http_upgrade;
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_cache_bypass $http_upgrade;
               }
           }
           NGINXCONF
+
+          # Replace placeholder with actual domain
+          sed -i "s/_DOMAIN_/$DOMAIN/g" /etc/nginx/sites-available/arafatvisitor
 
           ln -sf /etc/nginx/sites-available/arafatvisitor /etc/nginx/sites-enabled/
           rm -f /etc/nginx/sites-enabled/default
