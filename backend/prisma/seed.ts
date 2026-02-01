@@ -18,10 +18,11 @@ function mapLocation(loc: string | undefined): 'BARWA_TOWERS' | 'MARINA_50' | 'E
 }
 
 // Default test users for quick login (matches frontend LoginForm.tsx)
+// Use high IDs (999001-999003) to avoid conflicts with CSV imports
 const DEFAULT_USERS = [
-  { email: 'admin@arafatvisitor.cloud', password: 'admin123', name: 'Admin User', role: 'ADMIN' as const },
-  { email: 'gm@arafatvisitor.cloud', password: 'gm123', name: 'General Manager', role: 'ADMIN' as const },
-  { email: 'reception@arafatvisitor.cloud', password: 'reception123', name: 'Reception User', role: 'RECEPTION' as const },
+  { id: 999001, email: 'admin@arafatvisitor.cloud', password: 'admin123', name: 'Admin User', role: 'ADMIN' as const },
+  { id: 999002, email: 'gm@arafatvisitor.cloud', password: 'gm123', name: 'General Manager', role: 'ADMIN' as const },
+  { id: 999003, email: 'reception@arafatvisitor.cloud', password: 'reception123', name: 'Reception User', role: 'RECEPTION' as const },
 ];
 
 async function seedDefaultUsers() {
@@ -30,6 +31,7 @@ async function seedDefaultUsers() {
   let existing = 0;
 
   for (const user of DEFAULT_USERS) {
+    // Check by email (more reliable than ID)
     const existingUser = await prisma.user.findUnique({ where: { email: user.email } });
     if (existingUser) {
       existing++;
@@ -40,6 +42,7 @@ async function seedDefaultUsers() {
     const hash = await bcrypt.hash(user.password, BCRYPT_ROUNDS);
     await prisma.user.create({
       data: {
+        id: user.id,
         email: user.email,
         name: user.name,
         password: hash,
