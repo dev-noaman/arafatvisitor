@@ -1,0 +1,482 @@
+openapi: 3.0.3
+info:
+  title: Visitor & Delivery Management System - Kiosk API
+  description: REST API contracts for the kiosk frontend. These define the endpoints the kiosk UI consumes from the NestJS backend.
+  version: 1.0.0
+
+servers:
+  - url: "{apiBase}"
+    description: Backend API (configured per kiosk via sessionStorage)
+    variables:
+      apiBase:
+        default: http://localhost:3000
+
+paths:
+  /auth/login:
+    post:
+      summary: Authenticate employee
+      description: Validates email/password credentials and returns JWT token with user role.
+      operationId: login
+      tags: [Authentication]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: "reception@arafat.com"
+                password:
+                  type: string
+                  minLength: 6
+                  example: "password123"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    description: JWT access token
+                  user:
+                    $ref: "#/components/schemas/User"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /auth/forgot-password:
+    post:
+      summary: Request password reset
+      description: Sends a password reset link to the provided email if account exists.
+      operationId: forgotPassword
+      tags: [Authentication]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        "200":
+          description: Reset link sent (always returns 200 regardless of email existence)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "If an account exists, a reset link has been sent."
+
+  /hosts:
+    get:
+      summary: List active hosts
+      description: Returns active hosts filtered by location. Used for cascading company→person selection.
+      operationId: listHosts
+      tags: [Hosts]
+      parameters:
+        - name: location
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [Barwa Towers, Marina 50, Element Mariott]
+          description: Filter hosts by kiosk location
+      responses:
+        "200":
+          description: List of active hosts at the specified location
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Host"
+
+  /visits:
+    post:
+      summary: Create visit session (check-in)
+      description: Persists a new visit session and returns the session ID for QR code generation.
+      operationId: createVisit
+      tags: [Visits]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [visitor, hostId, purpose, location]
+              properties:
+                visitor:
+                  type: object
+                  required: [name, company, phone]
+                  properties:
+                    name:
+                      type: string
+                      minLength: 2
+                    company:
+                      type: string
+                      minLength: 2
+                    phone:
+                      type: string
+                      description: Full phone with country code
+                    email:
+                      type: string
+                      format: email
+                hostId:
+                  type: string
+                  description: Host ID to assign the visit to
+                purpose:
+                  type: string
+                  description: Visit purpose (Meeting, Interview, Delivery, Maintenance, or custom text)
+                location:
+                  type: string
+                  enum: [Barwa Towers, Marina 50, Element Mariott]
+      responses:
+        "201":
+          description: Visit created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VisitSession"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /visits/{sessionId}:
+    get:
+      summary: Look up visit by session ID
+      description: Retrieves visit details by session ID. Used after QR code scan to display visitor info.
+      operationId: getVisit
+      tags: [Visits]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Visit session found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VisitSession"
+        "404":
+          description: Visit session not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /visits/{sessionId}/checkout:
+    post:
+      summary: Check out visitor
+      description: Marks a visit session as checked-out with current timestamp.
+      operationId: checkoutVisit
+      tags: [Visits]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Visitor checked out successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VisitSession"
+        "404":
+          description: Visit session not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Visitor already checked out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /deliveries:
+    get:
+      summary: List deliveries
+      description: Returns deliveries for the kiosk location. Supports search by ID or recipient.
+      operationId: listDeliveries
+      tags: [Deliveries]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: location
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [Barwa Towers, Marina 50, Element Mariott]
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by delivery ID or recipient name
+      responses:
+        "200":
+          description: List of deliveries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Delivery"
+
+    post:
+      summary: Log new delivery
+      description: Creates a new delivery record with Pending status.
+      operationId: createDelivery
+      tags: [Deliveries]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [recipient, courier, location]
+              properties:
+                recipient:
+                  type: string
+                  description: Recipient name
+                courier:
+                  type: string
+                  description: Courier/carrier name
+                hostId:
+                  type: string
+                  description: Optional host ID if recipient is a known host
+                location:
+                  type: string
+                  enum: [Barwa Towers, Marina 50, Element Mariott]
+      responses:
+        "201":
+          description: Delivery logged successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Delivery"
+
+  /deliveries/{id}/receive:
+    patch:
+      summary: Mark delivery as received
+      description: Updates delivery status from Pending to Received.
+      operationId: receiveDelivery
+      tags: [Deliveries]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Delivery marked as received
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Delivery"
+        "404":
+          description: Delivery not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Delivery already received
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /notify/email:
+    post:
+      summary: Send email notification
+      description: Sends an email notification to a host. SMTP config provided in request body.
+      operationId: sendEmail
+      tags: [Notifications]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [to, subject, html]
+              properties:
+                to:
+                  type: string
+                  format: email
+                subject:
+                  type: string
+                html:
+                  type: string
+                smtp:
+                  type: object
+                  properties:
+                    host:
+                      type: string
+                    port:
+                      type: integer
+                    username:
+                      type: string
+                    password:
+                      type: string
+                    sender:
+                      type: string
+      responses:
+        "200":
+          description: Email sent
+        "500":
+          description: Email delivery failed
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        role:
+          type: string
+          enum: [admin, reception, host]
+
+    Host:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        company:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        location:
+          type: string
+          enum: [Barwa Towers, Marina 50, Element Mariott]
+        status:
+          type: integer
+          enum: [0, 1]
+
+    VisitSession:
+      type: object
+      properties:
+        id:
+          type: string
+        sessionId:
+          type: string
+        visitor:
+          type: object
+          properties:
+            name:
+              type: string
+            company:
+              type: string
+            phone:
+              type: string
+            email:
+              type: string
+        hostId:
+          type: string
+        host:
+          $ref: "#/components/schemas/Host"
+        purpose:
+          type: string
+        location:
+          type: string
+        status:
+          type: string
+          enum: [checked-in, checked-out]
+        checkInTimestamp:
+          type: string
+          format: date-time
+        checkOutTimestamp:
+          type: string
+          format: date-time
+          nullable: true
+
+    Delivery:
+      type: object
+      properties:
+        id:
+          type: string
+        recipient:
+          type: string
+        hostId:
+          type: string
+          nullable: true
+        courier:
+          type: string
+        location:
+          type: string
+        status:
+          type: string
+          enum: [Pending, Received]
+        timestamp:
+          type: string
+          format: date-time
+        receivedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    Error:
+      type: object
+      properties:
+        statusCode:
+          type: integer
+        message:
+          type: string
+        error:
+          type: string

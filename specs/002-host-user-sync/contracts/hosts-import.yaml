@@ -1,0 +1,124 @@
+# OpenAPI 3.0 Contract for Host Bulk Import with User Auto-Creation
+# Branch: 002-host-user-sync
+
+openapi: 3.0.3
+info:
+  title: Hosts Bulk Import API
+  description: API for bulk importing hosts with automatic user account creation
+  version: 2.0.0
+
+paths:
+  /admin/api/hosts/import:
+    post:
+      summary: Bulk import hosts from CSV with auto user creation
+      description: |
+        Parses CSV content and creates Host records. For each newly created Host,
+        automatically creates a linked User account with role=HOST.
+
+        Authentication: AdminJS session cookie (ADMIN role required)
+      operationId: importHosts
+      tags:
+        - Hosts
+        - Admin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - csvContent
+              properties:
+                csvContent:
+                  type: string
+                  description: CSV content as string with headers
+                  example: |
+                    ID,Name,Company,Email Address,Phone Number,Location,Status
+                    H001,John Doe,Acme Corp,john@acme.com,97412345678,Arafat - Barwa Towers,active
+      responses:
+        '200':
+          description: Import completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportResult'
+        '400':
+          description: Invalid request (missing csvContent or parse error)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Not authenticated or not ADMIN role
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    ImportResult:
+      type: object
+      required:
+        - totalProcessed
+        - inserted
+        - skipped
+        - rejected
+        - rejectedRows
+        - usersCreated
+        - usersSkipped
+      properties:
+        totalProcessed:
+          type: integer
+          description: Total number of CSV rows processed
+          example: 100
+        inserted:
+          type: integer
+          description: Number of new Host records created
+          example: 80
+        skipped:
+          type: integer
+          description: Number of hosts skipped (already exist by externalId)
+          example: 15
+        rejected:
+          type: integer
+          description: Number of rows rejected due to validation errors
+          example: 5
+        rejectedRows:
+          type: array
+          description: Details of rejected rows
+          items:
+            $ref: '#/components/schemas/RejectedRow'
+        usersCreated:
+          type: integer
+          description: Number of User accounts auto-created (NEW in v2)
+          example: 75
+        usersSkipped:
+          type: integer
+          description: Number of Users skipped (email exists or user already linked to host) (NEW in v2)
+          example: 5
+
+    RejectedRow:
+      type: object
+      required:
+        - rowNumber
+        - reason
+      properties:
+        rowNumber:
+          type: integer
+          description: Row number in CSV (1-indexed, excluding header)
+          example: 5
+        reason:
+          type: string
+          description: Validation error message
+          example: "Missing name; Invalid phone (contains letters)"
+
+    Error:
+      type: object
+      properties:
+        statusCode:
+          type: integer
+          example: 400
+        message:
+          type: string
+          example: "csvContent is required"

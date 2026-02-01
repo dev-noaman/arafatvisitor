@@ -1,0 +1,183 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+    inputs:
+      init:
+        description: 'Run initial setup (first deployment)'
+        required: false
+        default: 'false'
+        type: boolean
+
+env:
+  VPS_IP: 72.62.234.25
+  VPS_DOMAIN: arafatvisitor.cloud
+  VPS_PATH: /var/www/arafatvisitor
+  DB_NAME: arafatvisitor
+  DB_USER: arafatvisitor
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+        env:
+          VITE_API_BASE: https://${{ env.VPS_DOMAIN }}/api
+
+      - name: Install backend dependencies
+        run: cd backend && npm ci
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ env.VPS_IP }} >> ~/.ssh/known_hosts
+
+      - name: Create remote directories
+        run: |
+          ssh root@${{ env.VPS_IP }} "mkdir -p ${{ env.VPS_PATH }}/frontend ${{ env.VPS_PATH }}/backend"
+
+      - name: Upload frontend
+        run: |
+          rsync -avz --delete dist/ root@${{ env.VPS_IP }}:${{ env.VPS_PATH }}/frontend/
+
+      - name: Upload backend
+        run: |
+          rsync -avz --delete \
+            --exclude 'node_modules' \
+            --exclude '.env' \
+            --exclude 'dist' \
+            backend/ root@${{ env.VPS_IP }}:${{ env.VPS_PATH }}/backend/
+
+      - name: Initial Setup (first deployment)
+        if: github.event.inputs.init == 'true'
+        run: |
+          ssh root@${{ env.VPS_IP }} << 'INITEOF'
+          set -e
+          cd ${{ env.VPS_PATH }}/backend
+
+          # Install Node.js if not present
+          if ! command -v node &> /dev/null; then
+              curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+              apt-get install -y nodejs
+          fi
+
+          # Install PM2 globally
+          npm install -g pm2
+
+          # Install dependencies
+          npm install
+
+          # Setup PostgreSQL database
+          sudo -u postgres psql -c "CREATE DATABASE ${{ env.DB_NAME }};" 2>/dev/null || echo "Database exists"
+          sudo -u postgres psql -c "CREATE USER ${{ env.DB_USER }} WITH PASSWORD '${{ secrets.DB_PASSWORD }}';" 2>/dev/null || echo "User exists"
+          sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE ${{ env.DB_NAME }} TO ${{ env.DB_USER }};"
+          sudo -u postgres psql -c "ALTER DATABASE ${{ env.DB_NAME }} OWNER TO ${{ env.DB_USER }};"
+          sudo -u postgres psql -d ${{ env.DB_NAME }} -c "GRANT ALL ON SCHEMA public TO ${{ env.DB_USER }};"
+
+          # Create .env file for backend
+          JWT_SECRET=$(openssl rand -base64 32)
+          cat > .env << ENVFILE
+          DATABASE_URL="postgresql://${{ env.DB_USER }}:${{ secrets.DB_PASSWORD }}@localhost:5432/${{ env.DB_NAME }}"
+          JWT_SECRET="${JWT_SECRET}"
+          PORT=3000
+          ENVFILE
+
+          # Run database migrations
+          npx prisma generate
+          npx prisma migrate deploy
+
+          # Build backend
+          npm run build
+
+          # Setup Nginx
+          cat > /etc/nginx/sites-available/arafatvisitor << 'NGINXCONF'
+          server {
+              listen 80;
+              server_name ${{ env.VPS_DOMAIN }} www.${{ env.VPS_DOMAIN }};
+
+              location / {
+                  root ${{ env.VPS_PATH }}/frontend;
+                  try_files $uri $uri/ /index.html;
+              }
+
+              location /api {
+                  rewrite ^/api/(.*) /$1 break;
+                  proxy_pass http://localhost:3000;
+                  proxy_http_version 1.1;
+                  proxy_set_header Upgrade $http_upgrade;
+                  proxy_set_header Connection 'upgrade';
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_cache_bypass $http_upgrade;
+              }
+          }
+          NGINXCONF
+
+          ln -sf /etc/nginx/sites-available/arafatvisitor /etc/nginx/sites-enabled/
+          rm -f /etc/nginx/sites-enabled/default
+          nginx -t && systemctl reload nginx
+
+          # Start backend with PM2
+          pm2 delete arafatvisitor-api 2>/dev/null || true
+          pm2 start dist/main.js --name arafatvisitor-api
+          pm2 save
+          pm2 startup
+
+          # Install SSL
+          apt-get update
+          apt-get install -y certbot python3-certbot-nginx
+          certbot --nginx -d ${{ env.VPS_DOMAIN }} --non-interactive --agree-tos --email admin@${{ env.VPS_DOMAIN }} --redirect || echo "Certbot failed - check DNS"
+
+          # Auto-renewal cron (daily at 6 AM)
+          (crontab -l 2>/dev/null | grep -v certbot; echo "0 6 * * * certbot renew --quiet --post-hook 'systemctl reload nginx'") | crontab -
+
+          echo "INIT_COMPLETE"
+          INITEOF
+
+      - name: Update Deployment
+        if: github.event.inputs.init != 'true'
+        run: |
+          ssh root@${{ env.VPS_IP }} << 'UPDATEEOF'
+          set -e
+          cd ${{ env.VPS_PATH }}/backend
+
+          # Install any new dependencies
+          npm install
+
+          # Generate Prisma client
+          npx prisma generate
+
+          # Run new migrations (safe - won't delete data)
+          npx prisma migrate deploy
+
+          # Rebuild backend
+          npm run build
+
+          # Restart backend
+          pm2 restart arafatvisitor-api
+
+          echo "UPDATE_COMPLETE"
+          UPDATEEOF
+
+      - name: Verify deployment
+        run: |
+          sleep 5
+          curl -f http://${{ env.VPS_IP }} || echo "Verification pending - check manually"

@@ -1,0 +1,20 @@
+# ============================================
+# VPS Deployment Script for Arafat Visitor
+# ============================================
+# Copy this file to deploy.ps1 and fill in your credentials
+
+# ----- EDIT THESE VALUES -----
+$VPS_IP = "YOUR_VPS_IP"               # IP for SSH connection
+$VPS_DOMAIN = "yourdomain.com"        # Domain for Nginx/SSL
+$VPS_USER = "root"
+$VPS_PASSWORD = "YOUR_VPS_PASSWORD"
+$VPS_PATH = "/var/www/arafatvisitor"
+$VPS_PORT = 22
+
+# Database (only used on first deployment)
+$DB_NAME = "arafatvisitor"
+$DB_USER = "arafatvisitor"
+$DB_PASSWORD = "YOUR_DB_PASSWORD"
+# ------------------------------
+
+# Rest of script is in deploy.ps1 (copy from deploy.ps1.example)

@@ -1,0 +1,413 @@
+/* ========================================
+   DARK MODE STYLES
+   ======================================== */
+
+/* Dark mode variables */
+html.dark {
+  --adminjs-bg: #1a1a2e;
+  --adminjs-bg-secondary: #16213e;
+  --adminjs-bg-card: #1f2937;
+  --adminjs-text: #e5e7eb;
+  --adminjs-text-muted: #9ca3af;
+  --adminjs-border: #374151;
+  --adminjs-primary: #3b82f6;
+  --adminjs-primary-hover: #2563eb;
+}
+
+/* Main background */
+html.dark body,
+html.dark [data-css="app"] {
+  background-color: var(--adminjs-bg) !important;
+}
+
+/* Sidebar dark mode */
+html.dark [data-css="sidebar"],
+html.dark aside[data-css="sidebar"],
+html.dark section[data-css="sidebar"] {
+  background-color: var(--adminjs-bg-secondary) !important;
+  border-color: var(--adminjs-border) !important;
+}
+
+html.dark [data-css="sidebar"] a,
+html.dark [data-css="sidebar"] span,
+html.dark [data-css="sidebar"] button,
+html.dark [data-css="sidebar"] [class*="Label"] {
+  color: var(--adminjs-text) !important;
+}
+
+html.dark [data-css="sidebar"] a:hover,
+html.dark [data-css="sidebar"] button:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Topbar dark mode */
+html.dark [data-css="topbar"],
+html.dark header {
+  background-color: var(--adminjs-bg-secondary) !important;
+  border-color: var(--adminjs-border) !important;
+}
+
+html.dark [data-css="topbar"] *,
+html.dark header * {
+  color: var(--adminjs-text) !important;
+}
+
+/* Content area dark mode */
+html.dark [data-css="content"],
+html.dark main,
+html.dark section[class*="Content"] {
+  background-color: var(--adminjs-bg) !important;
+}
+
+/* Cards and boxes */
+html.dark [class*="Box"],
+html.dark [class*="Card"],
+html.dark [class*="card"],
+html.dark div[style*="background-color: rgb(255, 255, 255)"],
+html.dark div[style*="background: white"],
+html.dark div[style*="background: rgb(255, 255, 255)"] {
+  background-color: var(--adminjs-bg-card) !important;
+  border-color: var(--adminjs-border) !important;
+}
+
+/* Text colors in dark mode */
+html.dark h1,
+html.dark h2,
+html.dark h3,
+html.dark h4,
+html.dark h5,
+html.dark h6,
+html.dark [class*="H1"],
+html.dark [class*="H2"],
+html.dark [class*="H3"],
+html.dark [class*="H4"],
+html.dark [class*="H5"],
+html.dark [class*="H6"] {
+  color: var(--adminjs-text) !important;
+}
+
+html.dark p,
+html.dark span,
+html.dark label,
+html.dark td,
+html.dark th,
+html.dark [class*="Text"],
+html.dark [class*="Label"] {
+  color: var(--adminjs-text) !important;
+}
+
+html.dark [class*="grey"],
+html.dark [color="grey60"],
+html.dark [color="grey40"] {
+  color: var(--adminjs-text-muted) !important;
+}
+
+/* Tables */
+html.dark table,
+html.dark [class*="Table"] {
+  background-color: var(--adminjs-bg-card) !important;
+  border-color: var(--adminjs-border) !important;
+}
+
+html.dark tr,
+html.dark th,
+html.dark td,
+html.dark [class*="TableRow"],
+html.dark [class*="TableCell"],
+html.dark [class*="TableHead"] {
+  background-color: transparent !important;
+  border-color: var(--adminjs-border) !important;
+  color: var(--adminjs-text) !important;
+}
+
+html.dark tbody tr:nth-child(even) {
+  background-color: rgba(255, 255, 255, 0.02) !important;
+}
+
+html.dark tbody tr:hover {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Form inputs */
+html.dark input,
+html.dark textarea,
+html.dark select,
+html.dark [class*="Input"],
+html.dark [class*="Select"],
+html.dark [class*="TextArea"] {
+  background-color: var(--adminjs-bg) !important;
+  border-color: var(--adminjs-border) !important;
+  color: var(--adminjs-text) !important;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: var(--adminjs-text-muted) !important;
+}
+
+html.dark input:focus,
+html.dark textarea:focus,
+html.dark select:focus {
+  border-color: var(--adminjs-primary) !important;
+  outline-color: var(--adminjs-primary) !important;
+}
+
+/* Buttons */
+html.dark button[class*="variant-text"],
+html.dark [class*="Button"][class*="text"] {
+  color: var(--adminjs-text) !important;
+}
+
+html.dark button:not([class*="primary"]):not([class*="success"]):not([class*="danger"]) {
+  background-color: var(--adminjs-bg-card) !important;
+  border-color: var(--adminjs-border) !important;
+  color: var(--adminjs-text) !important;
+}
+
+/* Dropdown menus */
+html.dark [class*="Dropdown"],
+html.dark [class*="Menu"],
+html.dark [role="menu"],
+html.dark [role="listbox"] {
+  background-color: var(--adminjs-bg-card) !important;
+  border-color: var(--adminjs-border) !important;
+}
+
+html.dark [class*="Dropdown"] *,
+html.dark [class*="Menu"] *,
+html.dark [role="menu"] *,
+html.dark [role="menuitem"] {
+  color: var(--adminjs-text) !important;
+}
+
+html.dark [role="menuitem"]:hover,
+html.dark [class*="MenuItem"]:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Modal/Dialog */
+html.dark [class*="Modal"],
+html.dark [class*="Dialog"],
+html.dark [role="dialog"] {
+  background-color: var(--adminjs-bg-card) !important;
+  border-color: var(--adminjs-border) !important;
+}
+
+html.dark [class*="Modal"] *,
+html.dark [class*="Dialog"] * {
+  color: var(--adminjs-text) !important;
+}
+
+/* Overlay/Backdrop */
+html.dark [class*="Overlay"],
+html.dark [class*="Backdrop"] {
+  background-color: rgba(0, 0, 0, 0.7) !important;
+}
+
+/* Icons */
+html.dark svg:not([fill]) {
+  color: var(--adminjs-text) !important;
+}
+
+/* Scrollbar dark mode */
+html.dark ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+html.dark ::-webkit-scrollbar-track {
+  background: var(--adminjs-bg);
+}
+
+html.dark ::-webkit-scrollbar-thumb {
+  background: var(--adminjs-border);
+  border-radius: 4px;
+}
+
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: #4b5563;
+}
+
+/* Dashboard specific overrides */
+html.dark [variant="grey"] {
+  background-color: var(--adminjs-bg) !important;
+}
+
+/* Fix white backgrounds in dashboard */
+html.dark div[style*="background"][style*="white"],
+html.dark div[style*="bg"][style*="white"] {
+  background-color: var(--adminjs-bg-card) !important;
+}
+
+/* ========================================
+   TABLE STYLES (Better Fit)
+   ======================================== */
+
+/* Make tables more compact and fit better */
+[data-css="table-wrapper"],
+.adminjs_Table,
+table {
+  width: 100% !important;
+  table-layout: auto !important;
+}
+
+/* Compact table cells */
+td,
+th,
+[class*="TableCell"],
+[class*="TableHead"] th {
+  padding: 10px 12px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  max-width: 220px !important;
+}
+
+/* Allow name and company columns to have more space */
+td:nth-child(2),
+th:nth-child(2),
+td:nth-child(3),
+th:nth-child(3) {
+  max-width: 280px !important;
+}
+
+/* Make action buttons column auto-width */
+td:last-child,
+th:last-child {
+  width: auto !important;
+  max-width: none !important;
+  white-space: nowrap !important;
+}
+
+/* Responsive table container */
+[data-css="table-wrapper"] {
+  overflow-x: auto !important;
+}
+
+/* Slightly smaller font for better fit */
+[class*="TableBody"] td {
+  font-size: 13px !important;
+}
+
+
+/* ========================================
+   SIDEBAR VISIBILITY (Always Show by Default)
+   ======================================== */
+
+/* Force sidebar to be visible by default */
+[data-css="sidebar"],
+aside[data-css="sidebar"],
+section[data-css="sidebar"] {
+  transform: translateX(0) !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Only hide on mobile if explicitly needed */
+@media (max-width: 768px) {
+  [data-css="sidebar"].mobile-hidden {
+    transform: translateX(-100%) !important;
+  }
+}
+
+/* Desktop: always visible */
+@media (min-width: 769px) {
+
+  [data-css="sidebar"],
+  aside[data-css="sidebar"],
+  section[data-css="sidebar"] {
+    transform: translateX(0) !important;
+    display: block !important;
+  }
+}
+
+/* ========================================
+   HIDE DARK MODE TOGGLE COMPLETELY
+   ======================================== */
+
+/* Hide known dark mode toggle elements */
+[data-css="dark-mode-toggle"],
+[class*="DarkMode"],
+[class*="darkMode"],
+[class*="theme-toggle"],
+[class*="ThemeToggle"],
+[data-css="dark-mode-panel"],
+[data-css="right-sidebar"] {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+/* Hide theme toggle button in topbar - targets button with sun/moon icon */
+[data-css="topbar"] button[class*="theme"],
+[data-css="topbar"] button[class*="Theme"],
+header button[class*="theme"],
+header button[class*="Theme"] {
+  display: none !important;
+}
+
+/* Hide any button/element containing "Dark" or "Light" text in the topbar */
+[data-css="topbar"] [data-testid*="theme"],
+[data-css="topbar"] [data-testid*="dark"],
+[data-css="topbar"] [data-testid*="light"],
+header [data-testid*="theme"],
+header [data-testid*="dark"],
+header [data-testid*="light"] {
+  display: none !important;
+}
+
+/* Hide the theme toggle button that appears in topbar */
+[data-css="topbar"] button:has(svg[class*="sun"]),
+[data-css="topbar"] button:has(svg[class*="moon"]),
+header button:has(svg[class*="sun"]),
+header button:has(svg[class*="moon"]) {
+  display: none !important;
+}
+
+/* Hide the right-side theme panel completely */
+aside[class*="right"],
+section[class*="right-sidebar"],
+div[class*="right-sidebar"],
+[data-css="right-sidebar"],
+[class*="RightSidebar"],
+[class*="rightSidebar"] {
+  display: none !important;
+  width: 0 !important;
+  visibility: hidden !important;
+}
+
+/* ========================================
+   FORCE SIDEBAR ALWAYS VISIBLE
+   ======================================== */
+
+/* Override AdminJS sidebar hiding */
+[data-css="sidebar"] {
+  transform: translateX(0) !important;
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* ========================================
+   FLAT SIDEBAR MENU STYLES
+   ======================================== */
+
+/* Hide any remaining navigation group headers */
+[data-css="sidebar"] section[class*="Navigation"] > label,
+[data-css="sidebar"] [class*="NavigationElement"] > label:first-child {
+  display: none !important;
+}
+
+/* Ensure menu items have consistent styling */
+[data-css="sidebar"] a {
+  transition: all 0.15s ease !important;
+}
+
+/* Active menu item styling */
+[data-css="sidebar"] a[class*="selected"],
+[data-css="sidebar"] a:focus {
+  background: rgba(59, 130, 246, 0.1) !important;
+  color: #3b82f6 !important;
+}
+
+/* Note: Additional sidebar styling handled by JavaScript to avoid conflicts */
