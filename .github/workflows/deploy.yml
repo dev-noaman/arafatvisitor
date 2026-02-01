@@ -101,6 +101,19 @@ jobs:
           sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} << ENDSSH
           set -e
 
+          # Create backup directory
+          mkdir -p /var/www/arafatvisitor/backups
+
+          # Backup existing database if it exists (with timestamp)
+          TIMESTAMP=\$(date +%Y%m%d_%H%M%S)
+          if sudo -u postgres psql -lqt | cut -d \| -f 1 | grep -qw ${{ env.DB_NAME }}; then
+              echo "Backing up existing database..."
+              sudo -u postgres pg_dump ${{ env.DB_NAME }} > /var/www/arafatvisitor/backups/db_backup_\${TIMESTAMP}.sql
+              echo "Backup saved to /var/www/arafatvisitor/backups/db_backup_\${TIMESTAMP}.sql"
+          else
+              echo "No existing database to backup"
+          fi
+
           # Drop existing database and user (fresh start)
           sudo -u postgres psql -c "DROP DATABASE IF EXISTS ${{ env.DB_NAME }};"
           sudo -u postgres psql -c "DROP USER IF EXISTS ${{ env.DB_USER }};"
