@@ -38,6 +38,7 @@ jobs:
         run: npm run build
         env:
           VITE_API_BASE: https://${{ secrets.VPS_DOMAIN }}/api
+          VITE_SHOW_DEBUG_LOGIN: "true"
 
       - name: Install backend dependencies
         run: cd backend && npm ci
@@ -94,53 +95,35 @@ jobs:
           npm install -g pm2
 
           echo "=== Configuring database ==="
-          # Stop PM2 processes to release database connections
+          # Stop PM2 processes temporarily
           pm2 stop arafatvisitor-api 2>/dev/null || true
           pm2 delete arafatvisitor-api 2>/dev/null || true
-          sleep 2
 
-          # Stop PostgreSQL service to ensure all connections are closed
-          systemctl stop postgresql 2>/dev/null || true
-          sleep 2
-
-          # Start PostgreSQL service
+          # Ensure PostgreSQL is running
           systemctl start postgresql 2>/dev/null || true
           sleep 2
 
-          # Create backup directory
-          mkdir -p /var/www/arafatvisitor/backups
-
-          # Backup existing database if it exists (with timestamp)
-          TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-          if sudo -u postgres psql -lqt | cut -d \| -f 1 | grep -qw ${{ env.DB_NAME }}; then
-              echo "Backing up existing database..."
-              sudo -u postgres pg_dump ${{ env.DB_NAME }} > /var/www/arafatvisitor/backups/db_backup_${TIMESTAMP}.sql
-              echo "Backup saved to /var/www/arafatvisitor/backups/db_backup_${TIMESTAMP}.sql"
+          # Create database and user if they don't exist (production-safe - no data deletion)
+          if ! sudo -u postgres psql -lqt | cut -d \| -f 1 | grep -qw ${{ env.DB_NAME }}; then
+              echo "Creating new database and user..."
+              sudo -u postgres psql -c "CREATE USER ${{ env.DB_USER }} WITH PASSWORD '${{ secrets.DB_PASSWORD }}';" 2>/dev/null || true
+              sudo -u postgres psql -c "CREATE DATABASE ${{ env.DB_NAME }} OWNER ${{ env.DB_USER }};"
+              sudo -u postgres psql -d ${{ env.DB_NAME }} -c "GRANT ALL ON SCHEMA public TO ${{ env.DB_USER }};"
           else
-              echo "No existing database to backup"
+              echo "Database already exists - preserving data"
           fi
 
-          # Terminate all connections to the database before dropping
-          sudo -u postgres psql -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${{ env.DB_NAME }}' AND pid <> pg_backend_pid();" 2>/dev/null || true
-          sleep 2
-
-          # Drop existing database and user (fresh start)
-          sudo -u postgres psql -c "DROP DATABASE IF EXISTS ${{ env.DB_NAME }} WITH (FORCE);" 2>/dev/null || sudo -u postgres psql -c "DROP DATABASE IF EXISTS ${{ env.DB_NAME }};"
-          sudo -u postgres psql -c "DROP USER IF EXISTS ${{ env.DB_USER }};"
-
-          # Create fresh database and user
-          sudo -u postgres psql -c "CREATE USER ${{ env.DB_USER }} WITH PASSWORD '${{ secrets.DB_PASSWORD }}';"
-          sudo -u postgres psql -c "CREATE DATABASE ${{ env.DB_NAME }} OWNER ${{ env.DB_USER }};"
-          sudo -u postgres psql -d ${{ env.DB_NAME }} -c "GRANT ALL ON SCHEMA public TO ${{ env.DB_USER }};"
-
-          # Delete old .env and create fresh one
+          # Create .env if it doesn't exist (preserve existing JWT_SECRET)
           cd /var/www/arafatvisitor/backend
-          rm -f .env
-          JWT_SECRET=$(openssl rand -base64 32)
-          echo "DATABASE_URL=postgresql://${{ env.DB_USER }}:${{ secrets.DB_PASSWORD }}@localhost:5432/${{ env.DB_NAME }}" > .env
-          echo "JWT_SECRET=${JWT_SECRET}" >> .env
-          echo "PORT=3000" >> .env
-          cat .env
+          if [ ! -f .env ]; then
+              JWT_SECRET=$(openssl rand -base64 32)
+              echo "DATABASE_URL=postgresql://${{ env.DB_USER }}:${{ secrets.DB_PASSWORD }}@localhost:5432/${{ env.DB_NAME }}" > .env
+              echo "JWT_SECRET=${JWT_SECRET}" >> .env
+              echo "PORT=3000" >> .env
+              echo "Created new .env file"
+          else
+              echo ".env file already exists - preserving configuration"
+          fi
 
           echo "=== Building backend ==="
           # Load env
@@ -156,71 +139,15 @@ jobs:
           # Build backend
           npm run build
 
-          echo "=== Configuring Nginx ==="
+          echo "=== Configuring Nginx (SSL already installed) ==="
           # Strip protocol from domain (remove http:// or https://)
           DOMAIN="${{ secrets.VPS_DOMAIN }}"
           DOMAIN="${DOMAIN#http://}"
           DOMAIN="${DOMAIN#https://}"
           DOMAIN="${DOMAIN%%/*}"
 
-          # Setup Nginx (HTTP-only initially, SSL added later)
+          # Setup Nginx with HTTPS (SSL certificate already exists)
           cat > /etc/nginx/sites-available/arafatvisitor << 'NGINXCONF'
-          server {
-              listen 80;
-              listen [::]:80;
-              server_name _DOMAIN_ www._DOMAIN_;
-
-              root /var/www/arafatvisitor/frontend;
-              index index.html;
-
-              location / {
-                  try_files $uri $uri/ /index.html;
-              }
-
-              location = /api {
-                  return 301 /api/;
-              }
-
-              location /api/ {
-                  proxy_pass http://127.0.0.1:3000/;
-
-                  proxy_http_version 1.1;
-                  proxy_set_header Host $host;
-
-                  proxy_set_header X-Real-IP $remote_addr;
-                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                  proxy_set_header X-Forwarded-Proto $scheme;
-
-                  proxy_set_header Upgrade $http_upgrade;
-                  proxy_set_header Connection "upgrade";
-              }
-          }
-          NGINXCONF
-
-          # Replace placeholder with actual domain
-          sed -i "s/_DOMAIN_/$DOMAIN/g" /etc/nginx/sites-available/arafatvisitor
-
-          ln -sf /etc/nginx/sites-available/arafatvisitor /etc/nginx/sites-enabled/
-          rm -f /etc/nginx/sites-enabled/default
-          nginx -t && systemctl reload nginx
-
-          echo "=== Starting PM2 ==="
-          # Start backend with PM2
-          pm2 delete arafatvisitor-api 2>/dev/null || true
-          pm2 start dist/src/main.js --name arafatvisitor-api
-          pm2 save
-          pm2 startup
-
-          echo "=== Installing SSL certificate ==="
-          # Install SSL
-          apt-get install -y certbot python3-certbot-nginx
-          
-          # Try to install SSL certificate without redirect first
-          if certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --email admin@$DOMAIN; then
-              echo "SSL certificate installed successfully"
-              
-              # Add HTTPS redirect only after SSL is working
-              cat > /etc/nginx/sites-available/arafatvisitor << 'NGINXCONF'
           server {
               listen 80;
               listen [::]:80;
@@ -278,21 +205,27 @@ jobs:
           }
           NGINXCONF
 
-              # Replace placeholder with actual domain
-              sed -i "s/_DOMAIN_/$DOMAIN/g" /etc/nginx/sites-available/arafatvisitor
+          # Replace placeholder with actual domain
+          sed -i "s/_DOMAIN_/$DOMAIN/g" /etc/nginx/sites-available/arafatvisitor
 
-              # Test and reload Nginx with the new HTTPS config
-              nginx -t && systemctl reload nginx
-              echo "Nginx reloaded with HTTPS configuration"
+          ln -sf /etc/nginx/sites-available/arafatvisitor /etc/nginx/sites-enabled/
+          rm -f /etc/nginx/sites-enabled/default
+          nginx -t && systemctl reload nginx
 
-              # Auto-renewal cron (daily at 6 AM)
-              (crontab -l 2>/dev/null | grep -v certbot; echo "0 6 * * * certbot renew --quiet --post-hook 'systemctl reload nginx'") | crontab -
-          else
-              echo "SSL certificate installation failed - continuing with HTTP only"
-              echo "You can manually install SSL later with: sudo certbot --nginx -d $DOMAIN"
-              
-              # Keep HTTP-only configuration (already set up above)
-          fi
+          echo "=== Starting PM2 ==="
+          # Start backend with PM2
+          pm2 delete arafatvisitor-api 2>/dev/null || true
+          pm2 start dist/src/main.js --name arafatvisitor-api
+          pm2 save
+          pm2 startup
+
+          echo "=== Configuring SSL auto-renewal ==="
+          # Ensure certbot is installed for auto-renewal
+          apt-get install -y certbot python3-certbot-nginx 2>/dev/null || true
+
+          # Setup auto-renewal cron job (daily at 6 AM)
+          (crontab -l 2>/dev/null | grep -v certbot; echo "0 6 * * * certbot renew --quiet --post-hook 'systemctl reload nginx'") | crontab -
+          echo "SSL auto-renewal cron job configured"
 
           echo "INITIAL_SETUP_COMPLETE"
           ENDSSH
