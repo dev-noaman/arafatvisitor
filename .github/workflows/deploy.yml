@@ -8,7 +8,7 @@ on:
       init:
         description: 'Run initial setup (first deployment)'
         required: false
-        default: 'false'
+        default: false
         type: boolean
 
 env:
@@ -45,11 +45,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y sshpass rsync
-
-      - name: Setup SSH known hosts
-        run: |
-          mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ secrets.VPS_IP }} >> ~/.ssh/known_hosts
 
       - name: Create remote directories and install rsync on VPS
         run: |
@@ -99,7 +94,22 @@ jobs:
         if: github.event.inputs.init == 'true'
         run: |
           sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} << ENDSSH
-          set -e
+
+          # Stop PM2 processes to release database connections
+          echo "Stopping PM2 processes..."
+          pm2 stop arafatvisitor-api 2>/dev/null || true
+          pm2 delete arafatvisitor-api 2>/dev/null || true
+          sleep 2
+
+          # Stop PostgreSQL service to ensure all connections are closed
+          echo "Stopping PostgreSQL service..."
+          systemctl stop postgresql 2>/dev/null || true
+          sleep 2
+
+          # Start PostgreSQL service
+          echo "Starting PostgreSQL service..."
+          systemctl start postgresql 2>/dev/null || true
+          sleep 2
 
           # Create backup directory
           mkdir -p /var/www/arafatvisitor/backups
@@ -114,11 +124,18 @@ jobs:
               echo "No existing database to backup"
           fi
 
+          # Terminate all connections to the database before dropping
+          echo "Terminating existing database connections..."
+          sudo -u postgres psql -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${{ env.DB_NAME }}' AND pid <> pg_backend_pid();" 2>/dev/null || true
+          sleep 2
+
           # Drop existing database and user (fresh start)
-          sudo -u postgres psql -c "DROP DATABASE IF EXISTS ${{ env.DB_NAME }};"
+          echo "Dropping database and user..."
+          sudo -u postgres psql -c "DROP DATABASE IF EXISTS ${{ env.DB_NAME }} WITH (FORCE);" 2>/dev/null || sudo -u postgres psql -c "DROP DATABASE IF EXISTS ${{ env.DB_NAME }};"
           sudo -u postgres psql -c "DROP USER IF EXISTS ${{ env.DB_USER }};"
 
           # Create fresh database and user
+          echo "Creating fresh database and user..."
           sudo -u postgres psql -c "CREATE USER ${{ env.DB_USER }} WITH PASSWORD '${{ secrets.DB_PASSWORD }}';"
           sudo -u postgres psql -c "CREATE DATABASE ${{ env.DB_NAME }} OWNER ${{ env.DB_USER }};"
           sudo -u postgres psql -d ${{ env.DB_NAME }} -c "GRANT ALL ON SCHEMA public TO ${{ env.DB_USER }};"
