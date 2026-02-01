@@ -181,11 +181,17 @@ jobs:
           sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} << ENDSSH
           set -e
 
+          # Strip protocol from domain (remove http:// or https://)
+          DOMAIN="${{ secrets.VPS_DOMAIN }}"
+          DOMAIN="\${DOMAIN#http://}"
+          DOMAIN="\${DOMAIN#https://}"
+          DOMAIN="\${DOMAIN%%/*}"
+
           # Setup Nginx
-          cat > /etc/nginx/sites-available/arafatvisitor << 'NGINXCONF'
+          cat > /etc/nginx/sites-available/arafatvisitor << NGINXCONF
           server {
               listen 80;
-              server_name ${{ secrets.VPS_DOMAIN }} www.${{ secrets.VPS_DOMAIN }};
+              server_name \$DOMAIN www.\$DOMAIN;
 
               location / {
                   root /var/www/arafatvisitor/frontend;
@@ -236,7 +242,14 @@ jobs:
 
           # Install SSL
           apt-get install -y certbot python3-certbot-nginx
-          certbot --nginx -d ${{ secrets.VPS_DOMAIN }} --non-interactive --agree-tos --email admin@${{ secrets.VPS_DOMAIN }} --redirect || echo "Certbot failed - check DNS"
+          
+          # Strip protocol from domain (remove http:// or https://)
+          DOMAIN="${{ secrets.VPS_DOMAIN }}"
+          DOMAIN="\${DOMAIN#http://}"
+          DOMAIN="\${DOMAIN#https://}"
+          DOMAIN="\${DOMAIN%%/*}"
+          
+          certbot --nginx -d "\$DOMAIN" --non-interactive --agree-tos --email admin@\$DOMAIN --redirect || echo "Certbot failed - check DNS"
 
           # Auto-renewal cron (daily at 6 AM)
           (crontab -l 2>/dev/null | grep -v certbot; echo "0 6 * * * certbot renew --quiet --post-hook 'systemctl reload nginx'") | crontab -
