@@ -110,11 +110,10 @@ jobs:
 
           # Create .env file for backend
           JWT_SECRET=$(openssl rand -base64 32)
-          cat > .env << ENVFILE
-          DATABASE_URL="postgresql://${{ env.DB_USER }}:${{ secrets.DB_PASSWORD }}@localhost:5432/${{ env.DB_NAME }}"
-          JWT_SECRET="${JWT_SECRET}"
-          PORT=3000
-          ENVFILE
+          echo "DATABASE_URL=postgresql://${{ env.DB_USER }}:${{ secrets.DB_PASSWORD }}@localhost:5432/${{ env.DB_NAME }}" > .env
+          echo "JWT_SECRET=${JWT_SECRET}" >> .env
+          echo "PORT=3000" >> .env
+          cat .env
 
           # Run database migrations
           npx prisma generate
