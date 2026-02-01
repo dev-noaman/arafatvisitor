@@ -12,8 +12,6 @@ on:
         type: boolean
 
 env:
-  VPS_IP: 72.62.234.25
-  VPS_DOMAIN: arafatvisitor.cloud
   VPS_PATH: /var/www/arafatvisitor
   DB_NAME: arafatvisitor
   DB_USER: arafatvisitor
@@ -38,38 +36,40 @@ jobs:
       - name: Build frontend
         run: npm run build
         env:
-          VITE_API_BASE: https://${{ env.VPS_DOMAIN }}/api
+          VITE_API_BASE: https://${{ secrets.VPS_DOMAIN }}/api
 
       - name: Install backend dependencies
         run: cd backend && npm ci
 
-      - name: Setup SSH
+      - name: Install sshpass
+        run: sudo apt-get install -y sshpass
+
+      - name: Setup SSH known hosts
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ env.VPS_IP }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H ${{ secrets.VPS_IP }} >> ~/.ssh/known_hosts
 
       - name: Create remote directories
         run: |
-          ssh root@${{ env.VPS_IP }} "mkdir -p ${{ env.VPS_PATH }}/frontend ${{ env.VPS_PATH }}/backend"
+          sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} "mkdir -p ${{ env.VPS_PATH }}/frontend ${{ env.VPS_PATH }}/backend"
 
       - name: Upload frontend
         run: |
-          rsync -avz --delete dist/ root@${{ env.VPS_IP }}:${{ env.VPS_PATH }}/frontend/
+          sshpass -p '${{ secrets.VPS_PASSWORD }}' rsync -avz --delete -e "ssh -o StrictHostKeyChecking=no" dist/ ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }}:${{ env.VPS_PATH }}/frontend/
 
       - name: Upload backend
         run: |
-          rsync -avz --delete \
+          sshpass -p '${{ secrets.VPS_PASSWORD }}' rsync -avz --delete \
             --exclude 'node_modules' \
             --exclude '.env' \
             --exclude 'dist' \
-            backend/ root@${{ env.VPS_IP }}:${{ env.VPS_PATH }}/backend/
+            -e "ssh -o StrictHostKeyChecking=no" \
+            backend/ ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }}:${{ env.VPS_PATH }}/backend/
 
       - name: Initial Setup (first deployment)
         if: github.event.inputs.init == 'true'
         run: |
-          ssh root@${{ env.VPS_IP }} << 'INITEOF'
+          sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} << 'INITEOF'
           set -e
           cd ${{ env.VPS_PATH }}/backend
 
@@ -111,7 +111,7 @@ jobs:
           cat > /etc/nginx/sites-available/arafatvisitor << 'NGINXCONF'
           server {
               listen 80;
-              server_name ${{ env.VPS_DOMAIN }} www.${{ env.VPS_DOMAIN }};
+              server_name ${{ secrets.VPS_DOMAIN }} www.${{ secrets.VPS_DOMAIN }};
 
               location / {
                   root ${{ env.VPS_PATH }}/frontend;
@@ -144,7 +144,7 @@ jobs:
           # Install SSL
           apt-get update
           apt-get install -y certbot python3-certbot-nginx
-          certbot --nginx -d ${{ env.VPS_DOMAIN }} --non-interactive --agree-tos --email admin@${{ env.VPS_DOMAIN }} --redirect || echo "Certbot failed - check DNS"
+          certbot --nginx -d ${{ secrets.VPS_DOMAIN }} --non-interactive --agree-tos --email admin@${{ secrets.VPS_DOMAIN }} --redirect || echo "Certbot failed - check DNS"
 
           # Auto-renewal cron (daily at 6 AM)
           (crontab -l 2>/dev/null | grep -v certbot; echo "0 6 * * * certbot renew --quiet --post-hook 'systemctl reload nginx'") | crontab -
@@ -155,7 +155,7 @@ jobs:
       - name: Update Deployment
         if: github.event.inputs.init != 'true'
         run: |
-          ssh root@${{ env.VPS_IP }} << 'UPDATEEOF'
+          sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} << 'UPDATEEOF'
           set -e
           cd ${{ env.VPS_PATH }}/backend
 
@@ -180,4 +180,4 @@ jobs:
       - name: Verify deployment
         run: |
           sleep 5
-          curl -f http://${{ env.VPS_IP }} || echo "Verification pending - check manually"
+          curl -f http://${{ secrets.VPS_IP }} || echo "Verification pending - check manually"
