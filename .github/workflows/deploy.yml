@@ -163,26 +163,36 @@ jobs:
           DOMAIN="${DOMAIN#https://}"
           DOMAIN="${DOMAIN%%/*}"
 
-          # Setup Nginx
+          # Setup Nginx (HTTP-only initially, SSL added later)
           cat > /etc/nginx/sites-available/arafatvisitor << 'NGINXCONF'
           server {
               listen 80;
+              listen [::]:80;
               server_name _DOMAIN_ www._DOMAIN_;
 
+              root /var/www/arafatvisitor/frontend;
+              index index.html;
+
               location / {
-                  root /var/www/arafatvisitor/frontend;
                   try_files $uri $uri/ /index.html;
               }
 
-              location /api {
-                  rewrite ^/api/(.*) /$1 break;
-                  proxy_pass http://localhost:3000;
+              location = /api {
+                  return 301 /api/;
+              }
+
+              location /api/ {
+                  proxy_pass http://127.0.0.1:3000/;
+
                   proxy_http_version 1.1;
-                  proxy_set_header Upgrade $http_upgrade;
-                  proxy_set_header Connection 'upgrade';
                   proxy_set_header Host $host;
+
                   proxy_set_header X-Real-IP $remote_addr;
-                  proxy_cache_bypass $http_upgrade;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto $scheme;
+
+                  proxy_set_header Upgrade $http_upgrade;
+                  proxy_set_header Connection "upgrade";
               }
           }
           NGINXCONF
@@ -213,37 +223,61 @@ jobs:
               cat > /etc/nginx/sites-available/arafatvisitor << 'NGINXCONF'
           server {
               listen 80;
+              listen [::]:80;
               server_name _DOMAIN_ www._DOMAIN_;
-              return 301 https://$server_name$request_uri;
+              return 301 https://_DOMAIN_$request_uri;
           }
 
           server {
-              listen 443 ssl;
-              server_name _DOMAIN_ www._DOMAIN_;
+              listen 443 ssl http2;
+              listen [::]:443 ssl http2;
+              server_name www._DOMAIN_;
 
               ssl_certificate /etc/letsencrypt/live/_DOMAIN_/fullchain.pem;
               ssl_certificate_key /etc/letsencrypt/live/_DOMAIN_/privkey.pem;
               include /etc/letsencrypt/options-ssl-nginx.conf;
               ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
 
+              return 301 https://_DOMAIN_$request_uri;
+          }
+
+          server {
+              listen 443 ssl http2;
+              listen [::]:443 ssl http2;
+              server_name _DOMAIN_;
+
+              ssl_certificate /etc/letsencrypt/live/_DOMAIN_/fullchain.pem;
+              ssl_certificate_key /etc/letsencrypt/live/_DOMAIN_/privkey.pem;
+              include /etc/letsencrypt/options-ssl-nginx.conf;
+              ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+              root /var/www/arafatvisitor/frontend;
+              index index.html;
+
               location / {
-                  root /var/www/arafatvisitor/frontend;
                   try_files $uri $uri/ /index.html;
               }
 
-              location /api {
-                  rewrite ^/api/(.*) /$1 break;
-                  proxy_pass http://localhost:3000;
+              location = /api {
+                  return 301 /api/;
+              }
+
+              location /api/ {
+                  proxy_pass http://127.0.0.1:3000/;
+
                   proxy_http_version 1.1;
-                  proxy_set_header Upgrade $http_upgrade;
-                  proxy_set_header Connection 'upgrade';
                   proxy_set_header Host $host;
+
                   proxy_set_header X-Real-IP $remote_addr;
-                  proxy_cache_bypass $http_upgrade;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto $scheme;
+
+                  proxy_set_header Upgrade $http_upgrade;
+                  proxy_set_header Connection "upgrade";
               }
           }
           NGINXCONF
-              
+
               # Replace placeholder with actual domain
               sed -i "s/_DOMAIN_/$DOMAIN/g" /etc/nginx/sites-available/arafatvisitor
 
