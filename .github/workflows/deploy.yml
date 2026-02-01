@@ -101,15 +101,18 @@ jobs:
           sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} << ENDSSH
           set -e
 
-          # Setup PostgreSQL database
-          sudo -u postgres psql -c "CREATE DATABASE ${{ env.DB_NAME }};" 2>/dev/null || echo "Database exists"
-          sudo -u postgres psql -c "CREATE USER ${{ env.DB_USER }} WITH PASSWORD '${{ secrets.DB_PASSWORD }}';" 2>/dev/null || echo "User exists"
-          sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE ${{ env.DB_NAME }} TO ${{ env.DB_USER }};"
-          sudo -u postgres psql -c "ALTER DATABASE ${{ env.DB_NAME }} OWNER TO ${{ env.DB_USER }};"
+          # Drop existing database and user (fresh start)
+          sudo -u postgres psql -c "DROP DATABASE IF EXISTS ${{ env.DB_NAME }};"
+          sudo -u postgres psql -c "DROP USER IF EXISTS ${{ env.DB_USER }};"
+
+          # Create fresh database and user
+          sudo -u postgres psql -c "CREATE USER ${{ env.DB_USER }} WITH PASSWORD '${{ secrets.DB_PASSWORD }}';"
+          sudo -u postgres psql -c "CREATE DATABASE ${{ env.DB_NAME }} OWNER ${{ env.DB_USER }};"
           sudo -u postgres psql -d ${{ env.DB_NAME }} -c "GRANT ALL ON SCHEMA public TO ${{ env.DB_USER }};"
 
-          # Create .env file for backend
+          # Delete old .env and create fresh one
           cd /var/www/arafatvisitor/backend
+          rm -f .env
           JWT_SECRET=\$(openssl rand -base64 32)
           echo "DATABASE_URL=postgresql://${{ env.DB_USER }}:${{ secrets.DB_PASSWORD }}@localhost:5432/${{ env.DB_NAME }}" > .env
           echo "JWT_SECRET=\${JWT_SECRET}" >> .env
