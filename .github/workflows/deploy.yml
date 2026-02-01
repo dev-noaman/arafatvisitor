@@ -246,7 +246,11 @@ jobs:
               
               # Replace placeholder with actual domain
               sed -i "s/_DOMAIN_/$DOMAIN/g" /etc/nginx/sites-available/arafatvisitor
-              
+
+              # Test and reload Nginx with the new HTTPS config
+              nginx -t && systemctl reload nginx
+              echo "Nginx reloaded with HTTPS configuration"
+
               # Auto-renewal cron (daily at 6 AM)
               (crontab -l 2>/dev/null | grep -v certbot; echo "0 6 * * * certbot renew --quiet --post-hook 'systemctl reload nginx'") | crontab -
           else
