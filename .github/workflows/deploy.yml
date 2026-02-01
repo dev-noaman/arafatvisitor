@@ -15,6 +15,7 @@ env:
   VPS_PATH: /var/www/arafatvisitor
   DB_NAME: arafatvisitor
   DB_USER: arafatvisitor
+  SSH_OPTS: '-o StrictHostKeyChecking=no -o ControlMaster=auto -o ControlPath=/tmp/ssh-%r@%h:%p -o ControlPersist=60s'
 
 jobs:
   build-and-deploy:
@@ -46,24 +47,29 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y sshpass rsync
 
-      - name: Create remote directories and install rsync on VPS
+      - name: Start SSH control master
         run: |
-          sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} "apt-get update && apt-get install -y rsync && mkdir -p ${{ env.VPS_PATH }}/frontend ${{ env.VPS_PATH }}/backend"
+          sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh ${{ env.SSH_OPTS }} -N -f ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }}
+
+      - name: Prepare VPS directories
+        run: |
+          sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh ${{ env.SSH_OPTS }} ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} "apt-get update && apt-get install -y rsync && mkdir -p ${{ env.VPS_PATH }}/frontend ${{ env.VPS_PATH }}/backend"
 
       - name: Upload frontend
         run: |
-          sshpass -p '${{ secrets.VPS_PASSWORD }}' rsync -avz --delete -e "ssh -o StrictHostKeyChecking=no" dist/ ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }}:${{ env.VPS_PATH }}/frontend/
+          sshpass -p '${{ secrets.VPS_PASSWORD }}' rsync -avz --delete -e "sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh ${{ env.SSH_OPTS }}" dist/ ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }}:${{ env.VPS_PATH }}/frontend/
 
       - name: Upload backend
         run: |
-          sshpass -p '${{ secrets.VPS_PASSWORD }}' rsync -avz --delete --exclude 'node_modules' --exclude '.env' --exclude 'dist' -e "ssh -o StrictHostKeyChecking=no" backend/ ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }}:${{ env.VPS_PATH }}/backend/
+          sshpass -p '${{ secrets.VPS_PASSWORD }}' rsync -avz --delete --exclude 'node_modules' --exclude '.env' --exclude 'dist' -e "sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh ${{ env.SSH_OPTS }}" backend/ ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }}:${{ env.VPS_PATH }}/backend/
 
-      - name: Initial Setup - Install dependencies
+      - name: Initial Setup (all steps in one SSH session)
         if: github.event.inputs.init == 'true'
         run: |
-          sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} << 'ENDSSH'
+          sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh ${{ env.SSH_OPTS }} ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} << 'ENDSSH'
           set -e
 
+          echo "=== Installing system dependencies ==="
           # Install Node.js if not present
           if ! command -v node &> /dev/null; then
               curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
@@ -87,27 +93,17 @@ jobs:
           # Install PM2 globally
           npm install -g pm2
 
-          echo "DEPENDENCIES_INSTALLED"
-          ENDSSH
-
-      - name: Initial Setup - Configure database
-        if: github.event.inputs.init == 'true'
-        run: |
-          sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} << ENDSSH
-
+          echo "=== Configuring database ==="
           # Stop PM2 processes to release database connections
-          echo "Stopping PM2 processes..."
           pm2 stop arafatvisitor-api 2>/dev/null || true
           pm2 delete arafatvisitor-api 2>/dev/null || true
           sleep 2
 
           # Stop PostgreSQL service to ensure all connections are closed
-          echo "Stopping PostgreSQL service..."
           systemctl stop postgresql 2>/dev/null || true
           sleep 2
 
           # Start PostgreSQL service
-          echo "Starting PostgreSQL service..."
           systemctl start postgresql 2>/dev/null || true
           sleep 2
 
@@ -115,27 +111,24 @@ jobs:
           mkdir -p /var/www/arafatvisitor/backups
 
           # Backup existing database if it exists (with timestamp)
-          TIMESTAMP=\$(date +%Y%m%d_%H%M%S)
+          TIMESTAMP=$(date +%Y%m%d_%H%M%S)
           if sudo -u postgres psql -lqt | cut -d \| -f 1 | grep -qw ${{ env.DB_NAME }}; then
               echo "Backing up existing database..."
-              sudo -u postgres pg_dump ${{ env.DB_NAME }} > /var/www/arafatvisitor/backups/db_backup_\${TIMESTAMP}.sql
-              echo "Backup saved to /var/www/arafatvisitor/backups/db_backup_\${TIMESTAMP}.sql"
+              sudo -u postgres pg_dump ${{ env.DB_NAME }} > /var/www/arafatvisitor/backups/db_backup_${TIMESTAMP}.sql
+              echo "Backup saved to /var/www/arafatvisitor/backups/db_backup_${TIMESTAMP}.sql"
           else
               echo "No existing database to backup"
           fi
 
           # Terminate all connections to the database before dropping
-          echo "Terminating existing database connections..."
           sudo -u postgres psql -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${{ env.DB_NAME }}' AND pid <> pg_backend_pid();" 2>/dev/null || true
           sleep 2
 
           # Drop existing database and user (fresh start)
-          echo "Dropping database and user..."
           sudo -u postgres psql -c "DROP DATABASE IF EXISTS ${{ env.DB_NAME }} WITH (FORCE);" 2>/dev/null || sudo -u postgres psql -c "DROP DATABASE IF EXISTS ${{ env.DB_NAME }};"
           sudo -u postgres psql -c "DROP USER IF EXISTS ${{ env.DB_USER }};"
 
           # Create fresh database and user
-          echo "Creating fresh database and user..."
           sudo -u postgres psql -c "CREATE USER ${{ env.DB_USER }} WITH PASSWORD '${{ secrets.DB_PASSWORD }}';"
           sudo -u postgres psql -c "CREATE DATABASE ${{ env.DB_NAME }} OWNER ${{ env.DB_USER }};"
           sudo -u postgres psql -d ${{ env.DB_NAME }} -c "GRANT ALL ON SCHEMA public TO ${{ env.DB_USER }};"
@@ -143,22 +136,13 @@ jobs:
           # Delete old .env and create fresh one
           cd /var/www/arafatvisitor/backend
           rm -f .env
-          JWT_SECRET=\$(openssl rand -base64 32)
+          JWT_SECRET=$(openssl rand -base64 32)
           echo "DATABASE_URL=postgresql://${{ env.DB_USER }}:${{ secrets.DB_PASSWORD }}@localhost:5432/${{ env.DB_NAME }}" > .env
-          echo "JWT_SECRET=\${JWT_SECRET}" >> .env
+          echo "JWT_SECRET=${JWT_SECRET}" >> .env
           echo "PORT=3000" >> .env
           cat .env
 
-          echo "DATABASE_CONFIGURED"
-          ENDSSH
-
-      - name: Initial Setup - Build and migrate
-        if: github.event.inputs.init == 'true'
-        run: |
-          sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} << 'ENDSSH'
-          set -e
-          cd /var/www/arafatvisitor/backend
-
+          echo "=== Building backend ==="
           # Load env
           export $(grep -v '^#' .env | xargs)
 
@@ -172,26 +156,18 @@ jobs:
           # Build backend
           npm run build
 
-          echo "BUILD_COMPLETE"
-          ENDSSH
-
-      - name: Initial Setup - Configure Nginx
-        if: github.event.inputs.init == 'true'
-        run: |
-          sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} << ENDSSH
-          set -e
-
+          echo "=== Configuring Nginx ==="
           # Strip protocol from domain (remove http:// or https://)
           DOMAIN="${{ secrets.VPS_DOMAIN }}"
-          DOMAIN="\${DOMAIN#http://}"
-          DOMAIN="\${DOMAIN#https://}"
-          DOMAIN="\${DOMAIN%%/*}"
+          DOMAIN="${DOMAIN#http://}"
+          DOMAIN="${DOMAIN#https://}"
+          DOMAIN="${DOMAIN%%/*}"
 
           # Setup Nginx
           cat > /etc/nginx/sites-available/arafatvisitor << NGINXCONF
           server {
               listen 80;
-              server_name \$DOMAIN www.\$DOMAIN;
+              server_name $DOMAIN www.$DOMAIN;
 
               location / {
                   root /var/www/arafatvisitor/frontend;
@@ -215,52 +191,29 @@ jobs:
           rm -f /etc/nginx/sites-enabled/default
           nginx -t && systemctl reload nginx
 
-          echo "NGINX_CONFIGURED"
-          ENDSSH
-
-      - name: Initial Setup - Start PM2
-        if: github.event.inputs.init == 'true'
-        run: |
-          sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} << 'ENDSSH'
-          set -e
-          cd /var/www/arafatvisitor/backend
-
+          echo "=== Starting PM2 ==="
           # Start backend with PM2
           pm2 delete arafatvisitor-api 2>/dev/null || true
           pm2 start dist/src/main.js --name arafatvisitor-api
           pm2 save
           pm2 startup
 
-          echo "PM2_STARTED"
-          ENDSSH
-
-      - name: Initial Setup - SSL Certificate
-        if: github.event.inputs.init == 'true'
-        run: |
-          sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} << ENDSSH
-          set -e
-
+          echo "=== Installing SSL certificate ==="
           # Install SSL
           apt-get install -y certbot python3-certbot-nginx
           
-          # Strip protocol from domain (remove http:// or https://)
-          DOMAIN="${{ secrets.VPS_DOMAIN }}"
-          DOMAIN="\${DOMAIN#http://}"
-          DOMAIN="\${DOMAIN#https://}"
-          DOMAIN="\${DOMAIN%%/*}"
-          
-          certbot --nginx -d "\$DOMAIN" --non-interactive --agree-tos --email admin@\$DOMAIN --redirect || echo "Certbot failed - check DNS"
+          certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --email admin@$DOMAIN --redirect || echo "Certbot failed - check DNS"
 
           # Auto-renewal cron (daily at 6 AM)
           (crontab -l 2>/dev/null | grep -v certbot; echo "0 6 * * * certbot renew --quiet --post-hook 'systemctl reload nginx'") | crontab -
 
-          echo "SSL_CONFIGURED"
+          echo "INITIAL_SETUP_COMPLETE"
           ENDSSH
 
-      - name: Update Deployment
+      - name: Update Deployment (single SSH session)
         if: github.event.inputs.init != 'true'
         run: |
-          sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} << 'ENDSSH'
+          sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh ${{ env.SSH_OPTS }} ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} << 'ENDSSH'
           set -e
           cd /var/www/arafatvisitor/backend
           export $(grep -v '^#' .env | xargs) 2>/dev/null || true
@@ -282,6 +235,11 @@ jobs:
 
           echo "UPDATE_COMPLETE"
           ENDSSH
+
+      - name: Stop SSH control master
+        if: always()
+        run: |
+          sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh ${{ env.SSH_OPTS }} -O exit ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} 2>/dev/null || true
 
       - name: Verify deployment
         run: |
