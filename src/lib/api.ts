@@ -62,7 +62,10 @@ function getApiBase(): string | null {
 }
 
 export function getAdminUrl(): string {
-  // Derive admin URL from API base (e.g., https://domain.com/api -> https://domain.com/admin)
+  // Use explicit VITE_ADMIN_URL if set, otherwise derive from API base
+  const envAdminUrl = import.meta.env.VITE_ADMIN_URL
+  if (envAdminUrl) return envAdminUrl
+
   const apiBase = getApiBase()
   if (apiBase) {
     return apiBase.replace(/\/api\/?$/, '/admin')
