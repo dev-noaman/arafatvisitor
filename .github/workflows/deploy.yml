@@ -155,7 +155,7 @@ jobs:
 
           # Start backend with PM2
           pm2 delete arafatvisitor-api 2>/dev/null || true
-          pm2 start dist/main.js --name arafatvisitor-api
+          pm2 start dist/src/main.js --name arafatvisitor-api
           pm2 save
           pm2 startup
 
