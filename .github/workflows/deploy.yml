@@ -41,17 +41,19 @@ jobs:
       - name: Install backend dependencies
         run: cd backend && npm ci
 
-      - name: Install sshpass
-        run: sudo apt-get install -y sshpass
+      - name: Install sshpass and rsync
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y sshpass rsync
 
       - name: Setup SSH known hosts
         run: |
           mkdir -p ~/.ssh
           ssh-keyscan -H ${{ secrets.VPS_IP }} >> ~/.ssh/known_hosts
 
-      - name: Create remote directories
+      - name: Create remote directories and install rsync on VPS
         run: |
-          sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} "mkdir -p ${{ env.VPS_PATH }}/frontend ${{ env.VPS_PATH }}/backend"
+          sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} "apt-get update && apt-get install -y rsync && mkdir -p ${{ env.VPS_PATH }}/frontend ${{ env.VPS_PATH }}/backend"
 
       - name: Upload frontend
         run: |
