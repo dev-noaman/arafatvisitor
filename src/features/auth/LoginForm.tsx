@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "sonner"
 import { Lock, User, ArrowLeft, Mail, ShieldCheck, Crown, Users } from "lucide-react"
-import { login as apiLogin, forgotPassword as apiForgotPassword, setAuthToken } from "@/lib/api"
+import { login as apiLogin, forgotPassword as apiForgotPassword, setAuthToken, getAdminUrl } from "@/lib/api"
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Invalid email address" }),
@@ -63,7 +63,7 @@ export function LoginForm(props: { onLoginSuccess?: (role: "admin" | "reception"
         const { token: newToken, user } = await apiLogin(data.email, data.password)
         setAuthToken(newToken)
         if (user.role === "HOST") {
-          toast.error("Host accounts use Admin only", { description: "Log in at http://localhost:3000/admin/login for limited access." })
+          toast.error("Host accounts use Admin only", { description: `Log in at ${getAdminUrl()}/login for limited access.` })
           return
         }
         const role = user.role.toLowerCase() as "admin" | "reception"

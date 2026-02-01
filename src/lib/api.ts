@@ -61,6 +61,15 @@ function getApiBase(): string | null {
   return config?.apiBase ?? null
 }
 
+export function getAdminUrl(): string {
+  // Derive admin URL from API base (e.g., https://domain.com/api -> https://domain.com/admin)
+  const apiBase = getApiBase()
+  if (apiBase) {
+    return apiBase.replace(/\/api\/?$/, '/admin')
+  }
+  return 'http://localhost:3000/admin'
+}
+
 export function getAuthToken(): string | null {
   return authToken ?? sessionStorage.getItem('vms_token')
 }

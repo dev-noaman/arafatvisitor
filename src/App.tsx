@@ -11,7 +11,7 @@ import { ReportsPanel } from "@/features/reports/ReportsPanel"
 import { Toaster } from "sonner"
 import { ShieldCheck, Truck, LogOut, ArrowLeft, User, ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { setAuthToken } from "@/lib/api"
+import { setAuthToken, getAdminUrl } from "@/lib/api"
 import QRCode from "react-qr-code"
 
 type Role = "admin" | "reception"
@@ -93,13 +93,14 @@ function App() {
                   title="Open Admin dashboard"
                   onClick={() => {
                     const token = window.sessionStorage.getItem("vms_token")
+                    const adminUrl = getAdminUrl()
                     if (token) {
                       window.open(
-                        `http://localhost:3000/admin/auto-login?token=${encodeURIComponent(token)}`,
+                        `${adminUrl}/auto-login?token=${encodeURIComponent(token)}`,
                         "_blank",
                       )
                     } else {
-                      window.open("http://localhost:3000/admin", "_blank")
+                      window.open(adminUrl, "_blank")
                     }
                   }}
                 >
