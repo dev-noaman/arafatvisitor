@@ -205,10 +205,56 @@ jobs:
           # Install SSL
           apt-get install -y certbot python3-certbot-nginx
           
-          certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --email admin@$DOMAIN --redirect || echo "Certbot failed - check DNS"
+          # Try to install SSL certificate without redirect first
+          if certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --email admin@$DOMAIN; then
+              echo "SSL certificate installed successfully"
+              
+              # Add HTTPS redirect only after SSL is working
+              cat > /etc/nginx/sites-available/arafatvisitor << 'NGINXCONF'
+          server {
+              listen 80;
+              server_name _DOMAIN_ www._DOMAIN_;
+              return 301 https://$server_name$request_uri;
+          }
 
-          # Auto-renewal cron (daily at 6 AM)
-          (crontab -l 2>/dev/null | grep -v certbot; echo "0 6 * * * certbot renew --quiet --post-hook 'systemctl reload nginx'") | crontab -
+          server {
+              listen 443 ssl;
+              server_name _DOMAIN_ www._DOMAIN_;
+
+              ssl_certificate /etc/letsencrypt/live/_DOMAIN_/fullchain.pem;
+              ssl_certificate_key /etc/letsencrypt/live/_DOMAIN_/privkey.pem;
+              include /etc/letsencrypt/options-ssl-nginx.conf;
+              ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+              location / {
+                  root /var/www/arafatvisitor/frontend;
+                  try_files $uri $uri/ /index.html;
+              }
+
+              location /api {
+                  rewrite ^/api/(.*) /$1 break;
+                  proxy_pass http://localhost:3000;
+                  proxy_http_version 1.1;
+                  proxy_set_header Upgrade $http_upgrade;
+                  proxy_set_header Connection 'upgrade';
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_cache_bypass $http_upgrade;
+              }
+          }
+          NGINXCONF
+              
+              # Replace placeholder with actual domain
+              sed -i "s/_DOMAIN_/$DOMAIN/g" /etc/nginx/sites-available/arafatvisitor
+              
+              # Auto-renewal cron (daily at 6 AM)
+              (crontab -l 2>/dev/null | grep -v certbot; echo "0 6 * * * certbot renew --quiet --post-hook 'systemctl reload nginx'") | crontab -
+          else
+              echo "SSL certificate installation failed - continuing with HTTP only"
+              echo "You can manually install SSL later with: sudo certbot --nginx -d $DOMAIN"
+              
+              # Keep HTTP-only configuration (already set up above)
+          fi
 
           echo "INITIAL_SETUP_COMPLETE"
           ENDSSH
