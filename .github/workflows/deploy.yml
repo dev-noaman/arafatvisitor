@@ -10,6 +10,11 @@ on:
         required: false
         default: false
         type: boolean
+      seed_only:
+        description: 'Only run database seed (skip build/deploy)'
+        required: false
+        default: false
+        type: boolean
 
 env:
   VPS_PATH: /var/www/arafatvisitor
@@ -31,41 +36,62 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
+      - name: Seed Database Only
+        if: github.event.inputs.seed_only == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y sshpass
+          sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh ${{ env.SSH_OPTS }} ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} << 'ENDSSH'
+          set -e
+          cd /var/www/arafatvisitor/backend
+          export $(grep -v '^#' .env | xargs) 2>/dev/null || true
+          npx prisma db seed
+          echo "SEED_COMPLETE"
+          ENDSSH
+
       - name: Install frontend dependencies
+        if: github.event.inputs.seed_only != 'true'
         run: npm ci
 
       - name: Build frontend
+        if: github.event.inputs.seed_only != 'true'
         run: npm run build
         env:
           VITE_API_BASE: https://${{ secrets.VPS_DOMAIN }}/api
           VITE_SHOW_DEBUG_LOGIN: "true"
 
       - name: Install backend dependencies
+        if: github.event.inputs.seed_only != 'true'
         run: cd backend && npm ci
 
       - name: Install sshpass and rsync
+        if: github.event.inputs.seed_only != 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y sshpass rsync
 
       - name: Start SSH control master
+        if: github.event.inputs.seed_only != 'true'
         run: |
           sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh ${{ env.SSH_OPTS }} -N -f ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }}
 
       - name: Prepare VPS directories
+        if: github.event.inputs.seed_only != 'true'
         run: |
           sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh ${{ env.SSH_OPTS }} ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} "apt-get update && apt-get install -y rsync && mkdir -p ${{ env.VPS_PATH }}/frontend ${{ env.VPS_PATH }}/backend"
 
       - name: Upload frontend
+        if: github.event.inputs.seed_only != 'true'
         run: |
           sshpass -p '${{ secrets.VPS_PASSWORD }}' rsync -avz --delete -e "sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh ${{ env.SSH_OPTS }}" dist/ ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }}:${{ env.VPS_PATH }}/frontend/
 
       - name: Upload backend
+        if: github.event.inputs.seed_only != 'true'
         run: |
           sshpass -p '${{ secrets.VPS_PASSWORD }}' rsync -avz --delete --exclude 'node_modules' --exclude '.env' --exclude 'dist' -e "sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh ${{ env.SSH_OPTS }}" backend/ ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }}:${{ env.VPS_PATH }}/backend/
 
       - name: Initial Setup (all steps in one SSH session)
-        if: github.event.inputs.init == 'true'
+        if: github.event.inputs.init == 'true' && github.event.inputs.seed_only != 'true'
         run: |
           sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh ${{ env.SSH_OPTS }} ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} << 'ENDSSH'
           set -e
@@ -135,6 +161,9 @@ jobs:
           # Run database migrations
           npx prisma generate
           npx prisma migrate deploy
+
+          # Seed default users (idempotent - skips existing)
+          npx prisma db seed || echo "Seed completed or skipped"
 
           # Build backend
           npm run build
@@ -246,7 +275,7 @@ jobs:
           ENDSSH
 
       - name: Update Deployment (single SSH session)
-        if: github.event.inputs.init != 'true'
+        if: github.event.inputs.init != 'true' && github.event.inputs.seed_only != 'true'
         run: |
           sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh ${{ env.SSH_OPTS }} ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} << 'ENDSSH'
           set -e
@@ -261,6 +290,9 @@ jobs:
 
           # Run new migrations (safe - won't delete data)
           npx prisma migrate deploy
+
+          # Seed default users (idempotent - skips existing)
+          npx prisma db seed || echo "Seed completed or skipped"
 
           # Rebuild backend
           npm run build
@@ -354,11 +386,12 @@ jobs:
           ENDSSH
 
       - name: Stop SSH control master
-        if: always()
+        if: always() && github.event.inputs.seed_only != 'true'
         run: |
           sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh ${{ env.SSH_OPTS }} -O exit ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} 2>/dev/null || true
 
       - name: Verify deployment
+        if: github.event.inputs.seed_only != 'true'
         run: |
           sleep 5
           curl -f http://${{ secrets.VPS_IP }} || echo "Verification pending - check manually"

@@ -17,6 +17,42 @@ function mapLocation(loc: string | undefined): 'BARWA_TOWERS' | 'MARINA_50' | 'E
   return null;
 }
 
+// Default test users for quick login (matches frontend LoginForm.tsx)
+const DEFAULT_USERS = [
+  { email: 'admin@arafatvisitor.cloud', password: 'admin123', name: 'Admin User', role: 'ADMIN' as const },
+  { email: 'gm@arafatvisitor.cloud', password: 'gm123', name: 'General Manager', role: 'ADMIN' as const },
+  { email: 'reception@arafatvisitor.cloud', password: 'reception123', name: 'Reception User', role: 'RECEPTION' as const },
+];
+
+async function seedDefaultUsers() {
+  console.log('Seeding default test users...');
+  let created = 0;
+  let existing = 0;
+
+  for (const user of DEFAULT_USERS) {
+    const existingUser = await prisma.user.findUnique({ where: { email: user.email } });
+    if (existingUser) {
+      existing++;
+      console.log(`Default user already exists: ${user.email}`);
+      continue;
+    }
+
+    const hash = await bcrypt.hash(user.password, BCRYPT_ROUNDS);
+    await prisma.user.create({
+      data: {
+        email: user.email,
+        name: user.name,
+        password: hash,
+        role: user.role,
+      },
+    });
+    created++;
+    console.log(`Created default user: ${user.email} (${user.role})`);
+  }
+
+  console.log(`Default users: ${created} created, ${existing} already existed`);
+}
+
 async function seedUsers() {
   const csvPath = path.join(__dirname, '../../Adel Data/users-export.csv');
   if (!fs.existsSync(csvPath)) {
@@ -307,6 +343,7 @@ async function seedDeliveries() {
 }
 
 async function main() {
+  await seedDefaultUsers();
   await seedUsers();
   await seedHostsFromCsv();
   await seedPreRegistersByReception();
