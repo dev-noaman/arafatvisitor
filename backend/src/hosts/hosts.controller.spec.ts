@@ -99,7 +99,7 @@ describe('HostsController', () => {
             expect(result).toEqual(hosts);
         });
 
-        it('should normalize location filter', async () => {
+        it('should pass location filter as-is to service', async () => {
             // Arrange
             const hosts = [mockHost];
             hostsServiceMock.findAll.mockResolvedValue(hosts as any);
@@ -107,8 +107,8 @@ describe('HostsController', () => {
             // Act
             await controller.findAll('barwa towers');
 
-            // Assert
-            expect(hostsServiceMock.findAll).toHaveBeenCalledWith('BARWA_TOWERS');
+            // Assert - Controller passes location as-is, service handles normalization
+            expect(hostsServiceMock.findAll).toHaveBeenCalledWith('barwa towers');
         });
     });
 
@@ -196,14 +196,12 @@ describe('HostsController', () => {
             };
 
             const updatedHost = { ...mockHost, name: 'Updated Name' };
-            hostsServiceMock.findOne.mockResolvedValue(mockHost as any);
             hostsServiceMock.update.mockResolvedValue(updatedHost as any);
 
             // Act
             const result = await controller.update('1', updateDto);
 
-            // Assert
-            expect(hostsServiceMock.findOne).toHaveBeenCalledWith(BigInt(1));
+            // Assert - Controller calls update directly without findOne
             expect(hostsServiceMock.update).toHaveBeenCalledWith(BigInt(1), updateDto);
             expect(result).toEqual(updatedHost);
         });
@@ -211,45 +209,34 @@ describe('HostsController', () => {
         it('should throw NotFoundException when updating non-existent host', async () => {
             // Arrange
             const updateDto = { name: 'Updated Name' };
-            hostsServiceMock.findOne.mockResolvedValue(undefined as any);
-            hostsServiceMock.findOne.mockImplementation(async () => {
-                throw new NotFoundException('Host not found');
-            });
+            hostsServiceMock.update.mockRejectedValue(new NotFoundException('Host not found'));
 
             // Act & Assert
             await expect(controller.update('999', updateDto)).rejects.toThrow(NotFoundException);
             await expect(controller.update('999', updateDto)).rejects.toThrow('Host not found');
-            expect(hostsServiceMock.update).not.toHaveBeenCalled();
         });
     });
 
     describe('remove', () => {
         it('should soft delete a host', async () => {
             // Arrange
-            hostsServiceMock.findOne.mockResolvedValue(mockHost as any);
             hostsServiceMock.remove.mockResolvedValue(mockHost as any);
 
             // Act
             const result = await controller.remove('1');
 
-            // Assert
-            expect(hostsServiceMock.findOne).toHaveBeenCalledWith(BigInt(1));
+            // Assert - Controller calls remove directly without findOne
             expect(hostsServiceMock.remove).toHaveBeenCalledWith(BigInt(1));
-            expect(hostsServiceMock.remove).toHaveBeenCalled();
             expect(result).toEqual(mockHost);
         });
 
         it('should throw NotFoundException when removing non-existent host', async () => {
             // Arrange
-            hostsServiceMock.findOne.mockResolvedValue(undefined as any);
-            hostsServiceMock.findOne.mockImplementation(async () => {
-                throw new NotFoundException('Host not found');
-            });
+            hostsServiceMock.remove.mockRejectedValue(new NotFoundException('Host not found'));
 
             // Act & Assert
             await expect(controller.remove('999')).rejects.toThrow(NotFoundException);
             await expect(controller.remove('999')).rejects.toThrow('Host not found');
-            expect(hostsServiceMock.remove).not.toHaveBeenCalled();
         });
     });
 
