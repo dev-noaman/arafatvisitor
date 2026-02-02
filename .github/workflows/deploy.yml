@@ -276,12 +276,14 @@ jobs:
 
           # Clear AdminJS component cache to force rebuild
           rm -rf .adminjs 2>/dev/null || true
+          rm -rf node_modules/.cache 2>/dev/null || true
 
           # Rebuild backend
           npm run build
 
-          # Restart backend (or start if not running)
-          pm2 restart arafatvisitor-api 2>/dev/null || pm2 start dist/src/main.js --name arafatvisitor-api
+          # Force full restart (delete and recreate) to clear all caches
+          pm2 delete arafatvisitor-api 2>/dev/null || true
+          pm2 start dist/src/main.js --name arafatvisitor-api --update-env
           pm2 save
 
           # Update Nginx config
