@@ -1509,33 +1509,46 @@ async function bootstrap() {
       }
     });
 
-    // POST /admin/api/hosts/import - Bulk import hosts from CSV
+    // POST /admin/api/hosts/import - Bulk import hosts from CSV or XLSX
     // Must be registered before adminRouter to avoid being caught by AdminJS
     // Supports ?validate=true for dry-run validation without database changes
+    // Accepts: { csvContent: string } for CSV or { xlsxContent: base64string } for XLSX
     const jsonParserLarge = require('express').json({ limit: '50mb' });
     expressApp.post(`${rootPath}/api/hosts/import`, settingsSessionMiddleware, jsonParserLarge, requireAdminSession, async (req: any, res: any) => {
       const validateOnly = req.query.validate === 'true';
       console.log(`Bulk import request received (validateOnly: ${validateOnly})`);
 
       try {
-        const { csvContent } = req.body || {};
+        const { csvContent, xlsxContent } = req.body || {};
 
-        if (!csvContent || typeof csvContent !== 'string' || !csvContent.trim()) {
-          return res.status(400).json({ message: 'csvContent is required' });
+        let records: any[] = [];
+
+        if (xlsxContent && typeof xlsxContent === 'string') {
+          // Parse XLSX from base64
+          console.log(`XLSX content received, length: ${xlsxContent.length} chars`);
+          const XLSX = require('xlsx');
+          const buffer = Buffer.from(xlsxContent, 'base64');
+          const workbook = XLSX.read(buffer, { type: 'buffer' });
+          const sheetName = workbook.SheetNames[0];
+          const sheet = workbook.Sheets[sheetName];
+          records = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+          console.log(`XLSX parsed successfully, ${records.length} records found`);
+        } else if (csvContent && typeof csvContent === 'string' && csvContent.trim()) {
+          // Parse CSV
+          console.log(`CSV content received, length: ${csvContent.length} chars`);
+          const { parse } = await import('csv-parse/sync');
+          records = parse(csvContent, {
+            columns: true,
+            skip_empty_lines: true,
+            trim: true,
+            relax_column_count: true,
+          });
+          console.log(`CSV parsed successfully, ${records.length} records found`);
+        } else {
+          return res.status(400).json({ message: 'csvContent or xlsxContent is required' });
         }
 
-        console.log(`CSV content received, length: ${csvContent.length} chars`);
-
-        // Parse CSV
-        const { parse } = await import('csv-parse/sync');
-        const records = parse(csvContent, {
-          columns: true,
-          skip_empty_lines: true,
-          trim: true,
-          relax_column_count: true,
-        });
-
-        console.log(`CSV parsed successfully, ${records.length} records found`);
+        console.log(`File parsed successfully, ${records.length} records found`);
         if (records.length > 0) {
           console.log('CSV columns detected:', Object.keys(records[0]));
           console.log('First row data:', JSON.stringify(records[0]));

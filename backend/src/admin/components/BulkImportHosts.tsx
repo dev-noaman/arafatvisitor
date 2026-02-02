@@ -61,7 +61,8 @@ type ImportSummary = {
 
 const BulkImportHosts: React.FC<ActionProps> = () => {
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
-  const [csvContent, setCsvContent] = useState<string | null>(null);
+  const [fileContent, setFileContent] = useState<string | null>(null);
+  const [fileType, setFileType] = useState<'csv' | 'xlsx' | null>(null);
   const [loading, setLoading] = useState(false);
   const [validating, setValidating] = useState(false);
   const [validation, setValidation] = useState<ValidationResult | null>(null);
@@ -73,8 +74,12 @@ const BulkImportHosts: React.FC<ActionProps> = () => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    if (!file.name.toLowerCase().endsWith('.csv')) {
-      setMessage({ type: 'error', text: 'Please upload a CSV file.' });
+    const fileName = file.name.toLowerCase();
+    const isCSV = fileName.endsWith('.csv');
+    const isXLSX = fileName.endsWith('.xlsx') || fileName.endsWith('.xls');
+
+    if (!isCSV && !isXLSX) {
+      setMessage({ type: 'error', text: 'Please upload a CSV or Excel (.xlsx) file.' });
       return;
     }
 
@@ -86,26 +91,45 @@ const BulkImportHosts: React.FC<ActionProps> = () => {
 
     const reader = new FileReader();
     reader.onload = async () => {
-      const text = typeof reader.result === 'string' ? reader.result : '';
-      setCsvContent(text);
-      await validateCsv(text);
+      if (isXLSX) {
+        // Read as base64 for XLSX
+        const base64 = (reader.result as string).split(',')[1];
+        setFileContent(base64);
+        setFileType('xlsx');
+        await validateFile(base64, 'xlsx');
+      } else {
+        // Read as text for CSV
+        const text = reader.result as string;
+        setFileContent(text);
+        setFileType('csv');
+        await validateFile(text, 'csv');
+      }
     };
     reader.onerror = () => {
       setMessage({ type: 'error', text: 'Failed to read the file. Please try again.' });
     };
-    reader.readAsText(file);
+
+    if (isXLSX) {
+      reader.readAsDataURL(file);
+    } else {
+      reader.readAsText(file);
+    }
   };
 
-  const validateCsv = async (content: string) => {
+  const validateFile = async (content: string, type: 'csv' | 'xlsx') => {
     setValidating(true);
     setValidation(null);
 
     try {
+      const body = type === 'xlsx'
+        ? { xlsxContent: content }
+        : { csvContent: content };
+
       const res = await fetch('/admin/api/hosts/import?validate=true', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ csvContent: content }),
+        body: JSON.stringify(body),
       });
 
       const data = await res.json();
@@ -136,7 +160,7 @@ const BulkImportHosts: React.FC<ActionProps> = () => {
       if (rejected > 0) {
         setMessage({
           type: 'error',
-          text: `${rejected} row(s) have issues. Edit below and retry, or fix your CSV.`,
+          text: `${rejected} row(s) have issues. Edit below and retry, or fix your file.`,
         });
       } else {
         setMessage({
@@ -152,8 +176,8 @@ const BulkImportHosts: React.FC<ActionProps> = () => {
   };
 
   const handleImport = async () => {
-    if (!csvContent) {
-      setMessage({ type: 'error', text: 'Please select a CSV file first.' });
+    if (!fileContent || !fileType) {
+      setMessage({ type: 'error', text: 'Please select a CSV or Excel file first.' });
       return;
     }
 
@@ -162,11 +186,15 @@ const BulkImportHosts: React.FC<ActionProps> = () => {
     setSummary(null);
 
     try {
+      const body = fileType === 'xlsx'
+        ? { xlsxContent: fileContent }
+        : { csvContent: fileContent };
+
       const res = await fetch('/admin/api/hosts/import', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ csvContent }),
+        body: JSON.stringify(body),
       });
 
       const data = await res.json();
@@ -337,7 +365,7 @@ const BulkImportHosts: React.FC<ActionProps> = () => {
       <H3 mb="lg">Bulk Import Hosts</H3>
 
       <Text mb="md">
-        Upload a CSV file containing host records. Required columns:
+        Upload a CSV or Excel (.xlsx) file containing host records. Required columns:
         <br />
         <strong>ID, Name, Company, Email Address, Phone Number (optional), Location, Status</strong>
       </Text>
@@ -355,11 +383,11 @@ const BulkImportHosts: React.FC<ActionProps> = () => {
       >
         <Icon icon="Upload" size={32} mb="md" />
         <Text mb="sm">
-          {selectedFileName ? `Selected: ${selectedFileName}` : 'Choose a CSV file to upload'}
+          {selectedFileName ? `Selected: ${selectedFileName}` : 'Choose a CSV or Excel file to upload'}
         </Text>
         <input
           type="file"
-          accept=".csv,text/csv"
+          accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
           onChange={handleFileChange}
           style={{ marginTop: '8px' }}
         />
@@ -411,7 +439,7 @@ const BulkImportHosts: React.FC<ActionProps> = () => {
           <Button
             variant="primary"
             onClick={handleImport}
-            disabled={!csvContent || loading || validating || hasValidationErrors}
+            disabled={!fileContent || loading || validating || hasValidationErrors}
           >
             {loading ? <Loader /> : (
               <>
