@@ -220,6 +220,14 @@ jobs:
                   proxy_set_header Upgrade $http_upgrade;
                   proxy_set_header Connection "upgrade";
                   proxy_cache_bypass $http_upgrade;
+
+                  # Prevent caching of AdminJS bundles
+                  location ~* /admin/frontend/assets/.*\.js$ {
+                      proxy_pass http://127.0.0.1:3000;
+                      add_header Cache-Control "no-cache, no-store, must-revalidate";
+                      add_header Pragma "no-cache";
+                      add_header Expires "0";
+                  }
               }
           }
           NGINXCONF
@@ -351,6 +359,14 @@ jobs:
                   proxy_set_header Upgrade $http_upgrade;
                   proxy_set_header Connection "upgrade";
                   proxy_cache_bypass $http_upgrade;
+
+                  # Prevent caching of AdminJS bundles
+                  location ~* /admin/frontend/assets/.*\.js$ {
+                      proxy_pass http://127.0.0.1:3000;
+                      add_header Cache-Control "no-cache, no-store, must-revalidate";
+                      add_header Pragma "no-cache";
+                      add_header Expires "0";
+                  }
               }
           }
           NGINXCONF
