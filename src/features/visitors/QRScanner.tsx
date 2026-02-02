@@ -1,28 +1,29 @@
-import { useState, useRef, useEffect } from "react"
-import Webcam from "react-webcam"
+import { useState, useRef, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "sonner"
-import { Camera, CheckCircle2, Scan, ArrowRight, ArrowLeft } from "lucide-react"
-import jsQR from "jsqr"
+import { CheckCircle2, Scan, ArrowRight, ArrowLeft } from "lucide-react"
 import { getVisit, checkoutVisit, getAuthToken } from "@/lib/api"
 
 type QRScannerMode = "checkin" | "checkout"
+
+// Zebra DS9300 scanner sends input as keyboard events
+// Characters arrive rapidly followed by Enter key
 
 export function QRScanner(props: { mode?: QRScannerMode; onBack?: () => void }) {
   const mode = props.mode ?? "checkout"
   const [scanning, setScanning] = useState(true)
   const [result, setResult] = useState<string | null>(null)
-  const [cameraError, setCameraError] = useState(false)
-  const webcamRef = useRef<Webcam>(null)
 
-  // Ref to track if we're currently processing a frame to avoid overlapping
-  const processingRef = useRef(false)
+  // Buffer for scanner input
+  const inputBufferRef = useRef("")
+  const lastKeystrokeRef = useRef(0)
+  const timeoutRef = useRef<number | null>(null)
 
   const startScan = () => {
     setScanning(true)
     setResult(null)
-    setCameraError(false)
+    inputBufferRef.current = ""
   }
 
   const onScanSuccess = async () => {
@@ -48,7 +49,7 @@ export function QRScanner(props: { mode?: QRScannerMode; onBack?: () => void }) 
     setScanning(false)
   }
 
-  const decodePayload = async (raw: string) => {
+  const decodePayload = useCallback(async (raw: string) => {
     try {
       let sessionId: string
       let visitorName: string | undefined
@@ -78,55 +79,69 @@ export function QRScanner(props: { mode?: QRScannerMode; onBack?: () => void }) 
       setResult(raw)
       toast.success("QR Scanned")
     }
-  }
+  }, [])
 
-  // Effect to run the scanning loop using jsQR
+  // Process the buffered scanner input
+  const processBuffer = useCallback(() => {
+    const data = inputBufferRef.current.trim()
+    if (data.length > 0) {
+      setScanning(false)
+      decodePayload(data)
+    }
+    inputBufferRef.current = ""
+  }, [decodePayload])
+
+  // Listen for keyboard events from Zebra DS9300 scanner
   useEffect(() => {
     if (!scanning || result) return
 
-    let animationFrameId: number
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const now = Date.now()
 
-    const scan = () => {
-      if (!scanning || result) return
-
-      const video = webcamRef.current?.video
-      if (video && video.readyState === video.HAVE_ENOUGH_DATA && !processingRef.current) {
-        processingRef.current = true
-        try {
-          const canvas = document.createElement("canvas")
-          canvas.width = video.videoWidth
-          canvas.height = video.videoHeight
-          const ctx = canvas.getContext("2d")
-          if (ctx) {
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-            const code = jsQR(imageData.data, imageData.width, imageData.height, {
-              inversionAttempts: "dontInvert",
-            })
-
-            if (code) {
-              setScanning(false)
-              decodePayload(code.data)
-              processingRef.current = false
-              return // Stop loop
-            }
-          }
-        } catch (e) {
-          console.error("Scan error:", e)
-        }
-        processingRef.current = false
+      // Clear timeout on each keystroke
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
+        timeoutRef.current = null
       }
 
-      animationFrameId = requestAnimationFrame(scan)
+      // If Enter key is pressed, process the buffer
+      if (e.key === "Enter") {
+        e.preventDefault()
+        processBuffer()
+        return
+      }
+
+      // Only capture printable characters
+      if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+        // Check if this is rapid input (scanner) vs normal typing
+        const timeSinceLastKey = now - lastKeystrokeRef.current
+
+        // If too much time passed, this might be a new scan - clear buffer
+        if (timeSinceLastKey > 500 && inputBufferRef.current.length > 0) {
+          inputBufferRef.current = ""
+        }
+
+        inputBufferRef.current += e.key
+        lastKeystrokeRef.current = now
+
+        // Set timeout to process buffer if no Enter key comes
+        timeoutRef.current = window.setTimeout(() => {
+          if (inputBufferRef.current.length >= 3) {
+            processBuffer()
+          }
+        }, 100)
+      }
     }
 
-    // Start scanning
-    scan()
+    window.addEventListener("keydown", handleKeyDown)
 
     return () => {
-      if (animationFrameId) cancelAnimationFrame(animationFrameId)
+      window.removeEventListener("keydown", handleKeyDown)
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
+      }
     }
-  }, [scanning, result])
+  }, [scanning, result, processBuffer])
 
   const titleText = mode === "checkin" ? "Scan QR Code (Check In)" : "Scan QR Code (Check Out)"
 
@@ -141,23 +156,20 @@ export function QRScanner(props: { mode?: QRScannerMode; onBack?: () => void }) 
       <CardContent className="space-y-6">
         <div className="relative w-full aspect-[3/4] mx-auto overflow-hidden rounded-xl border-2 border-dashed border-muted-foreground/25 bg-muted/50 flex items-center justify-center">
           {scanning ? (
-            <div className="relative w-full h-full">
-              <Webcam
-                audio={false}
-                ref={webcamRef}
-                screenshotFormat="image/jpeg"
-                className="w-full h-full object-cover"
-                videoConstraints={{
-                  facingMode: "environment"
-                }}
-                onUserMedia={() => setCameraError(false)}
-                onUserMediaError={(e) => {
-                  console.error("Camera error", e)
-                  setCameraError(true)
-                  toast.error("Camera access failed")
-                }}
-              />
-              <div className="absolute inset-0 border-4 border-primary/50 animate-pulse pointer-events-none" />
+            <div className="text-center p-6 space-y-4">
+              <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto animate-pulse">
+                <Scan className="h-10 w-10 text-primary" />
+              </div>
+              <p className="text-lg font-medium text-foreground">
+                Ready to Scan
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Present the QR code to the Zebra scanner
+              </p>
+              <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground/70">
+                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                Scanner active
+              </div>
             </div>
           ) : (
             <div className="text-center p-6 space-y-4">
@@ -165,17 +177,11 @@ export function QRScanner(props: { mode?: QRScannerMode; onBack?: () => void }) 
                 <Scan className="h-8 w-8 text-primary" />
               </div>
               <p className="text-sm text-muted-foreground">
-                {result ? "QR Code detected successfully" : "Position the QR code within the frame to scan automatically"}
+                {result ? "QR Code detected successfully" : "Click 'Start Scanning' to activate the scanner"}
               </p>
             </div>
           )}
         </div>
-
-        {cameraError && (
-          <div className="p-4 rounded-lg bg-destructive/10 text-destructive text-sm text-center font-medium animate-in fade-in slide-in-from-top-2">
-            Camera access failed. Please ensure permissions are granted.
-          </div>
-        )}
 
         <div className="space-y-3">
           {!scanning && !result && (
@@ -184,7 +190,7 @@ export function QRScanner(props: { mode?: QRScannerMode; onBack?: () => void }) 
               size="lg"
               className="w-full h-14 text-lg font-medium shadow-lg hover:shadow-xl transition-all active:scale-95 touch-manipulation"
             >
-              <Camera className="mr-2 h-5 w-5" /> Activate Camera
+              <Scan className="mr-2 h-5 w-5" /> Start Scanning
             </Button>
           )}
 
