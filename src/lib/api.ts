@@ -62,6 +62,10 @@ function getApiBase(): string | null {
 }
 
 export function getAdminUrl(): string {
+  // Use VITE_ADMIN_URL if set, otherwise derive from API base
+  const envAdminUrl = import.meta.env.VITE_ADMIN_URL
+  if (envAdminUrl) return envAdminUrl
+  
   // Derive admin URL from API base (e.g., https://domain.com/api -> https://domain.com/admin)
   const apiBase = getApiBase()
   if (apiBase) {
@@ -81,6 +85,48 @@ export function setAuthToken(token: string | null) {
   } else {
     sessionStorage.removeItem('vms_token')
   }
+}
+
+export async function getVisitPass(sessionId: string): Promise<any> {
+  const base = getApiBase()
+  // If no API base, return mock data for testing/demo
+  if (!base) {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve({
+          sessionId,
+          visitor: {
+            name: "Mohamed Ali",
+            company: "Mock Company",
+            email: "visitor@example.com"
+          },
+          host: {
+            name: "Ahmed Hassan",
+            company: "Arafat Group",
+            location: "BARWA_TOWERS"
+          },
+          location: "BARWA_TOWERS",
+          status: "APPROVED",
+          checkInTimestamp: new Date().toISOString(),
+          expectedDate: new Date().toISOString(),
+          id: "123456"
+        })
+      }, 500)
+    })
+  }
+
+  const response = await fetch(`${base}/visits/pass/${sessionId}`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  })
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch visit pass')
+  }
+
+  return response.json()
 }
 
 async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {

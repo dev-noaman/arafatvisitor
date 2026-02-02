@@ -439,7 +439,7 @@ export class AdminApiController {
 
     const visitorsWithQr = await Promise.all(
       visitors.map(async (v) => {
-        let qrDataUrl = null;
+        let qrDataUrl: string | null = null;
         if (v.qrToken?.token) {
           try {
             qrDataUrl = await QRCode.toDataURL(v.qrToken.token, {

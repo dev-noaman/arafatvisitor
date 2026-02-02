@@ -14,6 +14,7 @@ import { RejectVisitDto } from './dto/reject-visit.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
+import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Role } from '@prisma/client';
 
@@ -77,6 +78,12 @@ export class VisitsController {
     @Query('to') to?: string,
   ) {
     return this.visitsService.getHistory({ location, from, to });
+  }
+
+  @Get('pass/:sessionId')
+  @Public()
+  getPass(@Param('sessionId') sessionId: string) {
+    return this.visitsService.findBySessionId(sessionId);
   }
 
   @Get(':sessionId')

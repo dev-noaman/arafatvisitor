@@ -320,38 +320,12 @@ async function seedVisitorsByHost() {
   console.log('Created 10 visitors by host with different statuses');
 }
 
-async function seedDeliveries() {
-  console.log('Seeding Deliveries...');
-
-  const host = await prisma.host.findFirst({
-    where: { status: 1 }
-  });
-
-  for (let i = 0; i < 10; i++) {
-    const isPickedUp = i % 2 === 0;
-    await prisma.delivery.create({
-      data: {
-        recipient: host ? host.name : 'General Recipient',
-        hostId: host ? host.id : undefined,
-        courier: `Courier Service ${i + 1}`,
-        location: 'ELEMENT_MARIOTT',
-        status: isPickedUp ? 'PICKED_UP' : 'RECEIVED',
-        notes: `Package #${i + 1}`,
-        receivedAt: new Date(),
-        pickedUpAt: isPickedUp ? new Date() : undefined,
-      }
-    });
-  }
-  console.log('Created 10 deliveries with different statuses');
-}
-
 async function main() {
   await seedDefaultUsers();
   await seedUsers();
   await seedHostsFromCsv();
   await seedPreRegistersByReception();
   await seedVisitorsByHost();
-  await seedDeliveries();
 }
 
 main()

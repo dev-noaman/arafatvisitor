@@ -8,6 +8,7 @@ import { CheckInRegister } from "@/features/visitors/CheckInRegister"
 import { WalkInForm } from "@/features/visitors/WalkInForm"
 import { DeliveryForm } from "@/features/deliveries/DeliveryForm"
 import { ReportsPanel } from "@/features/reports/ReportsPanel"
+import { VisitorPass } from "@/features/visitors/VisitorPass"
 import { Toaster } from "sonner"
 import { ShieldCheck, Truck, LogOut, ArrowLeft, User, ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -30,6 +31,12 @@ type View =
 
 function App() {
   const isRegisterPage = window.location.pathname === "/register"
+  const isVisitorPassPage = window.location.pathname === "/visitor-pass"
+
+  if (isVisitorPassPage) {
+    return <VisitorPass />
+  }
+
   const [currentTime, setCurrentTime] = useState(new Date())
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [role, setRole] = useState<Role | null>(null)
