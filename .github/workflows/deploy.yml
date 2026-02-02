@@ -266,6 +266,9 @@ jobs:
           # Run new migrations (safe - won't delete data)
           npx prisma migrate deploy
 
+          # Clear AdminJS component cache to force rebuild
+          rm -rf .adminjs 2>/dev/null || true
+
           # Rebuild backend
           npm run build
 
