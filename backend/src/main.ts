@@ -22,6 +22,11 @@ async function bootstrap() {
   expressApp.use(express.json({ limit: '50mb' }));
   expressApp.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+  // Trust proxy for secure cookies behind nginx/reverse proxy in production
+  if (process.env.NODE_ENV === 'production') {
+    expressApp.set('trust proxy', 1);
+  }
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -785,7 +790,11 @@ async function bootstrap() {
       name: 'adminjs',
       resave: false,
       saveUninitialized: false,
-      cookie: { httpOnly: true, sameSite: 'lax' as const },
+      cookie: {
+        httpOnly: true,
+        sameSite: 'lax' as const,
+        secure: process.env.NODE_ENV === 'production', // Required for HTTPS in production
+      },
     };
 
     const adminRouter = AdminJSExpress.buildAuthenticatedRouter(
