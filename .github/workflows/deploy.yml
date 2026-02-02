@@ -117,12 +117,50 @@ jobs:
           cd /var/www/arafatvisitor/backend
           if [ ! -f .env ]; then
               JWT_SECRET=$(openssl rand -base64 32)
-              echo "DATABASE_URL=postgresql://${{ env.DB_USER }}:${{ secrets.DB_PASSWORD }}@localhost:5432/${{ env.DB_NAME }}" > .env
-              echo "JWT_SECRET=${JWT_SECRET}" >> .env
-              echo "PORT=3000" >> .env
-              echo "Created new .env file"
+              ADMINJS_SECRET=$(openssl rand -base64 32)
+              cat > .env << ENVEOF
+DATABASE_URL=postgresql://${{ env.DB_USER }}:${{ secrets.DB_PASSWORD }}@localhost:5432/${{ env.DB_NAME }}
+JWT_SECRET=${JWT_SECRET}
+PORT=3000
+NODE_ENV=production
+
+# SMTP (Email)
+SMTP_HOST=${{ secrets.SMTP_HOST }}
+SMTP_PORT=${{ secrets.SMTP_PORT }}
+SMTP_USER=${{ secrets.SMTP_USER }}
+SMTP_PASS=${{ secrets.SMTP_PASS }}
+SMTP_FROM=${{ secrets.SMTP_FROM }}
+
+# WhatsApp (wbiztool)
+WHATSAPP_ENDPOINT=${{ secrets.WHATSAPP_ENDPOINT }}
+WHATSAPP_CLIENT_ID=${{ secrets.WHATSAPP_CLIENT_ID }}
+WHATSAPP_CLIENT=${{ secrets.WHATSAPP_CLIENT }}
+WHATSAPP_API_KEY=${{ secrets.WHATSAPP_API_KEY }}
+
+# AdminJS
+ADMINJS_COOKIE_SECRET=${ADMINJS_SECRET}
+ADMINJS_QUICK_LOGIN=false
+ENVEOF
+              echo "Created new .env file with all configurations"
           else
-              echo ".env file already exists - preserving configuration"
+              echo ".env file already exists - updating SMTP and WhatsApp settings"
+              # Update SMTP settings if secrets are provided
+              if [ -n "${{ secrets.SMTP_HOST }}" ]; then
+                  grep -q "^SMTP_HOST=" .env && sed -i "s|^SMTP_HOST=.*|SMTP_HOST=${{ secrets.SMTP_HOST }}|" .env || echo "SMTP_HOST=${{ secrets.SMTP_HOST }}" >> .env
+                  grep -q "^SMTP_PORT=" .env && sed -i "s|^SMTP_PORT=.*|SMTP_PORT=${{ secrets.SMTP_PORT }}|" .env || echo "SMTP_PORT=${{ secrets.SMTP_PORT }}" >> .env
+                  grep -q "^SMTP_USER=" .env && sed -i "s|^SMTP_USER=.*|SMTP_USER=${{ secrets.SMTP_USER }}|" .env || echo "SMTP_USER=${{ secrets.SMTP_USER }}" >> .env
+                  grep -q "^SMTP_PASS=" .env && sed -i "s|^SMTP_PASS=.*|SMTP_PASS=${{ secrets.SMTP_PASS }}|" .env || echo "SMTP_PASS=${{ secrets.SMTP_PASS }}" >> .env
+                  grep -q "^SMTP_FROM=" .env && sed -i "s|^SMTP_FROM=.*|SMTP_FROM=${{ secrets.SMTP_FROM }}|" .env || echo "SMTP_FROM=${{ secrets.SMTP_FROM }}" >> .env
+              fi
+              # Update WhatsApp settings if secrets are provided
+              if [ -n "${{ secrets.WHATSAPP_ENDPOINT }}" ]; then
+                  grep -q "^WHATSAPP_ENDPOINT=" .env && sed -i "s|^WHATSAPP_ENDPOINT=.*|WHATSAPP_ENDPOINT=${{ secrets.WHATSAPP_ENDPOINT }}|" .env || echo "WHATSAPP_ENDPOINT=${{ secrets.WHATSAPP_ENDPOINT }}" >> .env
+                  grep -q "^WHATSAPP_CLIENT_ID=" .env && sed -i "s|^WHATSAPP_CLIENT_ID=.*|WHATSAPP_CLIENT_ID=${{ secrets.WHATSAPP_CLIENT_ID }}|" .env || echo "WHATSAPP_CLIENT_ID=${{ secrets.WHATSAPP_CLIENT_ID }}" >> .env
+                  grep -q "^WHATSAPP_CLIENT=" .env && sed -i "s|^WHATSAPP_CLIENT=.*|WHATSAPP_CLIENT=${{ secrets.WHATSAPP_CLIENT }}|" .env || echo "WHATSAPP_CLIENT=${{ secrets.WHATSAPP_CLIENT }}" >> .env
+                  grep -q "^WHATSAPP_API_KEY=" .env && sed -i "s|^WHATSAPP_API_KEY=.*|WHATSAPP_API_KEY=${{ secrets.WHATSAPP_API_KEY }}|" .env || echo "WHATSAPP_API_KEY=${{ secrets.WHATSAPP_API_KEY }}" >> .env
+              fi
+              # Ensure NODE_ENV is set
+              grep -q "^NODE_ENV=" .env || echo "NODE_ENV=production" >> .env
           fi
 
           echo "=== Building backend ==="
@@ -275,6 +313,26 @@ jobs:
           sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh ${{ env.SSH_OPTS }} ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} << 'ENDSSH'
           set -e
           cd /var/www/arafatvisitor/backend
+
+          # Update SMTP and WhatsApp settings in .env
+          echo "=== Updating environment configuration ==="
+          if [ -n "${{ secrets.SMTP_HOST }}" ]; then
+              grep -q "^SMTP_HOST=" .env && sed -i "s|^SMTP_HOST=.*|SMTP_HOST=${{ secrets.SMTP_HOST }}|" .env || echo "SMTP_HOST=${{ secrets.SMTP_HOST }}" >> .env
+              grep -q "^SMTP_PORT=" .env && sed -i "s|^SMTP_PORT=.*|SMTP_PORT=${{ secrets.SMTP_PORT }}|" .env || echo "SMTP_PORT=${{ secrets.SMTP_PORT }}" >> .env
+              grep -q "^SMTP_USER=" .env && sed -i "s|^SMTP_USER=.*|SMTP_USER=${{ secrets.SMTP_USER }}|" .env || echo "SMTP_USER=${{ secrets.SMTP_USER }}" >> .env
+              grep -q "^SMTP_PASS=" .env && sed -i "s|^SMTP_PASS=.*|SMTP_PASS=${{ secrets.SMTP_PASS }}|" .env || echo "SMTP_PASS=${{ secrets.SMTP_PASS }}" >> .env
+              grep -q "^SMTP_FROM=" .env && sed -i "s|^SMTP_FROM=.*|SMTP_FROM=${{ secrets.SMTP_FROM }}|" .env || echo "SMTP_FROM=${{ secrets.SMTP_FROM }}" >> .env
+              echo "SMTP settings updated"
+          fi
+          if [ -n "${{ secrets.WHATSAPP_ENDPOINT }}" ]; then
+              grep -q "^WHATSAPP_ENDPOINT=" .env && sed -i "s|^WHATSAPP_ENDPOINT=.*|WHATSAPP_ENDPOINT=${{ secrets.WHATSAPP_ENDPOINT }}|" .env || echo "WHATSAPP_ENDPOINT=${{ secrets.WHATSAPP_ENDPOINT }}" >> .env
+              grep -q "^WHATSAPP_CLIENT_ID=" .env && sed -i "s|^WHATSAPP_CLIENT_ID=.*|WHATSAPP_CLIENT_ID=${{ secrets.WHATSAPP_CLIENT_ID }}|" .env || echo "WHATSAPP_CLIENT_ID=${{ secrets.WHATSAPP_CLIENT_ID }}" >> .env
+              grep -q "^WHATSAPP_CLIENT=" .env && sed -i "s|^WHATSAPP_CLIENT=.*|WHATSAPP_CLIENT=${{ secrets.WHATSAPP_CLIENT }}|" .env || echo "WHATSAPP_CLIENT=${{ secrets.WHATSAPP_CLIENT }}" >> .env
+              grep -q "^WHATSAPP_API_KEY=" .env && sed -i "s|^WHATSAPP_API_KEY=.*|WHATSAPP_API_KEY=${{ secrets.WHATSAPP_API_KEY }}|" .env || echo "WHATSAPP_API_KEY=${{ secrets.WHATSAPP_API_KEY }}" >> .env
+              echo "WhatsApp settings updated"
+          fi
+          grep -q "^NODE_ENV=" .env || echo "NODE_ENV=production" >> .env
+
           export $(grep -v '^#' .env | xargs) 2>/dev/null || true
 
           # Install any new dependencies
