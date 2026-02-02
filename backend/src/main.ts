@@ -53,6 +53,18 @@ async function bootstrap() {
   // Serve custom admin CSS (sidebar visibility)
   app.useStaticAssets(path.join(process.cwd(), 'public'), { prefix: '/' });
 
+  // Add no-cache middleware for AdminJS routes to prevent stale bundles
+  const httpAdapterForCache = app.getHttpAdapter();
+  const expressAppForCache = httpAdapterForCache.getInstance();
+  expressAppForCache.use('/admin', (req: any, res: any, next: any) => {
+    // Set aggressive no-cache headers for all AdminJS routes
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Surrogate-Control', 'no-store'); // For CDNs like Cloudflare
+    next();
+  });
+
   // Setup AdminJS with dynamic import (ESM modules)
   try {
     // @ts-ignore - dynamic ESM imports work at runtime

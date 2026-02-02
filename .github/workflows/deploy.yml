@@ -207,6 +207,22 @@ jobs:
                   proxy_set_header Connection "upgrade";
               }
 
+              # Prevent caching of ALL AdminJS static assets (JS, CSS, etc)
+              location ~* ^/admin/frontend/.+\.(js|css|map)$ {
+                  proxy_pass http://127.0.0.1:3000;
+                  proxy_http_version 1.1;
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto $scheme;
+
+                  # Aggressive no-cache headers
+                  add_header Cache-Control "no-cache, no-store, must-revalidate, max-age=0" always;
+                  add_header Pragma "no-cache" always;
+                  add_header Expires "0" always;
+                  add_header X-Accel-Expires "0" always;
+              }
+
               location /admin {
                   proxy_pass http://127.0.0.1:3000/admin;
 
@@ -221,13 +237,9 @@ jobs:
                   proxy_set_header Connection "upgrade";
                   proxy_cache_bypass $http_upgrade;
 
-                  # Prevent caching of AdminJS bundles
-                  location ~* /admin/frontend/assets/.*\.js$ {
-                      proxy_pass http://127.0.0.1:3000;
-                      add_header Cache-Control "no-cache, no-store, must-revalidate";
-                      add_header Pragma "no-cache";
-                      add_header Expires "0";
-                  }
+                  # No-cache headers for AdminJS HTML pages
+                  add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+                  add_header Pragma "no-cache" always;
               }
           }
           NGINXCONF
@@ -274,11 +286,17 @@ jobs:
           # Run new migrations (safe - won't delete data)
           npx prisma migrate deploy
 
-          # Clear AdminJS component cache to force rebuild
+          # Clear ALL caches to force AdminJS component rebuild
+          echo "=== Clearing all caches ==="
           rm -rf .adminjs 2>/dev/null || true
           rm -rf node_modules/.cache 2>/dev/null || true
+          rm -rf dist 2>/dev/null || true
 
-          # Rebuild backend
+          # Also clear any tmp files
+          rm -rf /tmp/adminjs-* 2>/dev/null || true
+
+          # Rebuild backend from scratch
+          echo "=== Rebuilding backend ==="
           npm run build
 
           # Force full restart (delete and recreate) to clear all caches
@@ -348,6 +366,22 @@ jobs:
                   proxy_set_header Connection "upgrade";
               }
 
+              # Prevent caching of ALL AdminJS static assets (JS, CSS, etc)
+              location ~* ^/admin/frontend/.+\.(js|css|map)$ {
+                  proxy_pass http://127.0.0.1:3000;
+                  proxy_http_version 1.1;
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto $scheme;
+
+                  # Aggressive no-cache headers
+                  add_header Cache-Control "no-cache, no-store, must-revalidate, max-age=0" always;
+                  add_header Pragma "no-cache" always;
+                  add_header Expires "0" always;
+                  add_header X-Accel-Expires "0" always;
+              }
+
               location /admin {
                   proxy_pass http://127.0.0.1:3000/admin;
 
@@ -362,13 +396,9 @@ jobs:
                   proxy_set_header Connection "upgrade";
                   proxy_cache_bypass $http_upgrade;
 
-                  # Prevent caching of AdminJS bundles
-                  location ~* /admin/frontend/assets/.*\.js$ {
-                      proxy_pass http://127.0.0.1:3000;
-                      add_header Cache-Control "no-cache, no-store, must-revalidate";
-                      add_header Pragma "no-cache";
-                      add_header Expires "0";
-                  }
+                  # No-cache headers for AdminJS HTML pages
+                  add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+                  add_header Pragma "no-cache" always;
               }
           }
           NGINXCONF
