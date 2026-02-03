@@ -1,6 +1,6 @@
 ﻿# Arafat Visitor Management System Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2026-01-28
+Auto-generated from all feature plans. Last updated: 2026-02-03
 
 ## Active Technologies
 - TypeScript 5.9, NestJS (Node.js backend) + NestJS, Prisma ORM, AdminJS, bcrypt (002-host-user-sync)
@@ -76,6 +76,36 @@ npm test           # Run all unit tests once (Jest)
 npm run test:watch # Run tests in watch mode
 npm run test:cov   # Run tests with coverage report
 npm run test:e2e   # Run end-to-end tests
+```
+
+## Backend Structure
+
+```text
+backend/
+├── prisma/
+│   ├── schema.prisma          # Database schema
+│   └── seed.ts                # Test data seeding
+├── src/
+│   ├── main.ts                # App entry, AdminJS setup, custom routes
+│   ├── app.module.ts          # NestJS root module
+│   ├── admin/
+│   │   ├── admin.config.ts    # AdminJS configuration
+│   │   └── components/        # Custom AdminJS React components
+│   │       ├── Dashboard.tsx
+│   │       ├── SendQrModal.tsx
+│   │       ├── SettingsPanel.tsx
+│   │       └── ...
+│   ├── auth/                  # Authentication (JWT)
+│   ├── hosts/                 # Host management
+│   ├── visits/                # Visit management
+│   ├── deliveries/            # Delivery management
+│   ├── notifications/
+│   │   ├── email.service.ts   # SMTP email sending
+│   │   └── whatsapp.service.ts # WhatsApp via wbiztool
+│   └── prisma/                # Prisma service
+└── public/
+    ├── admin-custom.css       # Custom AdminJS styles
+    └── admin-scripts.js       # Custom AdminJS scripts
 ```
 
 ## Code Style
@@ -381,6 +411,11 @@ Sends a **visitor pass card image** with:
 
 The card is generated using `node-canvas` and sent as an image via wbiztool API (`msg_type: 1`).
 
+**Canvas Dependencies** (installed automatically on deployment):
+```bash
+apt-get install -y build-essential libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev
+```
+
 ## Notification Services
 
 ### Email (SMTP)
@@ -428,10 +463,14 @@ The deployment workflow uses these GitHub secrets:
 1. Push to `main` branch triggers deployment
 2. Frontend built with Vite, uploaded to VPS
 3. Backend uploaded, dependencies installed
-4. Prisma migrations run
-5. **Seed clears test data and creates fresh test records**
-6. PM2 restarts the backend
-7. Nginx config updated
+4. Canvas native dependencies installed (for QR card generation)
+5. **SMTP and WhatsApp config always updated from GitHub secrets**
+6. Prisma migrations run
+7. **Seed clears test data and creates fresh test records**
+8. PM2 restarts the backend
+9. Nginx config updated
+
+**Note**: SMTP and WhatsApp config are always overwritten from GitHub secrets on every deployment to ensure they're current.
 
 ### Production URLs
 - **Frontend**: https://arafatvisitor.cloud
