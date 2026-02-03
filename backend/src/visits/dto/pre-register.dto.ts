@@ -1,4 +1,10 @@
-import { IsString, IsOptional, IsEmail, MinLength, IsDateString } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsEmail,
+  MinLength,
+  IsDateString,
+} from "class-validator";
 
 export class PreRegisterVisitDto {
   @IsString()

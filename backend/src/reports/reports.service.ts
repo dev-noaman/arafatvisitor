@@ -1,6 +1,6 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { Location } from '@prisma/client';
+import { Injectable } from "@nestjs/common";
+import { PrismaService } from "../prisma/prisma.service";
+import { Location } from "@prisma/client";
 
 @Injectable()
 export class ReportsService {
@@ -8,14 +8,18 @@ export class ReportsService {
 
   private normalizeLocation(loc: string): Location {
     const s = loc.toLowerCase();
-    if (s.includes('barwa')) return 'BARWA_TOWERS';
-    if (s.includes('marina') && s.includes('50')) return 'MARINA_50';
-    if (s.includes('element') || s.includes('mariott')) return 'ELEMENT_MARIOTT';
-    return 'BARWA_TOWERS';
+    if (s.includes("barwa")) return "BARWA_TOWERS";
+    if (s.includes("marina") && s.includes("50")) return "MARINA_50";
+    if (s.includes("element") || s.includes("mariott"))
+      return "ELEMENT_MARIOTT";
+    return "BARWA_TOWERS";
   }
 
   async getVisitsReport(location?: string, from?: string, to?: string) {
-    const where: { location?: Location; checkInAt?: { gte?: Date; lte?: Date } } = {};
+    const where: {
+      location?: Location;
+      checkInAt?: { gte?: Date; lte?: Date };
+    } = {};
     if (location) where.location = this.normalizeLocation(location);
     if (from || to) {
       where.checkInAt = {};
@@ -24,14 +28,17 @@ export class ReportsService {
     }
     const [total, checkedIn, checkedOut] = await Promise.all([
       this.prisma.visit.count({ where }),
-      this.prisma.visit.count({ where: { ...where, status: 'CHECKED_IN' } }),
-      this.prisma.visit.count({ where: { ...where, status: 'CHECKED_OUT' } }),
+      this.prisma.visit.count({ where: { ...where, status: "CHECKED_IN" } }),
+      this.prisma.visit.count({ where: { ...where, status: "CHECKED_OUT" } }),
     ]);
     return { total, checkedIn, checkedOut };
   }
 
   async getDeliveriesReport(location?: string, from?: string, to?: string) {
-    const where: { location?: Location; createdAt?: { gte?: Date; lte?: Date } } = {};
+    const where: {
+      location?: Location;
+      createdAt?: { gte?: Date; lte?: Date };
+    } = {};
     if (location) where.location = this.normalizeLocation(location);
     if (from || to) {
       where.createdAt = {};
@@ -40,8 +47,8 @@ export class ReportsService {
     }
     const [total, received, pickedUp] = await Promise.all([
       this.prisma.delivery.count({ where }),
-      this.prisma.delivery.count({ where: { ...where, status: 'RECEIVED' } }),
-      this.prisma.delivery.count({ where: { ...where, status: 'PICKED_UP' } }),
+      this.prisma.delivery.count({ where: { ...where, status: "RECEIVED" } }),
+      this.prisma.delivery.count({ where: { ...where, status: "PICKED_UP" } }),
     ]);
     return { total, received, pickedUp };
   }

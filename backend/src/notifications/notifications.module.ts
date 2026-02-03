@@ -1,6 +1,6 @@
-import { Global, Module } from '@nestjs/common';
-import { EmailService } from './email.service';
-import { WhatsAppService } from './whatsapp.service';
+import { Global, Module } from "@nestjs/common";
+import { EmailService } from "./email.service";
+import { WhatsAppService } from "./whatsapp.service";
 
 @Global()
 @Module({

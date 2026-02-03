@@ -3,14 +3,14 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
-} from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { QrTokenService } from './qr-token.service';
-import { EmailService } from '../notifications/email.service';
-import { WhatsAppService } from '../notifications/whatsapp.service';
-import { Location, VisitStatus, Role } from '@prisma/client';
-import { CreateVisitDto } from './dto/create-visit.dto';
-import { PreRegisterVisitDto } from './dto/pre-register.dto';
+} from "@nestjs/common";
+import { PrismaService } from "../prisma/prisma.service";
+import { QrTokenService } from "./qr-token.service";
+import { EmailService } from "../notifications/email.service";
+import { WhatsAppService } from "../notifications/whatsapp.service";
+import { Location, VisitStatus, Role } from "@prisma/client";
+import { CreateVisitDto } from "./dto/create-visit.dto";
+import { PreRegisterVisitDto } from "./dto/pre-register.dto";
 
 @Injectable()
 export class VisitsService {
@@ -23,10 +23,11 @@ export class VisitsService {
 
   private normalizeLocation(loc: string): Location {
     const s = loc.toLowerCase();
-    if (s.includes('barwa')) return 'BARWA_TOWERS';
-    if (s.includes('marina') && s.includes('50')) return 'MARINA_50';
-    if (s.includes('element') || s.includes('mariott')) return 'ELEMENT_MARIOTT';
-    return 'BARWA_TOWERS';
+    if (s.includes("barwa")) return "BARWA_TOWERS";
+    if (s.includes("marina") && s.includes("50")) return "MARINA_50";
+    if (s.includes("element") || s.includes("mariott"))
+      return "ELEMENT_MARIOTT";
+    return "BARWA_TOWERS";
   }
 
   async create(dto: CreateVisitDto, userId?: number) {
@@ -34,7 +35,7 @@ export class VisitsService {
     const host = await this.prisma.host.findFirst({
       where: { id: hostId, status: 1, deletedAt: null },
     });
-    if (!host) throw new BadRequestException('Invalid host');
+    if (!host) throw new BadRequestException("Invalid host");
 
     let sessionId = this.qrTokenService.generateSessionId();
     while (await this.prisma.visit.findUnique({ where: { sessionId } })) {
@@ -52,7 +53,7 @@ export class VisitsService {
         hostId,
         purpose: dto.purpose,
         location,
-        status: 'CHECKED_IN',
+        status: "CHECKED_IN",
         checkInAt: new Date(),
       },
       include: { host: true },
@@ -61,7 +62,7 @@ export class VisitsService {
     await this.prisma.checkEvent.create({
       data: {
         visitId: visit.id,
-        type: 'CHECK_IN',
+        type: "CHECK_IN",
         userId: userId ?? null,
       },
     });
@@ -70,7 +71,12 @@ export class VisitsService {
 
     if (host.email) {
       this.emailService
-        .sendVisitorArrival(host.email, visit.visitorName, visit.visitorCompany, visit.purpose)
+        .sendVisitorArrival(
+          host.email,
+          visit.visitorName,
+          visit.visitorCompany,
+          visit.purpose,
+        )
         .catch(() => {});
     }
     if (host.phone) {
@@ -103,11 +109,11 @@ export class VisitsService {
       where: { id: hostUserId },
       include: { host: true },
     });
-    if (!user?.hostId) throw new ForbiddenException('Host account required');
+    if (!user?.hostId) throw new ForbiddenException("Host account required");
     const host = await this.prisma.host.findFirst({
       where: { id: user.hostId, status: 1, deletedAt: null },
     });
-    if (!host) throw new ForbiddenException('Invalid host');
+    if (!host) throw new ForbiddenException("Invalid host");
 
     let sessionId = this.qrTokenService.generateSessionId();
     while (await this.prisma.visit.findUnique({ where: { sessionId } })) {
@@ -123,8 +129,8 @@ export class VisitsService {
         visitorEmail: dto.visitorEmail,
         hostId: host.id,
         purpose: dto.purpose,
-        location: host.location ?? 'BARWA_TOWERS',
-        status: 'PENDING_APPROVAL',
+        location: host.location ?? "BARWA_TOWERS",
+        status: "PENDING_APPROVAL",
         preRegisteredById: hostUserId.toString(),
         expectedDate: dto.expectedDate ? new Date(dto.expectedDate) : undefined,
       },
@@ -156,10 +162,10 @@ export class VisitsService {
     return this.prisma.visit.findMany({
       where: {
         hostId: user.hostId,
-        status: 'PENDING_APPROVAL',
+        status: "PENDING_APPROVAL",
       },
       include: { host: true },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
   }
 
@@ -168,25 +174,25 @@ export class VisitsService {
       where: { id: visitId },
       include: { host: true },
     });
-    if (!visit) throw new NotFoundException('Visit not found');
+    if (!visit) throw new NotFoundException("Visit not found");
     const user = await this.prisma.user.findUnique({
       where: { id: hostUserId },
     });
     if (!user?.hostId || user.hostId !== visit.hostId) {
-      throw new ForbiddenException('Not your visit');
+      throw new ForbiddenException("Not your visit");
     }
-    if (visit.status !== 'PENDING_APPROVAL') {
-      throw new BadRequestException('Visit is not pending approval');
+    if (visit.status !== "PENDING_APPROVAL") {
+      throw new BadRequestException("Visit is not pending approval");
     }
     await this.prisma.visit.update({
       where: { id: visitId },
-      data: { status: 'APPROVED', approvedAt: new Date() },
+      data: { status: "APPROVED", approvedAt: new Date() },
     });
     if (visit.visitorEmail) {
       this.emailService
         .send({
           to: visit.visitorEmail,
-          subject: 'Visit Approved',
+          subject: "Visit Approved",
           html: `Your visit to ${visit.host.company} has been approved. Session ID: ${visit.sessionId}`,
         })
         .catch(() => {});
@@ -198,25 +204,25 @@ export class VisitsService {
     const visit = await this.prisma.visit.findUnique({
       where: { id: visitId },
     });
-    if (!visit) throw new NotFoundException('Visit not found');
+    if (!visit) throw new NotFoundException("Visit not found");
     const user = await this.prisma.user.findUnique({
       where: { id: hostUserId },
     });
     if (!user?.hostId || user.hostId !== visit.hostId) {
-      throw new ForbiddenException('Not your visit');
+      throw new ForbiddenException("Not your visit");
     }
-    if (visit.status !== 'PENDING_APPROVAL') {
-      throw new BadRequestException('Visit is not pending approval');
+    if (visit.status !== "PENDING_APPROVAL") {
+      throw new BadRequestException("Visit is not pending approval");
     }
     await this.prisma.visit.update({
       where: { id: visitId },
       data: {
-        status: 'REJECTED',
+        status: "REJECTED",
         rejectedAt: new Date(),
         rejectionReason: reason ?? undefined,
       },
     });
-    return { message: 'Visit rejected' };
+    return { message: "Visit rejected" };
   }
 
   async findBySessionId(sessionId: string) {
@@ -224,7 +230,7 @@ export class VisitsService {
       where: { sessionId },
       include: { host: true },
     });
-    if (!visit) throw new NotFoundException('Visit not found');
+    if (!visit) throw new NotFoundException("Visit not found");
     return {
       id: visit.id,
       sessionId: visit.sessionId,
@@ -248,22 +254,22 @@ export class VisitsService {
     const visit = await this.prisma.visit.findUnique({
       where: { sessionId },
     });
-    if (!visit) throw new NotFoundException('Visit not found');
-    if (visit.status === 'CHECKED_OUT') {
-      throw new BadRequestException('Visitor already checked out');
+    if (!visit) throw new NotFoundException("Visit not found");
+    if (visit.status === "CHECKED_OUT") {
+      throw new BadRequestException("Visitor already checked out");
     }
-    if (visit.status !== 'CHECKED_IN') {
-      throw new BadRequestException('Visit must be checked in to check out');
+    if (visit.status !== "CHECKED_IN") {
+      throw new BadRequestException("Visit must be checked in to check out");
     }
     const now = new Date();
     await this.prisma.visit.update({
       where: { id: visit.id },
-      data: { status: 'CHECKED_OUT', checkOutAt: now },
+      data: { status: "CHECKED_OUT", checkOutAt: now },
     });
     await this.prisma.checkEvent.create({
       data: {
         visitId: visit.id,
-        type: 'CHECK_OUT',
+        type: "CHECK_OUT",
         userId: userId ?? null,
       },
     });
@@ -271,14 +277,16 @@ export class VisitsService {
   }
 
   async getActive(location?: string) {
-    const where: { status: 'CHECKED_IN'; location?: Location } = { status: 'CHECKED_IN' };
+    const where: { status: "CHECKED_IN"; location?: Location } = {
+      status: "CHECKED_IN",
+    };
     if (location) {
       where.location = this.normalizeLocation(location);
     }
     const visits = await this.prisma.visit.findMany({
       where,
       include: { host: true },
-      orderBy: { checkInAt: 'desc' },
+      orderBy: { checkInAt: "desc" },
     });
     return visits.map((v) => ({
       id: v.id,
@@ -290,9 +298,17 @@ export class VisitsService {
     }));
   }
 
-  async getHistory(filters?: { location?: string; from?: string; to?: string }) {
-    const where: { location?: Location; checkInAt?: { gte?: Date; lte?: Date } } = {};
-    if (filters?.location) where.location = this.normalizeLocation(filters.location);
+  async getHistory(filters?: {
+    location?: string;
+    from?: string;
+    to?: string;
+  }) {
+    const where: {
+      location?: Location;
+      checkInAt?: { gte?: Date; lte?: Date };
+    } = {};
+    if (filters?.location)
+      where.location = this.normalizeLocation(filters.location);
     if (filters?.from || filters?.to) {
       where.checkInAt = {};
       if (filters.from) where.checkInAt.gte = new Date(filters.from);
@@ -301,7 +317,7 @@ export class VisitsService {
     return this.prisma.visit.findMany({
       where,
       include: { host: true },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       take: 500,
     });
   }

@@ -1,6 +1,6 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { randomBytes } from 'crypto';
+import { Injectable } from "@nestjs/common";
+import { PrismaService } from "../prisma/prisma.service";
+import { randomBytes } from "crypto";
 
 @Injectable()
 export class QrTokenService {
@@ -12,10 +12,13 @@ export class QrTokenService {
   }
 
   generateToken(): string {
-    return randomBytes(32).toString('hex');
+    return randomBytes(32).toString("hex");
   }
 
-  async createForVisit(visitId: string, sessionId: string): Promise<{ token: string; expiresAt: Date }> {
+  async createForVisit(
+    visitId: string,
+    sessionId: string,
+  ): Promise<{ token: string; expiresAt: Date }> {
     const token = this.generateToken();
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 24);

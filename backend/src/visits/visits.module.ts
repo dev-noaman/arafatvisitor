@@ -1,7 +1,7 @@
-import { Module } from '@nestjs/common';
-import { VisitsService } from './visits.service';
-import { VisitsController } from './visits.controller';
-import { QrTokenService } from './qr-token.service';
+import { Module } from "@nestjs/common";
+import { VisitsService } from "./visits.service";
+import { VisitsController } from "./visits.controller";
+import { QrTokenService } from "./qr-token.service";
 
 @Module({
   controllers: [VisitsController],

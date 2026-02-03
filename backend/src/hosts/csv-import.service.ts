@@ -1,15 +1,15 @@
-import { Injectable } from '@nestjs/common';
-import { parse } from 'csv-parse/sync';
-import * as XLSX from 'xlsx';
-import { PrismaService } from '../prisma/prisma.service';
-import { Location } from '@prisma/client';
-import { HostsService } from './hosts.service';
+import { Injectable } from "@nestjs/common";
+import { parse } from "csv-parse/sync";
+import * as XLSX from "xlsx";
+import { PrismaService } from "../prisma/prisma.service";
+import { Location } from "@prisma/client";
+import { HostsService } from "./hosts.service";
 
 export interface CsvHostRow {
   Name?: string;
   Company?: string;
-  'Email Address'?: string;
-  'Phone Number'?: string;
+  "Email Address"?: string;
+  "Phone Number"?: string;
   Location?: string;
   Status?: string;
   ID?: string;
@@ -25,34 +25,39 @@ export class CsvImportService {
   mapLocation(loc: string | undefined): Location | null {
     if (!loc) return null;
     const s = loc.toLowerCase();
-    if (s.includes('barwa')) return 'BARWA_TOWERS';
-    if (s.includes('marina') && s.includes('50')) return 'MARINA_50';
-    if (s.includes('element') || s.includes('mariott')) return 'ELEMENT_MARIOTT';
+    if (s.includes("barwa")) return "BARWA_TOWERS";
+    if (s.includes("marina") && s.includes("50")) return "MARINA_50";
+    if (s.includes("element") || s.includes("mariott"))
+      return "ELEMENT_MARIOTT";
     return null;
   }
 
   private parseXlsxFromBase64(base64: string): CsvHostRow[] {
     // Remove data URL prefix if present (e.g., "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,")
-    const base64Data = base64.includes(',') ? base64.split(',')[1] : base64;
-    const buffer = Buffer.from(base64Data, 'base64');
-    const workbook = XLSX.read(buffer, { type: 'buffer' });
+    const base64Data = base64.includes(",") ? base64.split(",")[1] : base64;
+    const buffer = Buffer.from(base64Data, "base64");
+    const workbook = XLSX.read(buffer, { type: "buffer" });
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
-    const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: '' }) as Record<string, any>[];
-    
+    const jsonData = XLSX.utils.sheet_to_json(worksheet, {
+      defval: "",
+    }) as Record<string, any>[];
+
     // Map XLSX columns to CsvHostRow format
     return jsonData.map((row) => ({
-      Name: row['Name'] || row['ID'] || '',
-      Company: row['Company'] || '',
-      'Email Address': row['Email Address'] || row['Email'] || '',
-      'Phone Number': row['Phone Number'] || row['Phone'] || '',
-      Location: row['Location'] || '',
-      Status: row['Status'] || '',
-      ID: row['ID'] || '',
+      Name: row["Name"] || row["ID"] || "",
+      Company: row["Company"] || "",
+      "Email Address": row["Email Address"] || row["Email"] || "",
+      "Phone Number": row["Phone Number"] || row["Phone"] || "",
+      Location: row["Location"] || "",
+      Status: row["Status"] || "",
+      ID: row["ID"] || "",
     }));
   }
 
-  async importFromBuffer(buffer: Buffer): Promise<{ imported: number; skipped: number; errors: string[] }> {
+  async importFromBuffer(
+    buffer: Buffer,
+  ): Promise<{ imported: number; skipped: number; errors: string[] }> {
     const records = parse(buffer, {
       columns: true,
       skip_empty_lines: true,
@@ -68,7 +73,10 @@ export class CsvImportService {
       const row = records[i];
       const name = row.Name?.trim();
       const company = row.Company?.trim();
-      const phone = (row['Phone Number'] ?? '').toString().replace(/^\+/, '').trim();
+      const phone = (row["Phone Number"] ?? "")
+        .toString()
+        .replace(/^\+/, "")
+        .trim();
 
       if (!name || !company) {
         skipped++;
@@ -80,11 +88,13 @@ export class CsvImportService {
       }
 
       const externalId = row.ID?.trim() || undefined;
-      const email = row['Email Address']?.trim() || undefined;
+      const email = row["Email Address"]?.trim() || undefined;
 
       // Check if host already exists by externalId (unique ID) - skip if exists
       if (externalId) {
-        const existing = await this.prisma.host.findUnique({ where: { externalId } });
+        const existing = await this.prisma.host.findUnique({
+          where: { externalId },
+        });
         if (existing) {
           skipped++;
           continue;
@@ -92,7 +102,7 @@ export class CsvImportService {
       }
 
       const location = this.mapLocation(row.Location);
-      const status = (row.Status ?? '').toLowerCase() === 'active' ? 1 : 0;
+      const status = (row.Status ?? "").toLowerCase() === "active" ? 1 : 0;
 
       try {
         await this.prisma.host.create({
@@ -115,7 +125,9 @@ export class CsvImportService {
     return { imported, skipped, errors };
   }
 
-  async importFromXlsxBase64(base64: string): Promise<{ imported: number; skipped: number; errors: string[] }> {
+  async importFromXlsxBase64(
+    base64: string,
+  ): Promise<{ imported: number; skipped: number; errors: string[] }> {
     const records = this.parseXlsxFromBase64(base64);
 
     let imported = 0;
@@ -126,7 +138,10 @@ export class CsvImportService {
       const row = records[i];
       const name = row.Name?.trim();
       const company = row.Company?.trim();
-      const phone = (row['Phone Number'] ?? '').toString().replace(/^\+/, '').trim();
+      const phone = (row["Phone Number"] ?? "")
+        .toString()
+        .replace(/^\+/, "")
+        .trim();
 
       if (!name || !company) {
         skipped++;
@@ -138,11 +153,13 @@ export class CsvImportService {
       }
 
       const externalId = row.ID?.trim() || undefined;
-      const email = row['Email Address']?.trim() || undefined;
+      const email = row["Email Address"]?.trim() || undefined;
 
       // Check if host already exists by externalId (unique ID) - skip if exists
       if (externalId) {
-        const existing = await this.prisma.host.findUnique({ where: { externalId } });
+        const existing = await this.prisma.host.findUnique({
+          where: { externalId },
+        });
         if (existing) {
           skipped++;
           continue;
@@ -150,7 +167,7 @@ export class CsvImportService {
       }
 
       const location = this.mapLocation(row.Location);
-      const status = (row.Status ?? '').toLowerCase() === 'active' ? 1 : 0;
+      const status = (row.Status ?? "").toLowerCase() === "active" ? 1 : 0;
 
       try {
         await this.prisma.host.create({
@@ -187,14 +204,21 @@ export class CsvImportService {
     let inserted = 0;
     let skipped = 0;
     let rejected = 0;
-    const rejectedRows: Array<{ rowNumber: number; reason: string; data: any }> = [];
+    const rejectedRows: Array<{
+      rowNumber: number;
+      reason: string;
+      data: any;
+    }> = [];
 
     for (let i = 0; i < records.length; i++) {
       const row = records[i];
       const name = row.Name?.trim();
       const company = row.Company?.trim();
-      const phone = (row['Phone Number'] ?? '').toString().replace(/^\+/, '').trim();
-      const email = row['Email Address']?.trim();
+      const phone = (row["Phone Number"] ?? "")
+        .toString()
+        .replace(/^\+/, "")
+        .trim();
+      const email = row["Email Address"]?.trim();
       const externalId = row.ID?.trim();
 
       // Validation
@@ -202,15 +226,15 @@ export class CsvImportService {
         rejected++;
         rejectedRows.push({
           rowNumber: i + 2,
-          reason: 'Name is required',
+          reason: "Name is required",
           data: {
-            id: externalId || '',
-            name: name || '',
-            company: row.Company || '',
-            email: email || '',
-            phone: phone || '',
-            location: row.Location || '',
-            status: row.Status || '',
+            id: externalId || "",
+            name: name || "",
+            company: row.Company || "",
+            email: email || "",
+            phone: phone || "",
+            location: row.Location || "",
+            status: row.Status || "",
           },
         });
         continue;
@@ -220,15 +244,15 @@ export class CsvImportService {
         rejected++;
         rejectedRows.push({
           rowNumber: i + 2,
-          reason: 'Company is required',
+          reason: "Company is required",
           data: {
-            id: externalId || '',
-            name: name || '',
-            company: company || '',
-            email: email || '',
-            phone: phone || '',
-            location: row.Location || '',
-            status: row.Status || '',
+            id: externalId || "",
+            name: name || "",
+            company: company || "",
+            email: email || "",
+            phone: phone || "",
+            location: row.Location || "",
+            status: row.Status || "",
           },
         });
         continue;
@@ -238,15 +262,15 @@ export class CsvImportService {
         rejected++;
         rejectedRows.push({
           rowNumber: i + 2,
-          reason: 'Phone number must be at least 6 characters',
+          reason: "Phone number must be at least 6 characters",
           data: {
-            id: externalId || '',
-            name: name || '',
-            company: company || '',
-            email: email || '',
-            phone: phone || '',
-            location: row.Location || '',
-            status: row.Status || '',
+            id: externalId || "",
+            name: name || "",
+            company: company || "",
+            email: email || "",
+            phone: phone || "",
+            location: row.Location || "",
+            status: row.Status || "",
           },
         });
         continue;
@@ -254,7 +278,9 @@ export class CsvImportService {
 
       // Check if host already exists by externalId
       if (externalId) {
-        const existing = await this.prisma.host.findUnique({ where: { externalId } });
+        const existing = await this.prisma.host.findUnique({
+          where: { externalId },
+        });
         if (existing) {
           skipped++;
           continue;
@@ -294,14 +320,21 @@ export class CsvImportService {
     let inserted = 0;
     let skipped = 0;
     let rejected = 0;
-    const rejectedRows: Array<{ rowNumber: number; reason: string; data: any }> = [];
+    const rejectedRows: Array<{
+      rowNumber: number;
+      reason: string;
+      data: any;
+    }> = [];
 
     for (let i = 0; i < records.length; i++) {
       const row = records[i];
       const name = row.Name?.trim();
       const company = row.Company?.trim();
-      const phone = (row['Phone Number'] ?? '').toString().replace(/^\+/, '').trim();
-      const email = row['Email Address']?.trim();
+      const phone = (row["Phone Number"] ?? "")
+        .toString()
+        .replace(/^\+/, "")
+        .trim();
+      const email = row["Email Address"]?.trim();
       const externalId = row.ID?.trim();
 
       // Validation
@@ -309,15 +342,15 @@ export class CsvImportService {
         rejected++;
         rejectedRows.push({
           rowNumber: i + 2,
-          reason: 'Name is required',
+          reason: "Name is required",
           data: {
-            id: externalId || '',
-            name: name || '',
-            company: row.Company || '',
-            email: email || '',
-            phone: phone || '',
-            location: row.Location || '',
-            status: row.Status || '',
+            id: externalId || "",
+            name: name || "",
+            company: row.Company || "",
+            email: email || "",
+            phone: phone || "",
+            location: row.Location || "",
+            status: row.Status || "",
           },
         });
         continue;
@@ -327,15 +360,15 @@ export class CsvImportService {
         rejected++;
         rejectedRows.push({
           rowNumber: i + 2,
-          reason: 'Company is required',
+          reason: "Company is required",
           data: {
-            id: externalId || '',
-            name: name || '',
-            company: company || '',
-            email: email || '',
-            phone: phone || '',
-            location: row.Location || '',
-            status: row.Status || '',
+            id: externalId || "",
+            name: name || "",
+            company: company || "",
+            email: email || "",
+            phone: phone || "",
+            location: row.Location || "",
+            status: row.Status || "",
           },
         });
         continue;
@@ -345,15 +378,15 @@ export class CsvImportService {
         rejected++;
         rejectedRows.push({
           rowNumber: i + 2,
-          reason: 'Phone number must be at least 6 characters',
+          reason: "Phone number must be at least 6 characters",
           data: {
-            id: externalId || '',
-            name: name || '',
-            company: company || '',
-            email: email || '',
-            phone: phone || '',
-            location: row.Location || '',
-            status: row.Status || '',
+            id: externalId || "",
+            name: name || "",
+            company: company || "",
+            email: email || "",
+            phone: phone || "",
+            location: row.Location || "",
+            status: row.Status || "",
           },
         });
         continue;
@@ -361,7 +394,9 @@ export class CsvImportService {
 
       // Check if host already exists by externalId
       if (externalId) {
-        const existing = await this.prisma.host.findUnique({ where: { externalId } });
+        const existing = await this.prisma.host.findUnique({
+          where: { externalId },
+        });
         if (existing) {
           skipped++;
           continue;

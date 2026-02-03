@@ -1,4 +1,11 @@
-import { IsString, IsOptional, IsInt, Min, Max, MaxLength } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsInt,
+  Min,
+  Max,
+  MaxLength,
+} from "class-validator";
 
 export class CreateHostDto {
   @IsString()

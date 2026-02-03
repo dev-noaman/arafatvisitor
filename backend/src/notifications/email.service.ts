@@ -1,19 +1,26 @@
-import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import * as nodemailer from 'nodemailer';
-import type { Transporter } from 'nodemailer';
+import { Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import * as nodemailer from "nodemailer";
+import type { Transporter } from "nodemailer";
 
 @Injectable()
 export class EmailService {
   private transporter: Transporter | null = null;
 
   constructor(private configService: ConfigService) {
-    const host = this.configService.get('SMTP_HOST');
-    const port = this.configService.get('SMTP_PORT');
-    const user = this.configService.get('SMTP_USER');
-    const pass = this.configService.get('SMTP_PASS');
+    const host = this.configService.get("SMTP_HOST");
+    const port = this.configService.get("SMTP_PORT");
+    const user = this.configService.get("SMTP_USER");
+    const pass = this.configService.get("SMTP_PASS");
 
-    console.log('[EmailService] Initializing with host:', host, 'port:', port, 'user:', user ? 'set' : 'not set');
+    console.log(
+      "[EmailService] Initializing with host:",
+      host,
+      "port:",
+      port,
+      "user:",
+      user ? "set" : "not set",
+    );
 
     if (host && port && user && pass) {
       this.transporter = nodemailer.createTransport({
@@ -22,9 +29,9 @@ export class EmailService {
         secure: Number(port) === 465,
         auth: { user, pass },
       });
-      console.log('[EmailService] Transporter created successfully');
+      console.log("[EmailService] Transporter created successfully");
     } else {
-      console.warn('[EmailService] Missing SMTP configuration, email disabled');
+      console.warn("[EmailService] Missing SMTP configuration, email disabled");
     }
   }
 
@@ -39,14 +46,21 @@ export class EmailService {
     text?: string;
   }): Promise<boolean> {
     if (!this.transporter) {
-      console.warn('[EmailService] Cannot send email - transporter not configured');
+      console.warn(
+        "[EmailService] Cannot send email - transporter not configured",
+      );
       return false;
     }
 
-    const from = this.configService.get('SMTP_FROM') || 'noreply@vms.local';
+    const from = this.configService.get("SMTP_FROM") || "noreply@vms.local";
 
     try {
-      console.log('[EmailService] Sending email to:', options.to, 'subject:', options.subject);
+      console.log(
+        "[EmailService] Sending email to:",
+        options.to,
+        "subject:",
+        options.subject,
+      );
       const result = await this.transporter.sendMail({
         from,
         to: options.to,
@@ -54,15 +68,26 @@ export class EmailService {
         html: options.html,
         text: options.text,
       });
-      console.log('[EmailService] Email sent successfully, messageId:', result.messageId);
+      console.log(
+        "[EmailService] Email sent successfully, messageId:",
+        result.messageId,
+      );
       return true;
     } catch (e) {
-      console.error('[EmailService] Failed to send email:', e instanceof Error ? e.message : e);
+      console.error(
+        "[EmailService] Failed to send email:",
+        e instanceof Error ? e.message : e,
+      );
       return false;
     }
   }
 
-  async sendVisitorArrival(to: string, visitorName: string, visitorCompany: string, purpose: string): Promise<boolean> {
+  async sendVisitorArrival(
+    to: string,
+    visitorName: string,
+    visitorCompany: string,
+    purpose: string,
+  ): Promise<boolean> {
     const html = `
       <h2>Visitor Arrival</h2>
       <p><strong>Visitor:</strong> ${visitorName}</p>
@@ -86,7 +111,7 @@ export class EmailService {
     `;
     return this.send({
       to,
-      subject: 'Password Reset - Arafat VMS',
+      subject: "Password Reset - Arafat VMS",
       html,
     });
   }

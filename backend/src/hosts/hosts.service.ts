@@ -1,8 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { Location } from '@prisma/client';
-import { CreateHostDto } from './dto/create-host.dto';
-import { UpdateHostDto } from './dto/update-host.dto';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { PrismaService } from "../prisma/prisma.service";
+import { Location } from "@prisma/client";
+import { CreateHostDto } from "./dto/create-host.dto";
+import { UpdateHostDto } from "./dto/update-host.dto";
 
 @Injectable()
 export class HostsService {
@@ -19,7 +19,7 @@ export class HostsService {
     }
     return this.prisma.host.findMany({
       where,
-      orderBy: [{ company: 'asc' }, { name: 'asc' }],
+      orderBy: [{ company: "asc" }, { name: "asc" }],
       select: {
         id: true,
         name: true,
@@ -36,7 +36,7 @@ export class HostsService {
     const host = await this.prisma.host.findFirst({
       where: { id, deletedAt: null },
     });
-    if (!host) throw new NotFoundException('Host not found');
+    if (!host) throw new NotFoundException("Host not found");
     return host;
   }
 
@@ -79,9 +79,10 @@ export class HostsService {
 
   normalizeLocation(location: string): Location | null {
     const s = location.toLowerCase();
-    if (s.includes('barwa')) return 'BARWA_TOWERS';
-    if (s.includes('marina') && s.includes('50')) return 'MARINA_50';
-    if (s.includes('element') || s.includes('mariott')) return 'ELEMENT_MARIOTT';
+    if (s.includes("barwa")) return "BARWA_TOWERS";
+    if (s.includes("marina") && s.includes("50")) return "MARINA_50";
+    if (s.includes("element") || s.includes("mariott"))
+      return "ELEMENT_MARIOTT";
     return null;
   }
 }

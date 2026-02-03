@@ -1,15 +1,20 @@
+/* eslint-disable @typescript-eslint/no-var-requires */
+// Dynamic requires are used throughout for AdminJS ESM compatibility
+
 // BigInt JSON serialization support (PostgreSQL IDs)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 (BigInt.prototype as any).toJSON = function () {
   return this.toString();
 };
 
-import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
-import { NestExpressApplication } from '@nestjs/platform-express';
-import { AppModule } from './app.module';
-import { PrismaService } from './prisma/prisma.service';
-import * as bcrypt from 'bcrypt';
-import * as path from 'path';
+import { NestFactory } from "@nestjs/core";
+import { ValidationPipe } from "@nestjs/common";
+import { NestExpressApplication } from "@nestjs/platform-express";
+import { AppModule } from "./app.module";
+import { PrismaService } from "./prisma/prisma.service";
+import * as bcrypt from "bcrypt";
+import * as crypto from "crypto";
+import * as path from "path";
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     bodyParser: false,
@@ -22,8 +27,8 @@ async function bootstrap() {
   const expressApp = httpAdapter.getInstance();
 
   // Trust proxy for secure cookies behind nginx/reverse proxy in production
-  if (process.env.NODE_ENV === 'production') {
-    expressApp.set('trust proxy', 1);
+  if (process.env.NODE_ENV === "production") {
+    expressApp.set("trust proxy", 1);
   }
 
   app.useGlobalPipes(
@@ -37,68 +42,74 @@ async function bootstrap() {
 
   app.enableCors({
     origin: [
-      'http://localhost:5173',
-      'http://127.0.0.1:5173',
-      'http://localhost:5174',
-      'http://127.0.0.1:5174',
-      'http://localhost:5175',
-      'http://127.0.0.1:5175',
-      'http://localhost:5176',
-      'http://127.0.0.1:5176',
+      "http://localhost:5173",
+      "http://127.0.0.1:5173",
+      "http://localhost:5174",
+      "http://127.0.0.1:5174",
+      "http://localhost:5175",
+      "http://127.0.0.1:5175",
+      "http://localhost:5176",
+      "http://127.0.0.1:5176",
     ],
     credentials: true,
   });
 
   // Serve custom admin CSS (sidebar visibility)
-  app.useStaticAssets(path.join(process.cwd(), 'public'), { prefix: '/' });
+  app.useStaticAssets(path.join(process.cwd(), "public"), { prefix: "/" });
 
   // Add no-cache middleware for AdminJS routes to prevent stale bundles
   const httpAdapterForCache = app.getHttpAdapter();
   const expressAppForCache = httpAdapterForCache.getInstance();
-  expressAppForCache.use('/admin', (req: any, res: any, next: any) => {
+  expressAppForCache.use("/admin", (req: any, res: any, next: any) => {
     // Set aggressive no-cache headers for all AdminJS routes
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
-    res.setHeader('Surrogate-Control', 'no-store'); // For CDNs like Cloudflare
+    res.setHeader(
+      "Cache-Control",
+      "no-cache, no-store, must-revalidate, max-age=0",
+    );
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+    res.setHeader("Surrogate-Control", "no-store"); // For CDNs like Cloudflare
     next();
   });
 
   // Setup AdminJS with dynamic import (ESM modules)
   try {
-    // @ts-ignore - dynamic ESM imports work at runtime
-    const AdminJS = (await import('adminjs')).default;
-    // @ts-ignore - v5.x is CommonJS, need to handle default export
-    const AdminJSExpressModule = await import('@adminjs/express');
+    const AdminJS = (await import("adminjs")).default;
+    const AdminJSExpressModule = await import("@adminjs/express");
     const AdminJSExpress = AdminJSExpressModule.default || AdminJSExpressModule;
-    // @ts-ignore
-    const AdminJSPrisma = await import('@adminjs/prisma');
-    // @ts-ignore
-    const { ComponentLoader } = await import('adminjs');
+    // @ts-expect-error - moduleResolution mismatch with ESM package
+    const AdminJSPrisma = await import("@adminjs/prisma");
+    const { ComponentLoader } = await import("adminjs");
 
-    AdminJS.registerAdapter({ Database: AdminJSPrisma.Database, Resource: AdminJSPrisma.Resource });
+    AdminJS.registerAdapter({
+      Database: AdminJSPrisma.Database,
+      Resource: AdminJSPrisma.Resource,
+    });
 
     const prisma = app.get(PrismaService);
-    const cookieSecret = process.env.ADMINJS_COOKIE_SECRET || 'adminjs-secret-change-me-32chars';
+    const cookieSecret =
+      process.env.ADMINJS_COOKIE_SECRET || "adminjs-secret-change-me-32chars";
 
     // For Prisma 5.x+, use _runtimeDataModel; for older, use _baseDmmf
     const runtimeModel = (prisma as any)._runtimeDataModel;
 
     // If runtimeModel exists (Prisma 5+), transform it for AdminJS
     if (runtimeModel && runtimeModel.models) {
-      const models = Object.entries(runtimeModel.models).map(([name, model]: [string, any]) => ({
-        name,
-        fields: model.fields.map((f: any) => ({
-          name: f.name,
-          kind: f.kind,
-          type: f.type,
-          isRequired: f.isRequired,
-          isList: f.isList,
-          isUnique: f.isUnique,
-          isId: f.isId,
-          relationName: f.relationName,
-        })),
-      }));
+      const models = Object.entries(runtimeModel.models).map(
+        ([name, model]: [string, any]) => ({
+          name,
+          fields: model.fields.map((f: any) => ({
+            name: f.name,
+            kind: f.kind,
+            type: f.type,
+            isRequired: f.isRequired,
+            isList: f.isList,
+            isUnique: f.isUnique,
+            isId: f.isId,
+            relationName: f.relationName,
+          })),
+        }),
+      );
 
       // Patch _baseDmmf for AdminJS compatibility
       (prisma as any)._baseDmmf = {
@@ -107,51 +118,92 @@ async function bootstrap() {
       };
     }
 
-    const getModel = (name: string) => (prisma as any)._baseDmmf?.datamodel?.models?.find((m: any) => m.name === name);
+    const getModel = (name: string) =>
+      (prisma as any)._baseDmmf?.datamodel?.models?.find(
+        (m: any) => m.name === name,
+      );
 
-    if (!getModel('User')) {
-      console.log('DMMF patch failed, models not available');
-      throw new Error('Could not patch Prisma DMMF for AdminJS');
+    if (!getModel("User")) {
+      console.log("DMMF patch failed, models not available");
+      throw new Error("Could not patch Prisma DMMF for AdminJS");
     }
 
     // Setup ComponentLoader for custom components
     // Use process.cwd() so components are loaded from src/ (Nest does not copy .tsx to dist)
     const componentLoader = new ComponentLoader();
-    const componentsDir = path.join(process.cwd(), 'src', 'admin', 'components');
+    const componentsDir = path.join(
+      process.cwd(),
+      "src",
+      "admin",
+      "components",
+    );
 
     const Components = {
-      Dashboard: componentLoader.add('Dashboard', path.join(componentsDir, 'Dashboard')),
-      SendQrModal: componentLoader.add('SendQrModal', path.join(componentsDir, 'SendQrModal')),
-      ChangePasswordModal: componentLoader.add('ChangePasswordModal', path.join(componentsDir, 'ChangePasswordModal')),
-      ChangePasswordPage: componentLoader.add('ChangePasswordPage', path.join(componentsDir, 'ChangePasswordPage')),
-      EditProfilePanel: componentLoader.add('EditProfilePanel', path.join(componentsDir, 'EditProfilePanel')),
-      ReportsPanel: componentLoader.add('ReportsPanel', path.join(componentsDir, 'ReportsPanel')),
-      SettingsPanel: componentLoader.add('SettingsPanel', path.join(componentsDir, 'SettingsPanel')),
-      VisitorCards: componentLoader.add('VisitorCards', path.join(componentsDir, 'VisitorCards')),
-      BulkImportHosts: componentLoader.add('BulkImportHosts', path.join(componentsDir, 'BulkImportHosts')),
+      Dashboard: componentLoader.add(
+        "Dashboard",
+        path.join(componentsDir, "Dashboard"),
+      ),
+      SendQrModal: componentLoader.add(
+        "SendQrModal",
+        path.join(componentsDir, "SendQrModal"),
+      ),
+      ChangePasswordModal: componentLoader.add(
+        "ChangePasswordModal",
+        path.join(componentsDir, "ChangePasswordModal"),
+      ),
+      ChangePasswordPage: componentLoader.add(
+        "ChangePasswordPage",
+        path.join(componentsDir, "ChangePasswordPage"),
+      ),
+      EditProfilePanel: componentLoader.add(
+        "EditProfilePanel",
+        path.join(componentsDir, "EditProfilePanel"),
+      ),
+      ReportsPanel: componentLoader.add(
+        "ReportsPanel",
+        path.join(componentsDir, "ReportsPanel"),
+      ),
+      SettingsPanel: componentLoader.add(
+        "SettingsPanel",
+        path.join(componentsDir, "SettingsPanel"),
+      ),
+      VisitorCards: componentLoader.add(
+        "VisitorCards",
+        path.join(componentsDir, "VisitorCards"),
+      ),
+      BulkImportHosts: componentLoader.add(
+        "BulkImportHosts",
+        path.join(componentsDir, "BulkImportHosts"),
+      ),
     };
-    componentLoader.override('LoggedIn', path.join(componentsDir, 'LoggedIn'));
-    componentLoader.override('SidebarPages', path.join(componentsDir, 'SidebarPages'));
-    componentLoader.override('SidebarResourceSection', path.join(componentsDir, 'SidebarResourceSection'));
-    componentLoader.override('Login', path.join(componentsDir, 'Login'));
+    componentLoader.override("LoggedIn", path.join(componentsDir, "LoggedIn"));
+    componentLoader.override(
+      "SidebarPages",
+      path.join(componentsDir, "SidebarPages"),
+    );
+    componentLoader.override(
+      "SidebarResourceSection",
+      path.join(componentsDir, "SidebarResourceSection"),
+    );
+    componentLoader.override("Login", path.join(componentsDir, "Login"));
 
     // Generate unique bundle hash on each server start to bust browser cache
     const bundleHash = `v${Date.now()}`;
 
     const admin = new AdminJS({
-      rootPath: '/admin',
-      loginPath: '/admin/login',
-      logoutPath: '/admin/logout',
+      rootPath: "/admin",
+      loginPath: "/admin/login",
+      logoutPath: "/admin/logout",
       componentLoader,
       bundler: {
         // Force unique bundle URLs on each deployment
-        // @ts-ignore - bundleHash is supported but not in types
+        // @ts-expect-error - bundleHash is supported but not in types
         bundleHash,
       },
       branding: {
-        companyName: 'Arafat VMS',
+        companyName: "Arafat VMS",
         logo: false as const,
-        favicon: '/favicon.ico',
+        favicon: "/favicon.ico",
         withMadeWithLove: false,
       },
       dashboard: {
@@ -160,63 +212,120 @@ async function bootstrap() {
       pages: {
         ChangePassword: {
           component: Components.ChangePasswordPage,
-          icon: 'Key',
+          icon: "Key",
         },
         EditProfile: {
           component: Components.EditProfilePanel,
-          icon: 'Edit',
+          icon: "Edit",
         },
         Reports: {
           component: Components.ReportsPanel,
-          icon: 'BarChart2',
+          icon: "BarChart2",
         },
         Settings: {
           component: Components.SettingsPanel,
-          icon: 'Settings',
+          icon: "Settings",
         },
       },
       assets: {
-        styles: ['/admin-custom.css'],
-        scripts: ['/admin-scripts.js'],
+        styles: ["/admin-custom.css"],
+        scripts: ["/admin-scripts.js"],
       },
       resources: [
         // Hosts Resource
         {
-          resource: { model: getModel('Host'), client: prisma },
+          resource: { model: getModel("Host"), client: prisma },
           options: {
-            id: 'Hosts',
-            navigation: { name: 'Operations', icon: 'Briefcase' },
+            id: "Hosts",
+            navigation: { name: "Operations", icon: "Briefcase" },
             // Removed 'status' from list - table now shows only essential columns
-            listProperties: ['name', 'company', 'email', 'phone', 'location'],
-            filterProperties: ['company', 'location'],
-            editProperties: ['name', 'company', 'email', 'phone', 'location', 'password'],
+            listProperties: ["name", "company", "email", "phone", "location"],
+            filterProperties: ["company", "location"],
+            editProperties: [
+              "name",
+              "company",
+              "email",
+              "phone",
+              "location",
+              "password",
+            ],
             properties: {
-              id: { isVisible: { list: false, edit: false, show: true, filter: false } },
-              externalId: { isVisible: { list: false, edit: false, show: false, filter: false } },
+              id: {
+                isVisible: {
+                  list: false,
+                  edit: false,
+                  show: true,
+                  filter: false,
+                },
+              },
+              externalId: {
+                isVisible: {
+                  list: false,
+                  edit: false,
+                  show: false,
+                  filter: false,
+                },
+              },
               // Hide status completely - not needed in UI
-              status: { isVisible: { list: false, edit: false, show: false, filter: false } },
-              deletedAt: { isVisible: { list: false, edit: false, show: false, filter: false } },
-              createdAt: { isVisible: { list: false, edit: false, show: true, filter: false } },
-              updatedAt: { isVisible: { list: false, edit: false, show: true, filter: false } },
+              status: {
+                isVisible: {
+                  list: false,
+                  edit: false,
+                  show: false,
+                  filter: false,
+                },
+              },
+              deletedAt: {
+                isVisible: {
+                  list: false,
+                  edit: false,
+                  show: false,
+                  filter: false,
+                },
+              },
+              createdAt: {
+                isVisible: {
+                  list: false,
+                  edit: false,
+                  show: true,
+                  filter: false,
+                },
+              },
+              updatedAt: {
+                isVisible: {
+                  list: false,
+                  edit: false,
+                  show: true,
+                  filter: false,
+                },
+              },
               // Virtual password field for updating linked User's password
               password: {
-                type: 'password',
-                isVisible: { list: false, edit: true, show: false, filter: false },
-                description: 'Set or change password for this host\'s login account',
+                type: "password",
+                isVisible: {
+                  list: false,
+                  edit: true,
+                  show: false,
+                  filter: false,
+                },
+                description:
+                  "Set or change password for this host's login account",
               },
             },
-            sort: { sortBy: 'company', direction: 'asc' as const },
+            sort: { sortBy: "company", direction: "asc" as const },
             actions: {
               bulkImport: {
-                actionType: 'resource' as const,
-                label: 'Bulk Import',
-                icon: 'Upload',
+                actionType: "resource" as const,
+                label: "Bulk Import",
+                icon: "Upload",
                 component: Components.BulkImportHosts,
-                isAccessible: ({ currentAdmin }: any) => currentAdmin?.role === 'ADMIN',
+                isAccessible: ({ currentAdmin }: any) =>
+                  currentAdmin?.role === "ADMIN",
               },
               new: {
                 // Only ADMIN can create hosts
-                isAccessible: ({ currentAdmin }: any) => currentAdmin?.role === 'ADMIN',
+                isAccessible: ({ currentAdmin }: any) =>
+                  currentAdmin?.role === "ADMIN",
                 after: async (response: any, request: any, context: any) => {
                   const { record } = response;
                   const password = request.payload?.password;
@@ -233,9 +342,10 @@ async function bootstrap() {
 
                   if (!existingUser) {
                     // Use provided password or generate random one
-                    const finalPassword = (password && password.trim())
-                      ? password
-                      : require('crypto').randomBytes(16).toString('hex');
+                    const finalPassword =
+                      password && password.trim()
+                        ? password
+                        : crypto.randomBytes(16).toString("hex");
                     const hashedPassword = await bcrypt.hash(finalPassword, 12);
 
                     await prisma.user.create({
@@ -243,7 +353,7 @@ async function bootstrap() {
                         email: userEmail.toLowerCase(),
                         password: hashedPassword,
                         name: hostName,
-                        role: 'HOST',
+                        role: "HOST",
                         hostId,
                       },
                     });
@@ -254,7 +364,8 @@ async function bootstrap() {
               },
               edit: {
                 // Only ADMIN can edit hosts
-                isAccessible: ({ currentAdmin }: any) => currentAdmin?.role === 'ADMIN',
+                isAccessible: ({ currentAdmin }: any) =>
+                  currentAdmin?.role === "ADMIN",
                 after: async (response: any, request: any, context: any) => {
                   const { record } = response;
                   const password = request.payload?.password;
@@ -266,7 +377,7 @@ async function bootstrap() {
                     const hostName = record.params.name;
 
                     // Find existing user linked to this host
-                    let user = await prisma.user.findFirst({
+                    const user = await prisma.user.findFirst({
                       where: { hostId },
                     });
 
@@ -280,13 +391,14 @@ async function bootstrap() {
                       });
                     } else {
                       // Create new user for this host
-                      const userEmail = hostEmail || `host_${hostId}@system.local`;
+                      const userEmail =
+                        hostEmail || `host_${hostId}@system.local`;
                       await prisma.user.create({
                         data: {
                           email: userEmail.toLowerCase(),
                           password: hashedPassword,
                           name: hostName,
-                          role: 'HOST',
+                          role: "HOST",
                           hostId,
                         },
                       });
@@ -298,11 +410,13 @@ async function bootstrap() {
               },
               delete: {
                 // Only ADMIN can delete hosts - RECEPTION cannot delete
-                isAccessible: ({ currentAdmin }: any) => currentAdmin?.role === 'ADMIN',
+                isAccessible: ({ currentAdmin }: any) =>
+                  currentAdmin?.role === "ADMIN",
               },
               bulkDelete: {
                 // Only ADMIN can bulk delete hosts - RECEPTION cannot delete
-                isAccessible: ({ currentAdmin }: any) => currentAdmin?.role === 'ADMIN',
+                isAccessible: ({ currentAdmin }: any) =>
+                  currentAdmin?.role === "ADMIN",
               },
               show: {
                 // Everyone can view host details
@@ -311,12 +425,15 @@ async function bootstrap() {
               list: {
                 before: async (request: any, context: any) => {
                   const { currentAdmin } = context;
-                  if (currentAdmin?.role === 'HOST' && currentAdmin?.hostId) {
+                  if (currentAdmin?.role === "HOST" && currentAdmin?.hostId) {
                     const host = await prisma.host.findUnique({
                       where: { id: BigInt(currentAdmin.hostId) },
                     });
                     if (host) {
-                      request.query = { ...request.query, 'filters.company': host.company };
+                      request.query = {
+                        ...request.query,
+                        "filters.company": host.company,
+                      };
                     }
                   }
                   return request;
@@ -327,79 +444,144 @@ async function bootstrap() {
         },
         // Deliveries Resource
         {
-          resource: { model: getModel('Delivery'), client: prisma },
+          resource: { model: getModel("Delivery"), client: prisma },
           options: {
-            id: 'Deliveries',
-            navigation: { name: 'Operations', icon: 'Package' },
-            listProperties: ['courier', 'recipient', 'hostId', 'location', 'status', 'receivedAt', 'pickedUpAt'],
-            filterProperties: ['status', 'location', 'receivedAt'],
-            editProperties: ['hostId', 'courier', 'recipient', 'notes', 'location'],
+            id: "Deliveries",
+            navigation: { name: "Operations", icon: "Package" },
+            listProperties: [
+              "courier",
+              "recipient",
+              "hostId",
+              "location",
+              "status",
+              "receivedAt",
+              "pickedUpAt",
+            ],
+            filterProperties: ["status", "location", "receivedAt"],
+            editProperties: [
+              "hostId",
+              "courier",
+              "recipient",
+              "notes",
+              "location",
+            ],
             properties: {
-              id: { isVisible: { list: false, edit: false, show: true, filter: false } },
+              id: {
+                isVisible: {
+                  list: false,
+                  edit: false,
+                  show: true,
+                  filter: false,
+                },
+              },
               hostId: {
-                type: 'reference' as const,
-                reference: 'Hosts',
+                type: "reference" as const,
+                reference: "Hosts",
                 isVisible: { list: true, edit: true, filter: true, show: true },
               },
-              status: { isVisible: { list: true, edit: false, show: true, filter: true } },
-              createdAt: { isVisible: { list: false, edit: false, show: true, filter: false } },
-              receivedAt: { isVisible: { list: true, edit: false, show: true, filter: false } },
-              pickedUpAt: { isVisible: { list: true, edit: false, show: true, filter: false } },
-              receivedById: { isVisible: { list: false, edit: false, show: false, filter: false } },
+              status: {
+                isVisible: {
+                  list: true,
+                  edit: false,
+                  show: true,
+                  filter: true,
+                },
+              },
+              createdAt: {
+                isVisible: {
+                  list: false,
+                  edit: false,
+                  show: true,
+                  filter: false,
+                },
+              },
+              receivedAt: {
+                isVisible: {
+                  list: true,
+                  edit: false,
+                  show: true,
+                  filter: false,
+                },
+              },
+              pickedUpAt: {
+                isVisible: {
+                  list: true,
+                  edit: false,
+                  show: true,
+                  filter: false,
+                },
+              },
+              receivedById: {
+                isVisible: {
+                  list: false,
+                  edit: false,
+                  show: false,
+                  filter: false,
+                },
+              },
             },
             actions: {
               new: {
                 isAccessible: ({ currentAdmin }: any) => {
                   const role = currentAdmin?.role;
-                  return role === 'ADMIN' || role === 'RECEPTION';
+                  return role === "ADMIN" || role === "RECEPTION";
                 },
                 before: async (request: any) => {
                   // Set default status and receivedAt on create
                   if (request.payload) {
-                    request.payload.status = 'RECEIVED';
+                    request.payload.status = "RECEIVED";
                     request.payload.receivedAt = new Date().toISOString();
                   }
                   return request;
                 },
               },
               edit: {
-                isAccessible: ({ currentAdmin }: any) => currentAdmin?.role === 'ADMIN',
+                isAccessible: ({ currentAdmin }: any) =>
+                  currentAdmin?.role === "ADMIN",
               },
               delete: {
-                isAccessible: ({ currentAdmin }: any) => currentAdmin?.role === 'ADMIN',
+                isAccessible: ({ currentAdmin }: any) =>
+                  currentAdmin?.role === "ADMIN",
               },
               markPickedUp: {
-                actionType: 'record' as const,
-                label: 'Mark Picked Up',
-                icon: 'CheckCircle',
-                guard: 'Are you sure you want to mark this delivery as picked up?',
+                actionType: "record" as const,
+                label: "Mark Picked Up",
+                icon: "CheckCircle",
+                guard:
+                  "Are you sure you want to mark this delivery as picked up?",
                 isVisible: true,
                 isAccessible: ({ currentAdmin, record }: any) => {
                   const role = currentAdmin?.role;
                   const status = record?.params?.status;
-                  if (status !== 'RECEIVED') return false;
-                  if (role === 'RECEPTION') return false;
-                  if (role === 'ADMIN') return true;
-                  if (role === 'HOST') {
-                    return record?.params?.hostId?.toString() === currentAdmin?.hostId?.toString();
+                  if (status !== "RECEIVED") return false;
+                  if (role === "RECEPTION") return false;
+                  if (role === "ADMIN") return true;
+                  if (role === "HOST") {
+                    return (
+                      record?.params?.hostId?.toString() ===
+                      currentAdmin?.hostId?.toString()
+                    );
                   }
                   return false;
                 },
                 handler: async (request: any, response: any, context: any) => {
                   const { record } = context;
-                  if (record.params.status !== 'RECEIVED') {
+                  if (record.params.status !== "RECEIVED") {
                     return {
                       record: record.toJSON(),
-                      notice: { type: 'error', message: 'Invalid state transition' },
+                      notice: {
+                        type: "error",
+                        message: "Invalid state transition",
+                      },
                     };
                   }
                   await record.update({
-                    status: 'PICKED_UP',
+                    status: "PICKED_UP",
                     pickedUpAt: new Date(),
                   });
                   return {
                     record: record.toJSON(),
-                    notice: { type: 'success', message: 'Marked as picked up' },
+                    notice: { type: "success", message: "Marked as picked up" },
                   };
                 },
               },
@@ -407,11 +589,14 @@ async function bootstrap() {
                 before: async (request: any, context: any) => {
                   try {
                     const { currentAdmin } = context;
-                    if (currentAdmin?.role === 'HOST' && currentAdmin?.hostId) {
-                      request.query = { ...request.query, 'filters.hostId': currentAdmin.hostId };
+                    if (currentAdmin?.role === "HOST" && currentAdmin?.hostId) {
+                      request.query = {
+                        ...request.query,
+                        "filters.hostId": currentAdmin.hostId,
+                      };
                     }
                   } catch (err) {
-                    console.error('Deliveries list before hook error:', err);
+                    console.error("Deliveries list before hook error:", err);
                   }
                   return request;
                 },
@@ -421,61 +606,134 @@ async function bootstrap() {
         },
         // Visitors Resource (Visit with CHECKED_IN, CHECKED_OUT)
         {
-          resource: { model: getModel('Visit'), client: prisma },
+          resource: { model: getModel("Visit"), client: prisma },
           options: {
-            id: 'Visitors',
-            navigation: { name: 'Operations', icon: 'UserCheck' },
-            listProperties: ['visitorName', 'visitorPhone', 'hostId', 'purpose', 'status', 'checkInAt'],
-            filterProperties: ['status', 'location', 'checkInAt'],
-            editProperties: ['visitorName', 'visitorCompany', 'visitorPhone', 'visitorEmail', 'hostId', 'purpose', 'location'],
+            id: "Visitors",
+            navigation: { name: "Operations", icon: "UserCheck" },
+            listProperties: [
+              "visitorName",
+              "visitorPhone",
+              "hostId",
+              "purpose",
+              "status",
+              "checkInAt",
+            ],
+            filterProperties: ["status", "location", "checkInAt"],
+            editProperties: [
+              "visitorName",
+              "visitorCompany",
+              "visitorPhone",
+              "visitorEmail",
+              "hostId",
+              "purpose",
+              "location",
+            ],
             properties: {
-              id: { isVisible: { list: false, edit: false, show: true, filter: false } },
-              sessionId: { isVisible: { list: false, edit: false, show: true, filter: false } },
+              id: {
+                isVisible: {
+                  list: false,
+                  edit: false,
+                  show: true,
+                  filter: false,
+                },
+              },
+              sessionId: {
+                isVisible: {
+                  list: false,
+                  edit: false,
+                  show: true,
+                  filter: false,
+                },
+              },
               hostId: {
-                type: 'reference' as const,
-                reference: 'Hosts',
+                type: "reference" as const,
+                reference: "Hosts",
                 isVisible: { list: true, edit: true, filter: true, show: true },
               },
-              status: { isVisible: { list: true, edit: false, show: true, filter: true } },
-              checkInAt: { isVisible: { list: true, edit: false, show: true, filter: false } },
-              checkOutAt: { isVisible: { list: false, edit: false, show: true, filter: false } },
-              createdAt: { isVisible: { list: false, edit: false, show: true, filter: false } },
-              updatedAt: { isVisible: { list: false, edit: false, show: true, filter: false } },
-              preRegisteredById: { isVisible: { list: false, edit: false, show: false, filter: false } },
+              status: {
+                isVisible: {
+                  list: true,
+                  edit: false,
+                  show: true,
+                  filter: true,
+                },
+              },
+              checkInAt: {
+                isVisible: {
+                  list: true,
+                  edit: false,
+                  show: true,
+                  filter: false,
+                },
+              },
+              checkOutAt: {
+                isVisible: {
+                  list: false,
+                  edit: false,
+                  show: true,
+                  filter: false,
+                },
+              },
+              createdAt: {
+                isVisible: {
+                  list: false,
+                  edit: false,
+                  show: true,
+                  filter: false,
+                },
+              },
+              updatedAt: {
+                isVisible: {
+                  list: false,
+                  edit: false,
+                  show: true,
+                  filter: false,
+                },
+              },
+              preRegisteredById: {
+                isVisible: {
+                  list: false,
+                  edit: false,
+                  show: false,
+                  filter: false,
+                },
+              },
             },
             actions: {
               new: {
                 isAccessible: ({ currentAdmin }: any) => {
                   const role = currentAdmin?.role;
-                  return role === 'ADMIN' || role === 'RECEPTION';
+                  return role === "ADMIN" || role === "RECEPTION";
                 },
               },
               edit: {
-                isAccessible: ({ currentAdmin }: any) => currentAdmin?.role === 'ADMIN',
+                isAccessible: ({ currentAdmin }: any) =>
+                  currentAdmin?.role === "ADMIN",
               },
               checkout: {
-                actionType: 'record' as const,
-                label: 'Check Out',
-                icon: 'LogOut',
-                guard: 'Check out this visitor?',
+                actionType: "record" as const,
+                label: "Check Out",
+                icon: "LogOut",
+                guard: "Check out this visitor?",
                 isVisible: true,
-                isAccessible: ({ record }: any) => record?.params?.status === 'CHECKED_IN',
+                isAccessible: ({ record }: any) =>
+                  record?.params?.status === "CHECKED_IN",
                 handler: async (request: any, response: any, context: any) => {
                   const { record } = context;
                   await record.update({
-                    status: 'CHECKED_OUT',
+                    status: "CHECKED_OUT",
                     checkOutAt: new Date(),
                   });
                   return {
                     record: record.toJSON(),
-                    notice: { type: 'success', message: 'Visitor checked out' },
+                    notice: { type: "success", message: "Visitor checked out" },
                   };
                 },
               },
               sendQr: {
-                actionType: 'record' as const,
-                label: 'Send QR',
-                icon: 'Send',
+                actionType: "record" as const,
+                label: "Send QR",
+                icon: "Send",
                 component: Components.SendQrModal,
                 isVisible: true,
                 isAccessible: ({ record }: any) => !!record?.params?.id,
@@ -486,14 +744,14 @@ async function bootstrap() {
               list: {
                 before: async (request: any, context: any) => {
                   const { currentAdmin } = context;
-                  if (!request.query?.['filters.status']) {
+                  if (!request.query?.["filters.status"]) {
                     request.query = {
                       ...request.query,
-                      'filters.status': 'CHECKED_IN',
+                      "filters.status": "CHECKED_IN",
                     };
                   }
-                  if (currentAdmin?.role === 'HOST' && currentAdmin?.hostId) {
-                    request.query['filters.hostId'] = currentAdmin.hostId;
+                  if (currentAdmin?.role === "HOST" && currentAdmin?.hostId) {
+                    request.query["filters.hostId"] = currentAdmin.hostId;
                   }
                   return request;
                 },
@@ -503,111 +761,211 @@ async function bootstrap() {
         },
         // Pre Register Resource (Visit with pre-registration statuses)
         {
-          resource: { model: getModel('Visit'), client: prisma },
+          resource: { model: getModel("Visit"), client: prisma },
           options: {
-            id: 'PreRegister',
-            navigation: { name: 'Operations', icon: 'Calendar' },
-            listProperties: ['visitorName', 'visitorPhone', 'hostId', 'expectedDate', 'status', 'createdAt'],
-            filterProperties: ['status', 'location', 'expectedDate'],
-            editProperties: ['visitorName', 'visitorCompany', 'visitorPhone', 'visitorEmail', 'hostId', 'purpose', 'expectedDate', 'location'],
+            id: "PreRegister",
+            navigation: { name: "Operations", icon: "Calendar" },
+            listProperties: [
+              "visitorName",
+              "visitorPhone",
+              "hostId",
+              "expectedDate",
+              "status",
+              "createdAt",
+            ],
+            filterProperties: ["status", "location", "expectedDate"],
+            editProperties: [
+              "visitorName",
+              "visitorCompany",
+              "visitorPhone",
+              "visitorEmail",
+              "hostId",
+              "purpose",
+              "expectedDate",
+              "location",
+            ],
             properties: {
-              id: { isVisible: { list: false, edit: false, show: true, filter: false } },
-              sessionId: { isVisible: { list: false, edit: false, show: true, filter: false } },
+              id: {
+                isVisible: {
+                  list: false,
+                  edit: false,
+                  show: true,
+                  filter: false,
+                },
+              },
+              sessionId: {
+                isVisible: {
+                  list: false,
+                  edit: false,
+                  show: true,
+                  filter: false,
+                },
+              },
               hostId: {
-                type: 'reference' as const,
-                reference: 'Hosts',
+                type: "reference" as const,
+                reference: "Hosts",
                 isVisible: { list: true, edit: true, filter: true, show: true },
               },
-              status: { isVisible: { list: true, edit: false, show: true, filter: true } },
-              approvedAt: { isVisible: { list: false, edit: false, show: true, filter: false } },
-              rejectedAt: { isVisible: { list: false, edit: false, show: true, filter: false } },
-              rejectionReason: { isVisible: { list: false, edit: false, show: true, filter: false } },
-              checkInAt: { isVisible: { list: false, edit: false, show: true, filter: false } },
-              checkOutAt: { isVisible: { list: false, edit: false, show: true, filter: false } },
-              createdAt: { isVisible: { list: true, edit: false, show: true, filter: false } },
-              updatedAt: { isVisible: { list: false, edit: false, show: true, filter: false } },
+              status: {
+                isVisible: {
+                  list: true,
+                  edit: false,
+                  show: true,
+                  filter: true,
+                },
+              },
+              approvedAt: {
+                isVisible: {
+                  list: false,
+                  edit: false,
+                  show: true,
+                  filter: false,
+                },
+              },
+              rejectedAt: {
+                isVisible: {
+                  list: false,
+                  edit: false,
+                  show: true,
+                  filter: false,
+                },
+              },
+              rejectionReason: {
+                isVisible: {
+                  list: false,
+                  edit: false,
+                  show: true,
+                  filter: false,
+                },
+              },
+              checkInAt: {
+                isVisible: {
+                  list: false,
+                  edit: false,
+                  show: true,
+                  filter: false,
+                },
+              },
+              checkOutAt: {
+                isVisible: {
+                  list: false,
+                  edit: false,
+                  show: true,
+                  filter: false,
+                },
+              },
+              createdAt: {
+                isVisible: {
+                  list: true,
+                  edit: false,
+                  show: true,
+                  filter: false,
+                },
+              },
+              updatedAt: {
+                isVisible: {
+                  list: false,
+                  edit: false,
+                  show: true,
+                  filter: false,
+                },
+              },
             },
             actions: {
               new: {
                 isAccessible: ({ currentAdmin }: any) => {
                   const role = currentAdmin?.role;
-                  return role === 'ADMIN' || role === 'HOST' || role === 'RECEPTION';
+                  return (
+                    role === "ADMIN" || role === "HOST" || role === "RECEPTION"
+                  );
                 },
               },
               edit: {
                 isAccessible: () => false,
               },
               approve: {
-                actionType: 'record' as const,
-                label: 'Approve',
-                icon: 'Check',
-                variant: 'success' as const,
-                guard: 'Approve this pre-registration?',
+                actionType: "record" as const,
+                label: "Approve",
+                icon: "Check",
+                variant: "success" as const,
+                guard: "Approve this pre-registration?",
                 isVisible: true,
                 isAccessible: ({ currentAdmin, record }: any) => {
                   const status = record?.params?.status;
-                  if (status !== 'PENDING_APPROVAL') return false;
+                  if (status !== "PENDING_APPROVAL") return false;
                   const role = currentAdmin?.role;
-                  if (role === 'RECEPTION') return false;
-                  if (role === 'ADMIN') return true;
-                  if (role === 'HOST') {
-                    return record?.params?.hostId?.toString() === currentAdmin?.hostId?.toString();
+                  if (role === "RECEPTION") return false;
+                  if (role === "ADMIN") return true;
+                  if (role === "HOST") {
+                    return (
+                      record?.params?.hostId?.toString() ===
+                      currentAdmin?.hostId?.toString()
+                    );
                   }
                   return false;
                 },
                 handler: async (request: any, response: any, context: any) => {
                   const { record } = context;
                   await record.update({
-                    status: 'APPROVED',
+                    status: "APPROVED",
                     approvedAt: new Date(),
                   });
                   return {
                     record: record.toJSON(),
-                    notice: { type: 'success', message: 'Pre-registration approved' },
+                    notice: {
+                      type: "success",
+                      message: "Pre-registration approved",
+                    },
                   };
                 },
               },
               reject: {
-                actionType: 'record' as const,
-                label: 'Reject',
-                icon: 'X',
-                variant: 'danger' as const,
-                guard: 'Reject this pre-registration?',
+                actionType: "record" as const,
+                label: "Reject",
+                icon: "X",
+                variant: "danger" as const,
+                guard: "Reject this pre-registration?",
                 isVisible: true,
                 isAccessible: ({ currentAdmin, record }: any) => {
                   const status = record?.params?.status;
-                  if (status !== 'PENDING_APPROVAL') return false;
+                  if (status !== "PENDING_APPROVAL") return false;
                   const role = currentAdmin?.role;
-                  if (role === 'RECEPTION') return false;
-                  if (role === 'ADMIN') return true;
-                  if (role === 'HOST') {
-                    return record?.params?.hostId?.toString() === currentAdmin?.hostId?.toString();
+                  if (role === "RECEPTION") return false;
+                  if (role === "ADMIN") return true;
+                  if (role === "HOST") {
+                    return (
+                      record?.params?.hostId?.toString() ===
+                      currentAdmin?.hostId?.toString()
+                    );
                   }
                   return false;
                 },
                 handler: async (request: any, response: any, context: any) => {
                   const { record } = context;
                   await record.update({
-                    status: 'REJECTED',
+                    status: "REJECTED",
                     rejectedAt: new Date(),
                   });
                   return {
                     record: record.toJSON(),
-                    notice: { type: 'success', message: 'Pre-registration rejected' },
+                    notice: {
+                      type: "success",
+                      message: "Pre-registration rejected",
+                    },
                   };
                 },
               },
               list: {
                 before: async (request: any, context: any) => {
                   const { currentAdmin } = context;
-                  if (!request.query?.['filters.status']) {
+                  if (!request.query?.["filters.status"]) {
                     request.query = {
                       ...request.query,
-                      'filters.status': 'PENDING_APPROVAL',
+                      "filters.status": "PENDING_APPROVAL",
                     };
                   }
-                  if (currentAdmin?.role === 'HOST' && currentAdmin?.hostId) {
-                    request.query['filters.hostId'] = currentAdmin.hostId;
+                  if (currentAdmin?.role === "HOST" && currentAdmin?.hostId) {
+                    request.query["filters.hostId"] = currentAdmin.hostId;
                   }
                   return request;
                 },
@@ -617,57 +975,92 @@ async function bootstrap() {
         },
         // Users Resource (Admin only - hidden from HOST and RECEPTION)
         {
-          resource: { model: getModel('User'), client: prisma },
+          resource: { model: getModel("User"), client: prisma },
           options: {
-            id: 'Users',
-            navigation: { name: 'System', icon: 'Users' },
-            listProperties: ['name', 'email', 'role', 'createdAt'],
-            filterProperties: ['role'],
+            id: "Users",
+            navigation: { name: "System", icon: "Users" },
+            listProperties: ["name", "email", "role", "createdAt"],
+            filterProperties: ["role"],
             properties: {
               password: {
-                type: 'password',
-                isVisible: { list: false, show: false, edit: true, filter: false },
+                type: "password",
+                isVisible: {
+                  list: false,
+                  show: false,
+                  edit: true,
+                  filter: false,
+                },
               },
               role: {
                 availableValues: [
-                  { value: 'ADMIN', label: 'Admin' },
-                  { value: 'RECEPTION', label: 'Reception' },
-                  { value: 'HOST', label: 'Host' },
+                  { value: "ADMIN", label: "Admin" },
+                  { value: "RECEPTION", label: "Reception" },
+                  { value: "HOST", label: "Host" },
                 ],
                 isVisible: { list: true, show: true, edit: true, filter: true },
               },
               hostId: {
-                isVisible: { list: false, show: false, edit: false, filter: false },
+                isVisible: {
+                  list: false,
+                  show: false,
+                  edit: false,
+                  filter: false,
+                },
               },
               host: {
-                isVisible: { list: false, show: false, edit: false, filter: false },
+                isVisible: {
+                  list: false,
+                  show: false,
+                  edit: false,
+                  filter: false,
+                },
               },
               createdAt: {
-                isVisible: { list: true, show: false, edit: false, filter: false },
+                isVisible: {
+                  list: true,
+                  show: false,
+                  edit: false,
+                  filter: false,
+                },
               },
               updatedAt: {
-                isVisible: { list: false, show: false, edit: false, filter: false },
+                isVisible: {
+                  list: false,
+                  show: false,
+                  edit: false,
+                  filter: false,
+                },
               },
             },
             actions: {
               list: {
-                isAccessible: ({ currentAdmin }: any) => currentAdmin?.role === 'ADMIN',
-                isVisible: ({ currentAdmin }: any) => currentAdmin?.role === 'ADMIN',
+                isAccessible: ({ currentAdmin }: any) =>
+                  currentAdmin?.role === "ADMIN",
+                isVisible: ({ currentAdmin }: any) =>
+                  currentAdmin?.role === "ADMIN",
               },
               new: {
-                isAccessible: ({ currentAdmin }: any) => currentAdmin?.role === 'ADMIN',
+                isAccessible: ({ currentAdmin }: any) =>
+                  currentAdmin?.role === "ADMIN",
                 before: async (request: any) => {
                   if (request.payload?.password) {
-                    request.payload.password = await bcrypt.hash(request.payload.password, 12);
+                    request.payload.password = await bcrypt.hash(
+                      request.payload.password,
+                      12,
+                    );
                   }
                   return request;
                 },
               },
               edit: {
-                isAccessible: ({ currentAdmin }: any) => currentAdmin?.role === 'ADMIN',
+                isAccessible: ({ currentAdmin }: any) =>
+                  currentAdmin?.role === "ADMIN",
                 before: async (request: any) => {
                   if (request.payload?.password) {
-                    request.payload.password = await bcrypt.hash(request.payload.password, 12);
+                    request.payload.password = await bcrypt.hash(
+                      request.payload.password,
+                      12,
+                    );
                   } else {
                     delete request.payload?.password;
                   }
@@ -675,27 +1068,32 @@ async function bootstrap() {
                 },
               },
               delete: {
-                isAccessible: ({ currentAdmin }: any) => currentAdmin?.role === 'ADMIN',
+                isAccessible: ({ currentAdmin }: any) =>
+                  currentAdmin?.role === "ADMIN",
               },
               show: {
-                isAccessible: ({ currentAdmin }: any) => currentAdmin?.role === 'ADMIN',
+                isAccessible: ({ currentAdmin }: any) =>
+                  currentAdmin?.role === "ADMIN",
               },
             },
           },
         },
         // Audit Log Resource (Admin only - hidden from HOST and RECEPTION)
         {
-          resource: { model: getModel('AuditLog'), client: prisma },
+          resource: { model: getModel("AuditLog"), client: prisma },
           options: {
-            id: 'AuditLog',
-            navigation: { name: 'System', icon: 'FileText' },
+            id: "AuditLog",
+            navigation: { name: "System", icon: "FileText" },
             actions: {
               list: {
-                isAccessible: ({ currentAdmin }: any) => currentAdmin?.role === 'ADMIN',
-                isVisible: ({ currentAdmin }: any) => currentAdmin?.role === 'ADMIN',
+                isAccessible: ({ currentAdmin }: any) =>
+                  currentAdmin?.role === "ADMIN",
+                isVisible: ({ currentAdmin }: any) =>
+                  currentAdmin?.role === "ADMIN",
               },
               show: {
-                isAccessible: ({ currentAdmin }: any) => currentAdmin?.role === 'ADMIN',
+                isAccessible: ({ currentAdmin }: any) =>
+                  currentAdmin?.role === "ADMIN",
               },
               new: { isAccessible: false },
               edit: { isAccessible: false },
@@ -705,89 +1103,89 @@ async function bootstrap() {
         },
       ],
       locale: {
-        language: 'en',
+        language: "en",
         translations: {
           en: {
             labels: {
-              Hosts: 'Hosts',
-              Deliveries: 'Deliveries',
-              Visitors: 'Visitors',
-              PreRegister: 'Pre Register',
-              Users: 'Users',
-              AuditLog: 'Audit Log',
+              Hosts: "Hosts",
+              Deliveries: "Deliveries",
+              Visitors: "Visitors",
+              PreRegister: "Pre Register",
+              Users: "Users",
+              AuditLog: "Audit Log",
               location: {
-                BARWA_TOWERS: 'Barwa Towers',
-                MARINA_50: 'Marina 50',
-                ELEMENT_MARIOTT: 'Element Marriott',
+                BARWA_TOWERS: "Barwa Towers",
+                MARINA_50: "Marina 50",
+                ELEMENT_MARIOTT: "Element Marriott",
               },
               role: {
-                ADMIN: 'Admin',
-                RECEPTION: 'Reception',
-                HOST: 'Host',
-                Admin: 'Admin',
-                Reception: 'Reception',
-                Host: 'Host',
-                admin: 'Admin',
-                reception: 'Reception',
-                host: 'Host',
+                ADMIN: "Admin",
+                RECEPTION: "Reception",
+                HOST: "Host",
+                Admin: "Admin",
+                Reception: "Reception",
+                Host: "Host",
+                admin: "Admin",
+                reception: "Reception",
+                host: "Host",
               },
               Role: {
-                ADMIN: 'Admin',
-                RECEPTION: 'Reception',
-                HOST: 'Host',
-                Admin: 'Admin',
-                Reception: 'Reception',
-                Host: 'Host',
+                ADMIN: "Admin",
+                RECEPTION: "Reception",
+                HOST: "Host",
+                Admin: "Admin",
+                Reception: "Reception",
+                Host: "Host",
               },
             },
             properties: {
-              hostId: 'Host',
-              visitorName: 'Visitor Name',
-              visitorCompany: 'Company',
-              visitorPhone: 'Phone',
-              visitorEmail: 'Email',
-              purpose: 'Purpose',
-              expectedDate: 'Expected Visit Date',
-              courier: 'Courier',
-              recipient: 'Recipient',
-              notes: 'Notes',
-              location: 'Location',
-              name: 'Name',
-              company: 'Company',
-              email: 'Email',
-              phone: 'Phone',
-              status: 'Status',
-              checkInAt: 'Check In Time',
-              checkOutAt: 'Check Out Time',
-              receivedAt: 'Received At',
-              pickedUpAt: 'Picked Up At',
-              createdAt: 'Created At',
-              updatedAt: 'Updated At',
-              role: 'Role',
-              Role: 'Role',
+              hostId: "Host",
+              visitorName: "Visitor Name",
+              visitorCompany: "Company",
+              visitorPhone: "Phone",
+              visitorEmail: "Email",
+              purpose: "Purpose",
+              expectedDate: "Expected Visit Date",
+              courier: "Courier",
+              recipient: "Recipient",
+              notes: "Notes",
+              location: "Location",
+              name: "Name",
+              company: "Company",
+              email: "Email",
+              phone: "Phone",
+              status: "Status",
+              checkInAt: "Check In Time",
+              checkOutAt: "Check Out Time",
+              receivedAt: "Received At",
+              pickedUpAt: "Picked Up At",
+              createdAt: "Created At",
+              updatedAt: "Updated At",
+              role: "Role",
+              Role: "Role",
             },
             actions: {
-              markPickedUp: 'Mark Picked Up',
-              checkout: 'Check Out',
-              sendQr: 'Send QR',
-              approve: 'Approve',
-              reject: 'Reject',
-              bulkImport: 'Bulk Import',
+              markPickedUp: "Mark Picked Up",
+              checkout: "Check Out",
+              sendQr: "Send QR",
+              approve: "Approve",
+              reject: "Reject",
+              bulkImport: "Bulk Import",
             },
             components: {
               Login: {
-                welcomeMessage: 'Welcome to Admin Panel',
+                welcomeMessage: "Welcome to Admin Panel",
               },
             },
             resources: {
               User: {
                 properties: {
-                  role: 'Role',
+                  role: "Role",
                 },
               },
               Hosts: {
                 properties: {
-                  role: 'Role',
+                  role: "Role",
                 },
               },
             },
@@ -799,20 +1197,20 @@ async function bootstrap() {
     const rootPath = admin.options.rootPath;
 
     // Create a SHARED session store for both auto-login and AdminJS
-    const session = require('express-session');
+    const session = require("express-session");
     const MemoryStore = session.MemoryStore;
     const sharedSessionStore = new MemoryStore();
 
     const sharedSessionConfig = {
       store: sharedSessionStore,
       secret: cookieSecret,
-      name: 'adminjs',
+      name: "adminjs",
       resave: false,
       saveUninitialized: false,
       cookie: {
         httpOnly: true,
-        sameSite: 'lax' as const,
-        secure: process.env.NODE_ENV === 'production', // Required for HTTPS in production
+        sameSite: "lax" as const,
+        secure: process.env.NODE_ENV === "production", // Required for HTTPS in production
       },
     };
 
@@ -837,7 +1235,7 @@ async function bootstrap() {
             name: user.name,
           };
         },
-        cookieName: 'adminjs',
+        cookieName: "adminjs",
         cookiePassword: cookieSecret,
       },
       null,
@@ -853,60 +1251,70 @@ async function bootstrap() {
     // Uses the SAME session store as AdminJS so sessions are shared.
     const autoLoginSessionMiddleware = session(sharedSessionConfig);
 
-    expressApp.get(`${rootPath}/auto-login`, autoLoginSessionMiddleware, async (req: any, res: any) => {
-      const token = req.query.token as string;
-      if (!token) {
-        return res.redirect(`${rootPath}/login`);
-      }
-
-      try {
-        // Verify JWT using same secret as API
-        const jwt = require('jsonwebtoken');
-        const secret = process.env.JWT_SECRET || 'fallback-secret-min-32-chars';
-        const payload = jwt.verify(token, secret) as { sub: number; email?: string; role?: string };
-
-        // Look up user by ID from token
-        const user = await prisma.user.findUnique({
-          where: { id: payload.sub },
-          include: { host: true },
-        });
-
-        if (!user) {
+    expressApp.get(
+      `${rootPath}/auto-login`,
+      autoLoginSessionMiddleware,
+      async (req: any, res: any) => {
+        const token = req.query.token as string;
+        if (!token) {
           return res.redirect(`${rootPath}/login`);
         }
 
-        // Only allow ADMIN and RECEPTION (GM is also ADMIN)
-        if (user.role !== 'ADMIN' && user.role !== 'RECEPTION') {
-          return res.redirect(`${rootPath}/login`);
-        }
+        try {
+          // Verify JWT using same secret as API
+          const jwt = require("jsonwebtoken");
+          const secret =
+            process.env.JWT_SECRET || "fallback-secret-min-32-chars";
+          const payload = jwt.verify(token, secret) as {
+            sub: number;
+            email?: string;
+            role?: string;
+          };
 
-        // Create AdminJS session (same shape as authenticate() result)
-        req.session.adminUser = {
-          email: user.email,
-          role: user.role,
-          hostId: user.hostId?.toString(),
-          hostCompany: user.host?.company,
-          name: user.name,
-        };
+          // Look up user by ID from token
+          const user = await prisma.user.findUnique({
+            where: { id: payload.sub },
+            include: { host: true },
+          });
 
-        // Save session before redirect
-        req.session.save((err: any) => {
-          if (err) {
-            console.error('Session save failed:', err);
+          if (!user) {
             return res.redirect(`${rootPath}/login`);
           }
-          return res.redirect(rootPath);
-        });
-      } catch (err) {
-        console.error('Admin auto-login failed:', err);
-        return res.redirect(`${rootPath}/login`);
-      }
-    });
+
+          // Only allow ADMIN and RECEPTION (GM is also ADMIN)
+          if (user.role !== "ADMIN" && user.role !== "RECEPTION") {
+            return res.redirect(`${rootPath}/login`);
+          }
+
+          // Create AdminJS session (same shape as authenticate() result)
+          req.session.adminUser = {
+            email: user.email,
+            role: user.role,
+            hostId: user.hostId?.toString(),
+            hostCompany: user.host?.company,
+            name: user.name,
+          };
+
+          // Save session before redirect
+          req.session.save((err: any) => {
+            if (err) {
+              console.error("Session save failed:", err);
+              return res.redirect(`${rootPath}/login`);
+            }
+            return res.redirect(rootPath);
+          });
+        } catch (err) {
+          console.error("Admin auto-login failed:", err);
+          return res.redirect(`${rootPath}/login`);
+        }
+      },
+    );
 
     // Debug quick-login: standalone page + inject into login HTML (when ADMINJS_QUICK_LOGIN=true)
     const showAdminQuickLogin =
-      process.env.ADMINJS_QUICK_LOGIN === 'true' ||
-      (process.env.NODE_ENV !== 'production' && process.env.ADMINJS_QUICK_LOGIN !== 'false');
+      process.env.ADMINJS_QUICK_LOGIN === "true" ||
+      (process.env.NODE_ENV !== "production" &&
+        process.env.ADMINJS_QUICK_LOGIN !== "false");
 
     // Custom login page CSS
     const loginPageStyles = `
@@ -1053,19 +1461,23 @@ async function bootstrap() {
 
     // Custom logout route - destroy session and redirect to login
     const logoutSessionMiddleware = session(sharedSessionConfig);
-    expressApp.get(`${rootPath}/logout`, logoutSessionMiddleware, (req: any, res: any) => {
-      req.session.destroy((err: any) => {
-        if (err) {
-          console.error('Logout session destroy error:', err);
-        }
-        res.clearCookie('connect.sid');
-        res.redirect(`${rootPath}/login`);
-      });
-    });
+    expressApp.get(
+      `${rootPath}/logout`,
+      logoutSessionMiddleware,
+      (req: any, res: any) => {
+        req.session.destroy((err: any) => {
+          if (err) {
+            console.error("Logout session destroy error:", err);
+          }
+          res.clearCookie("connect.sid");
+          res.redirect(`${rootPath}/login`);
+        });
+      },
+    );
 
     // Serve custom login page BEFORE AdminJS handles it
     expressApp.get(`${rootPath}/login`, (req: any, res: any) => {
-      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
       res.send(`
 <!DOCTYPE html>
 <html lang="en">
@@ -1287,8 +1699,8 @@ async function bootstrap() {
 
     // Reset Password Page
     expressApp.get(`${rootPath}/reset-password`, (req: any, res: any) => {
-      const token = req.query.token || '';
-      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      const token = req.query.token || "";
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
       res.send(`
 <!DOCTYPE html>
 <html lang="en">
@@ -1380,11 +1792,13 @@ async function bootstrap() {
 
     if (showAdminQuickLogin) {
       const port = process.env.PORT || 3000;
-      console.log(`Admin quick-login: http://localhost:${port}${rootPath}/quick-login`);
+      console.log(
+        `Admin quick-login: http://localhost:${port}${rootPath}/quick-login`,
+      );
 
       // Standalone quick-login page
       expressApp.get(`${rootPath}/quick-login`, (_req: any, res: any) => {
-        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        res.setHeader("Content-Type", "text/html; charset=utf-8");
         res.send(`
 <!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>Quick Login - Arafat VMS</title></head>
@@ -1401,554 +1815,609 @@ async function bootstrap() {
     // These use the same session as AdminJS
     const settingsSessionMiddleware = session(sharedSessionConfig);
     const requireAdminSession = (req: any, res: any, next: any) => {
-      if (!req.session?.adminUser || req.session.adminUser.role !== 'ADMIN') {
-        return res.status(401).json({ message: 'Unauthorized' });
+      if (!req.session?.adminUser || req.session.adminUser.role !== "ADMIN") {
+        return res.status(401).json({ message: "Unauthorized" });
       }
       next();
     };
 
     // Parse JSON body for settings routes
-    const jsonParser = require('express').json();
+    const jsonParser = require("express").json();
 
     // GET /admin/api/settings
-    expressApp.get(`${rootPath}/api/settings`, settingsSessionMiddleware, requireAdminSession, (_req: any, res: any) => {
-      res.json({
-        site: {
-          name: process.env.SITE_NAME || 'Arafat VMS',
-          timezone: process.env.SITE_TIMEZONE || 'Asia/Qatar',
-        },
-        whatsapp: {
-          enabled: !!(process.env.WHATSAPP_ENDPOINT && process.env.WHATSAPP_API_KEY),
-          provider: 'wbiztool',
-          configured: !!(process.env.WHATSAPP_ENDPOINT && process.env.WHATSAPP_CLIENT_ID && process.env.WHATSAPP_CLIENT && process.env.WHATSAPP_API_KEY),
-        },
-        smtp: {
-          enabled: process.env.SMTP_ENABLED === 'true',
-          host: process.env.SMTP_HOST || 'Not configured',
-          configured: !!process.env.SMTP_HOST && !!process.env.SMTP_USER,
-        },
-        maintenance: {
-          enabled: process.env.MAINTENANCE_MODE === 'true',
-          message: process.env.MAINTENANCE_MESSAGE || 'System under maintenance',
-        },
-      });
-    });
+    expressApp.get(
+      `${rootPath}/api/settings`,
+      settingsSessionMiddleware,
+      requireAdminSession,
+      (_req: any, res: any) => {
+        res.json({
+          site: {
+            name: process.env.SITE_NAME || "Arafat VMS",
+            timezone: process.env.SITE_TIMEZONE || "Asia/Qatar",
+          },
+          whatsapp: {
+            enabled: !!(
+              process.env.WHATSAPP_ENDPOINT && process.env.WHATSAPP_API_KEY
+            ),
+            provider: "wbiztool",
+            configured: !!(
+              process.env.WHATSAPP_ENDPOINT &&
+              process.env.WHATSAPP_CLIENT_ID &&
+              process.env.WHATSAPP_CLIENT &&
+              process.env.WHATSAPP_API_KEY
+            ),
+          },
+          smtp: {
+            enabled: process.env.SMTP_ENABLED === "true",
+            host: process.env.SMTP_HOST || "Not configured",
+            configured: !!process.env.SMTP_HOST && !!process.env.SMTP_USER,
+          },
+          maintenance: {
+            enabled: process.env.MAINTENANCE_MODE === "true",
+            message:
+              process.env.MAINTENANCE_MESSAGE || "System under maintenance",
+          },
+        });
+      },
+    );
 
     // POST /admin/api/settings/test-whatsapp
-    expressApp.post(`${rootPath}/api/settings/test-whatsapp`, settingsSessionMiddleware, jsonParser, requireAdminSession, async (req: any, res: any) => {
-      const { phone } = req.body;
-      if (!phone) {
-        return res.status(400).json({ message: 'Phone number required' });
-      }
-      if (!process.env.WHATSAPP_ENDPOINT || !process.env.WHATSAPP_API_KEY) {
-        return res.status(400).json({ message: 'WhatsApp not configured' });
-      }
-      try {
-        const { WhatsAppService } = await import('./notifications/whatsapp.service');
-        const whatsappService = app.get(WhatsAppService);
-        const sent = await whatsappService.send(phone, 'This is a test message from Arafat VMS. If you received this, WhatsApp is configured correctly!');
-        if (!sent) {
-          return res.status(500).json({ message: 'Failed to send test message' });
+    expressApp.post(
+      `${rootPath}/api/settings/test-whatsapp`,
+      settingsSessionMiddleware,
+      jsonParser,
+      requireAdminSession,
+      async (req: any, res: any) => {
+        const { phone } = req.body;
+        if (!phone) {
+          return res.status(400).json({ message: "Phone number required" });
         }
-        res.json({ success: true, message: 'Test message sent' });
-      } catch (e) {
-        console.error('WhatsApp test failed:', e);
-        res.status(500).json({ message: 'Failed to send test message' });
-      }
-    });
+        if (!process.env.WHATSAPP_ENDPOINT || !process.env.WHATSAPP_API_KEY) {
+          return res.status(400).json({ message: "WhatsApp not configured" });
+        }
+        try {
+          const { WhatsAppService } =
+            await import("./notifications/whatsapp.service");
+          const whatsappService = app.get(WhatsAppService);
+          const sent = await whatsappService.send(
+            phone,
+            "This is a test message from Arafat VMS. If you received this, WhatsApp is configured correctly!",
+          );
+          if (!sent) {
+            return res
+              .status(500)
+              .json({ message: "Failed to send test message" });
+          }
+          res.json({ success: true, message: "Test message sent" });
+        } catch (e) {
+          console.error("WhatsApp test failed:", e);
+          res.status(500).json({ message: "Failed to send test message" });
+        }
+      },
+    );
 
     // POST /admin/api/settings/test-email
-    expressApp.post(`${rootPath}/api/settings/test-email`, settingsSessionMiddleware, jsonParser, requireAdminSession, async (req: any, res: any) => {
-      const { email } = req.body;
-      if (!email) {
-        return res.status(400).json({ message: 'Email address required' });
-      }
-      if (!process.env.SMTP_HOST) {
-        return res.status(400).json({ message: 'SMTP not configured' });
-      }
-      try {
-        const { EmailService } = await import('./notifications/email.service');
-        const emailService = app.get(EmailService);
-        await emailService.send({
-          to: email,
-          subject: 'Test Email - Arafat VMS',
-          html: '<h2>Test Email</h2><p>This is a test email from Arafat VMS. If you received this, SMTP is configured correctly!</p>',
-        });
-        res.json({ success: true, message: 'Test email sent' });
-      } catch (e) {
-        console.error('Email test failed:', e);
-        res.status(500).json({ message: 'Failed to send test email' });
-      }
-    });
+    expressApp.post(
+      `${rootPath}/api/settings/test-email`,
+      settingsSessionMiddleware,
+      jsonParser,
+      requireAdminSession,
+      async (req: any, res: any) => {
+        const { email } = req.body;
+        if (!email) {
+          return res.status(400).json({ message: "Email address required" });
+        }
+        if (!process.env.SMTP_HOST) {
+          return res.status(400).json({ message: "SMTP not configured" });
+        }
+        try {
+          const { EmailService } =
+            await import("./notifications/email.service");
+          const emailService = app.get(EmailService);
+          await emailService.send({
+            to: email,
+            subject: "Test Email - Arafat VMS",
+            html: "<h2>Test Email</h2><p>This is a test email from Arafat VMS. If you received this, SMTP is configured correctly!</p>",
+          });
+          res.json({ success: true, message: "Test email sent" });
+        } catch (e) {
+          console.error("Email test failed:", e);
+          res.status(500).json({ message: "Failed to send test email" });
+        }
+      },
+    );
 
     // GET /admin/api/qr/:visitId - Get QR code for a visit
-    expressApp.get(`${rootPath}/api/qr/:visitId`, settingsSessionMiddleware, async (req: any, res: any) => {
-      const { visitId } = req.params;
-      try {
-        const visit = await prisma.visit.findUnique({
-          where: { id: visitId },
-          include: { qrToken: true },
-        });
-        if (!visit) {
-          return res.status(404).json({ message: 'Visit not found' });
+    expressApp.get(
+      `${rootPath}/api/qr/:visitId`,
+      settingsSessionMiddleware,
+      async (req: any, res: any) => {
+        const { visitId } = req.params;
+        try {
+          const visit = await prisma.visit.findUnique({
+            where: { id: visitId },
+            include: { qrToken: true },
+          });
+          if (!visit) {
+            return res.status(404).json({ message: "Visit not found" });
+          }
+          const token = visit.qrToken?.token || visit.sessionId;
+          const QRCode = require("qrcode");
+          const qrDataUrl = await QRCode.toDataURL(token, {
+            width: 300,
+            margin: 2,
+          });
+          res.json({ qrDataUrl, token });
+        } catch (e) {
+          console.error("QR generation error:", e);
+          res.status(500).json({ message: "Failed to generate QR code" });
         }
-        const token = visit.qrToken?.token || visit.sessionId;
-        const QRCode = require('qrcode');
-        const qrDataUrl = await QRCode.toDataURL(token, { width: 300, margin: 2 });
-        res.json({ qrDataUrl, token });
-      } catch (e) {
-        console.error('QR generation error:', e);
-        res.status(500).json({ message: 'Failed to generate QR code' });
-      }
-    });
+      },
+    );
 
     // POST /admin/api/send-qr - Send QR code via WhatsApp or Email
-    expressApp.post(`${rootPath}/api/send-qr`, settingsSessionMiddleware, jsonParser, async (req: any, res: any) => {
-      const { visitId, method } = req.body;
-      console.log('[send-qr] Starting for visitId:', visitId, 'method:', method);
+    expressApp.post(
+      `${rootPath}/api/send-qr`,
+      settingsSessionMiddleware,
+      jsonParser,
+      async (req: any, res: any) => {
+        const { visitId, method } = req.body;
+        console.log(
+          "[send-qr] Starting for visitId:",
+          visitId,
+          "method:",
+          method,
+        );
 
-      try {
-        const visit = await prisma.visit.findUnique({
-          where: { id: visitId },
-          include: { qrToken: true, host: true },
-        });
-
-        if (!visit) {
-          return res.status(404).json({ message: 'Visit not found' });
-        }
-
-        console.log('[send-qr] Visit found:', visit.visitorName);
-
-        const token = visit.qrToken?.token || visit.sessionId;
-        const QRCode = require('qrcode');
-        const qrDataUrl = await QRCode.toDataURL(token, { width: 300, margin: 2 });
-        console.log('[send-qr] QR generated, length:', qrDataUrl.length);
-
-        if (method === 'whatsapp') {
-          if (!visit.visitorPhone) {
-            return res.status(400).json({ message: 'No phone number available' });
-          }
-
-          console.log('[send-qr] Generating visitor card image...');
-
-          // Generate visitor card image with QR code
-          const { createCanvas, loadImage } = require('canvas');
-          const cardWidth = 400;
-          const cardHeight = 600;
-          const canvas = createCanvas(cardWidth, cardHeight);
-          const ctx = canvas.getContext('2d');
-
-          // Background - white with subtle gradient
-          const gradient = ctx.createLinearGradient(0, 0, 0, cardHeight);
-          gradient.addColorStop(0, '#ffffff');
-          gradient.addColorStop(1, '#f8fafc');
-          ctx.fillStyle = gradient;
-          ctx.fillRect(0, 0, cardWidth, cardHeight);
-
-          // Header bar - blue accent
-          ctx.fillStyle = '#2563eb';
-          ctx.fillRect(0, 0, cardWidth, 80);
-
-          // Header text
-          ctx.fillStyle = '#ffffff';
-          ctx.font = 'bold 24px Arial, sans-serif';
-          ctx.textAlign = 'center';
-          ctx.fillText('VISITOR PASS', cardWidth / 2, 50);
-
-          // Visitor name
-          ctx.fillStyle = '#1e293b';
-          ctx.font = 'bold 28px Arial, sans-serif';
-          ctx.fillText(visit.visitorName || 'Visitor', cardWidth / 2, 130);
-
-          // Visitor Company
-          ctx.fillStyle = '#64748b';
-          ctx.font = '18px Arial, sans-serif';
-          ctx.fillText(visit.visitorCompany || '', cardWidth / 2, 160);
-
-          // QR Code - load from data URL (in the middle)
-          const qrImage = await loadImage(qrDataUrl);
-          const qrSize = 200;
-          const qrX = (cardWidth - qrSize) / 2;
-          const qrY = 190;
-
-          // QR background
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(qrX - 10, qrY - 10, qrSize + 20, qrSize + 20);
-          ctx.strokeStyle = '#e2e8f0';
-          ctx.lineWidth = 2;
-          ctx.strokeRect(qrX - 10, qrY - 10, qrSize + 20, qrSize + 20);
-
-          // Draw QR code
-          ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
-
-          // Scan instruction
-          ctx.fillStyle = '#94a3b8';
-          ctx.font = '12px Arial, sans-serif';
-          ctx.fillText('Scan at reception for check-in', cardWidth / 2, qrY + qrSize + 30);
-
-          // Divider line
-          ctx.strokeStyle = '#e2e8f0';
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.moveTo(40, 450);
-          ctx.lineTo(cardWidth - 40, 450);
-          ctx.stroke();
-
-          // Host section (bottom)
-          ctx.fillStyle = '#475569';
-          ctx.font = '14px Arial, sans-serif';
-          ctx.fillText('VISITING', cardWidth / 2, 475);
-
-          ctx.fillStyle = '#1e293b';
-          ctx.font = 'bold 18px Arial, sans-serif';
-          ctx.fillText(visit.host?.name || 'Host', cardWidth / 2, 500);
-
-          ctx.fillStyle = '#64748b';
-          ctx.font = '14px Arial, sans-serif';
-          ctx.fillText(visit.host?.company || '', cardWidth / 2, 520);
-
-          // Purpose
-          ctx.fillStyle = '#1e293b';
-          ctx.font = '14px Arial, sans-serif';
-          const purpose = visit.purpose || 'Visit';
-          const maxPurposeWidth = cardWidth - 80;
-          if (ctx.measureText(purpose).width > maxPurposeWidth) {
-            ctx.fillText(purpose.substring(0, 35) + '...', cardWidth / 2, 545);
-          } else {
-            ctx.fillText(purpose, cardWidth / 2, 545);
-          }
-
-          // Date (at the bottom)
-          const visitDate = visit.expectedDate || visit.createdAt || new Date();
-          const dateStr = new Date(visitDate).toLocaleDateString('en-US', {
-            weekday: 'short',
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric'
+        try {
+          const visit = await prisma.visit.findUnique({
+            where: { id: visitId },
+            include: { qrToken: true, host: true },
           });
-          ctx.fillStyle = '#475569';
-          ctx.font = 'bold 14px Arial, sans-serif';
-          ctx.fillText(dateStr, cardWidth / 2, 575);
 
-          // Convert canvas to base64
-          const cardBase64 = canvas.toBuffer('image/png').toString('base64');
-
-          console.log('[send-qr] Sending WhatsApp image to:', visit.visitorPhone);
-          const { WhatsAppService } = await import('./notifications/whatsapp.service');
-          const whatsappService = app.get(WhatsAppService);
-
-          const caption = `Hello ${visit.visitorName}!\n\nYour visitor pass for ${visit.host?.company || 'our office'} is ready.\n\nPlease show this QR code at reception for check-in.`;
-          const sent = await whatsappService.sendImage(visit.visitorPhone, cardBase64, caption);
-          console.log('[send-qr] WhatsApp image result:', sent);
-
-          if (!sent) {
-            return res.status(503).json({ message: 'WhatsApp service failed to send image. Check configuration.' });
-          }
-          return res.json({ success: true, message: 'QR card sent via WhatsApp' });
-        }
-
-        if (method === 'email') {
-          if (!visit.visitorEmail) {
-            return res.status(400).json({ message: 'No email address available' });
+          if (!visit) {
+            return res.status(404).json({ message: "Visit not found" });
           }
 
-          console.log('[send-qr] Sending email to:', visit.visitorEmail);
-          const { EmailService } = await import('./notifications/email.service');
-          const emailService = app.get(EmailService);
-          const sent = await emailService.send({
-            to: visit.visitorEmail,
-            subject: `Your Visit QR Code - ${visit.host?.company || 'Office Visit'}`,
-            html: `
+          console.log("[send-qr] Visit found:", visit.visitorName);
+
+          const token = visit.qrToken?.token || visit.sessionId;
+          const QRCode = require("qrcode");
+          const qrDataUrl = await QRCode.toDataURL(token, {
+            width: 300,
+            margin: 2,
+          });
+          console.log("[send-qr] QR generated, length:", qrDataUrl.length);
+
+          if (method === "whatsapp") {
+            if (!visit.visitorPhone) {
+              return res
+                .status(400)
+                .json({ message: "No phone number available" });
+            }
+
+            console.log("[send-qr] Generating visitor card image...");
+
+            // Generate visitor card image with QR code
+            const { createCanvas, loadImage } = require("canvas");
+            const cardWidth = 400;
+            const cardHeight = 600;
+            const canvas = createCanvas(cardWidth, cardHeight);
+            const ctx = canvas.getContext("2d");
+
+            // Background - white with subtle gradient
+            const gradient = ctx.createLinearGradient(0, 0, 0, cardHeight);
+            gradient.addColorStop(0, "#ffffff");
+            gradient.addColorStop(1, "#f8fafc");
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, cardWidth, cardHeight);
+
+            // Header bar - blue accent
+            ctx.fillStyle = "#2563eb";
+            ctx.fillRect(0, 0, cardWidth, 80);
+
+            // Header text
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "bold 24px Arial, sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText("VISITOR PASS", cardWidth / 2, 50);
+
+            // Visitor name
+            ctx.fillStyle = "#1e293b";
+            ctx.font = "bold 28px Arial, sans-serif";
+            ctx.fillText(visit.visitorName || "Visitor", cardWidth / 2, 130);
+
+            // Visitor Company
+            ctx.fillStyle = "#64748b";
+            ctx.font = "18px Arial, sans-serif";
+            ctx.fillText(visit.visitorCompany || "", cardWidth / 2, 160);
+
+            // QR Code - load from data URL (in the middle)
+            const qrImage = await loadImage(qrDataUrl);
+            const qrSize = 200;
+            const qrX = (cardWidth - qrSize) / 2;
+            const qrY = 190;
+
+            // QR background
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(qrX - 10, qrY - 10, qrSize + 20, qrSize + 20);
+            ctx.strokeStyle = "#e2e8f0";
+            ctx.lineWidth = 2;
+            ctx.strokeRect(qrX - 10, qrY - 10, qrSize + 20, qrSize + 20);
+
+            // Draw QR code
+            ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
+
+            // Scan instruction
+            ctx.fillStyle = "#94a3b8";
+            ctx.font = "12px Arial, sans-serif";
+            ctx.fillText(
+              "Scan at reception for check-in",
+              cardWidth / 2,
+              qrY + qrSize + 30,
+            );
+
+            // Divider line
+            ctx.strokeStyle = "#e2e8f0";
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(40, 450);
+            ctx.lineTo(cardWidth - 40, 450);
+            ctx.stroke();
+
+            // Host section (bottom)
+            ctx.fillStyle = "#475569";
+            ctx.font = "14px Arial, sans-serif";
+            ctx.fillText("VISITING", cardWidth / 2, 475);
+
+            ctx.fillStyle = "#1e293b";
+            ctx.font = "bold 18px Arial, sans-serif";
+            ctx.fillText(visit.host?.name || "Host", cardWidth / 2, 500);
+
+            ctx.fillStyle = "#64748b";
+            ctx.font = "14px Arial, sans-serif";
+            ctx.fillText(visit.host?.company || "", cardWidth / 2, 520);
+
+            // Purpose
+            ctx.fillStyle = "#1e293b";
+            ctx.font = "14px Arial, sans-serif";
+            const purpose = visit.purpose || "Visit";
+            const maxPurposeWidth = cardWidth - 80;
+            if (ctx.measureText(purpose).width > maxPurposeWidth) {
+              ctx.fillText(
+                purpose.substring(0, 35) + "...",
+                cardWidth / 2,
+                545,
+              );
+            } else {
+              ctx.fillText(purpose, cardWidth / 2, 545);
+            }
+
+            // Date (at the bottom)
+            const visitDate =
+              visit.expectedDate || visit.createdAt || new Date();
+            const dateStr = new Date(visitDate).toLocaleDateString("en-US", {
+              weekday: "short",
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+            });
+            ctx.fillStyle = "#475569";
+            ctx.font = "bold 14px Arial, sans-serif";
+            ctx.fillText(dateStr, cardWidth / 2, 575);
+
+            // Convert canvas to base64
+            const cardBase64 = canvas.toBuffer("image/png").toString("base64");
+
+            console.log(
+              "[send-qr] Sending WhatsApp image to:",
+              visit.visitorPhone,
+            );
+            const { WhatsAppService } =
+              await import("./notifications/whatsapp.service");
+            const whatsappService = app.get(WhatsAppService);
+
+            const caption = `Hello ${visit.visitorName}!\n\nYour visitor pass for ${visit.host?.company || "our office"} is ready.\n\nPlease show this QR code at reception for check-in.`;
+            const sent = await whatsappService.sendImage(
+              visit.visitorPhone,
+              cardBase64,
+              caption,
+            );
+            console.log("[send-qr] WhatsApp image result:", sent);
+
+            if (!sent) {
+              return res.status(503).json({
+                message:
+                  "WhatsApp service failed to send image. Check configuration.",
+              });
+            }
+            return res.json({
+              success: true,
+              message: "QR card sent via WhatsApp",
+            });
+          }
+
+          if (method === "email") {
+            if (!visit.visitorEmail) {
+              return res
+                .status(400)
+                .json({ message: "No email address available" });
+            }
+
+            console.log("[send-qr] Sending email to:", visit.visitorEmail);
+            const { EmailService } =
+              await import("./notifications/email.service");
+            const emailService = app.get(EmailService);
+            const sent = await emailService.send({
+              to: visit.visitorEmail,
+              subject: `Your Visit QR Code - ${visit.host?.company || "Office Visit"}`,
+              html: `
               <h2>Hello ${visit.visitorName}!</h2>
-              <p>Your QR code for visiting <strong>${visit.host?.company || 'our office'}</strong> is ready.</p>
+              <p>Your QR code for visiting <strong>${visit.host?.company || "our office"}</strong> is ready.</p>
               <p>Please show this QR code at reception for check-in:</p>
               <img src="${qrDataUrl}" alt="QR Code" style="width: 200px; height: 200px;" />
-              <p>Host: ${visit.host?.name || 'N/A'}</p>
+              <p>Host: ${visit.host?.name || "N/A"}</p>
               <p>Purpose: ${visit.purpose}</p>
               <br />
               <p>Thank you!</p>
             `,
-          });
-          console.log('[send-qr] Email result:', sent);
+            });
+            console.log("[send-qr] Email result:", sent);
 
-          if (!sent) {
-            return res.status(503).json({ message: 'Email service failed to send. Check SMTP configuration.' });
+            if (!sent) {
+              return res.status(503).json({
+                message:
+                  "Email service failed to send. Check SMTP configuration.",
+              });
+            }
+            return res.json({ success: true, message: "QR sent via Email" });
           }
-          return res.json({ success: true, message: 'QR sent via Email' });
-        }
 
-        return res.status(400).json({ message: 'Invalid send method' });
-      } catch (e) {
-        console.error('[send-qr] Error:', e);
-        return res.status(500).json({ message: 'Failed to send QR: ' + (e instanceof Error ? e.message : 'Unknown error') });
-      }
-    });
+          return res.status(400).json({ message: "Invalid send method" });
+        } catch (e) {
+          console.error("[send-qr] Error:", e);
+          return res.status(500).json({
+            message:
+              "Failed to send QR: " +
+              (e instanceof Error ? e.message : "Unknown error"),
+          });
+        }
+      },
+    );
 
     // POST /admin/api/settings/update
-    expressApp.post(`${rootPath}/api/settings/update`, settingsSessionMiddleware, jsonParser, requireAdminSession, async (req: any, res: any) => {
-      const fs = require('fs');
-      const pathModule = require('path');
-      const envPath = pathModule.join(process.cwd(), '.env');
+    expressApp.post(
+      `${rootPath}/api/settings/update`,
+      settingsSessionMiddleware,
+      jsonParser,
+      requireAdminSession,
+      async (req: any, res: any) => {
+        const fs = require("fs");
+        const pathModule = require("path");
+        const envPath = pathModule.join(process.cwd(), ".env");
 
-      try {
-        let envContent = fs.readFileSync(envPath, 'utf8');
-        const updateEnvVar = (key: string, value: string | number | boolean) => {
-          const strValue = String(value);
-          const regex = new RegExp(`^${key}=.*$`, 'm');
-          if (regex.test(envContent)) {
-            envContent = envContent.replace(regex, `${key}=${strValue}`);
-          } else {
-            envContent += `\n${key}=${strValue}`;
+        try {
+          let envContent = fs.readFileSync(envPath, "utf8");
+          const updateEnvVar = (
+            key: string,
+            value: string | number | boolean,
+          ) => {
+            const strValue = String(value);
+            const regex = new RegExp(`^${key}=.*$`, "m");
+            if (regex.test(envContent)) {
+              envContent = envContent.replace(regex, `${key}=${strValue}`);
+            } else {
+              envContent += `\n${key}=${strValue}`;
+            }
+            process.env[key] = strValue;
+          };
+
+          const { smtp, whatsapp, maintenance } = req.body;
+          if (smtp) {
+            if (smtp.enabled !== undefined)
+              updateEnvVar("SMTP_ENABLED", smtp.enabled);
+            if (smtp.host) updateEnvVar("SMTP_HOST", smtp.host);
+            if (smtp.port) updateEnvVar("SMTP_PORT", smtp.port);
+            if (smtp.user) updateEnvVar("SMTP_USER", smtp.user);
+            if (smtp.pass) updateEnvVar("SMTP_PASS", smtp.pass);
+            if (smtp.from) updateEnvVar("SMTP_FROM", smtp.from);
           }
-          process.env[key] = strValue;
-        };
+          if (whatsapp) {
+            if (whatsapp.endpoint)
+              updateEnvVar("WHATSAPP_ENDPOINT", whatsapp.endpoint);
+            if (whatsapp.clientId)
+              updateEnvVar("WHATSAPP_CLIENT_ID", whatsapp.clientId);
+            if (whatsapp.client)
+              updateEnvVar("WHATSAPP_CLIENT", whatsapp.client);
+            if (whatsapp.apiKey)
+              updateEnvVar("WHATSAPP_API_KEY", whatsapp.apiKey);
+          }
+          if (maintenance) {
+            if (maintenance.enabled !== undefined)
+              updateEnvVar("MAINTENANCE_MODE", maintenance.enabled);
+            if (maintenance.message)
+              updateEnvVar("MAINTENANCE_MESSAGE", maintenance.message);
+          }
 
-        const { smtp, whatsapp, maintenance } = req.body;
-        if (smtp) {
-          if (smtp.enabled !== undefined) updateEnvVar('SMTP_ENABLED', smtp.enabled);
-          if (smtp.host) updateEnvVar('SMTP_HOST', smtp.host);
-          if (smtp.port) updateEnvVar('SMTP_PORT', smtp.port);
-          if (smtp.user) updateEnvVar('SMTP_USER', smtp.user);
-          if (smtp.pass) updateEnvVar('SMTP_PASS', smtp.pass);
-          if (smtp.from) updateEnvVar('SMTP_FROM', smtp.from);
+          fs.writeFileSync(envPath, envContent);
+          res.json({ success: true, message: "Settings updated" });
+        } catch (e) {
+          console.error("Settings update failed:", e);
+          res.status(500).json({ message: "Failed to update settings" });
         }
-        if (whatsapp) {
-          if (whatsapp.endpoint) updateEnvVar('WHATSAPP_ENDPOINT', whatsapp.endpoint);
-          if (whatsapp.clientId) updateEnvVar('WHATSAPP_CLIENT_ID', whatsapp.clientId);
-          if (whatsapp.client) updateEnvVar('WHATSAPP_CLIENT', whatsapp.client);
-          if (whatsapp.apiKey) updateEnvVar('WHATSAPP_API_KEY', whatsapp.apiKey);
-        }
-        if (maintenance) {
-          if (maintenance.enabled !== undefined) updateEnvVar('MAINTENANCE_MODE', maintenance.enabled);
-          if (maintenance.message) updateEnvVar('MAINTENANCE_MESSAGE', maintenance.message);
-        }
-
-        fs.writeFileSync(envPath, envContent);
-        res.json({ success: true, message: 'Settings updated' });
-      } catch (e) {
-        console.error('Settings update failed:', e);
-        res.status(500).json({ message: 'Failed to update settings' });
-      }
-    });
+      },
+    );
 
     // POST /admin/api/hosts/import - Bulk import hosts from CSV or XLSX
     // Must be registered before adminRouter to avoid being caught by AdminJS
     // Supports ?validate=true for dry-run validation without database changes
     // Accepts: { csvContent: string } for CSV or { xlsxContent: base64string } for XLSX
-    const jsonParserLarge = require('express').json({ limit: '50mb' });
-    expressApp.post(`${rootPath}/api/hosts/import`, settingsSessionMiddleware, jsonParserLarge, requireAdminSession, async (req: any, res: any) => {
-      const validateOnly = req.query.validate === 'true';
-      console.log(`Bulk import request received (validateOnly: ${validateOnly})`);
+    const jsonParserLarge = require("express").json({ limit: "50mb" });
+    expressApp.post(
+      `${rootPath}/api/hosts/import`,
+      settingsSessionMiddleware,
+      jsonParserLarge,
+      requireAdminSession,
+      async (req: any, res: any) => {
+        const validateOnly = req.query.validate === "true";
+        console.log(
+          `Bulk import request received (validateOnly: ${validateOnly})`,
+        );
 
-      try {
-        const { csvContent, xlsxContent } = req.body || {};
+        try {
+          const { csvContent, xlsxContent } = req.body || {};
 
-        let records: any[] = [];
+          let records: any[] = [];
 
-        if (xlsxContent && typeof xlsxContent === 'string') {
-          // Parse XLSX from base64
-          console.log(`XLSX content received, length: ${xlsxContent.length} chars`);
-          const XLSX = require('xlsx');
-          const buffer = Buffer.from(xlsxContent, 'base64');
-          const workbook = XLSX.read(buffer, { type: 'buffer' });
-          const sheetName = workbook.SheetNames[0];
-          const sheet = workbook.Sheets[sheetName];
-          records = XLSX.utils.sheet_to_json(sheet, { defval: '' });
-          console.log(`XLSX parsed successfully, ${records.length} records found`);
-        } else if (csvContent && typeof csvContent === 'string' && csvContent.trim()) {
-          // Parse CSV
-          console.log(`CSV content received, length: ${csvContent.length} chars`);
-          const { parse } = await import('csv-parse/sync');
-          records = parse(csvContent, {
-            columns: true,
-            skip_empty_lines: true,
-            trim: true,
-            relax_column_count: true,
-          });
-          console.log(`CSV parsed successfully, ${records.length} records found`);
-        } else {
-          return res.status(400).json({ message: 'csvContent or xlsxContent is required' });
-        }
-
-        console.log(`File parsed successfully, ${records.length} records found`);
-        if (records.length > 0) {
-          console.log('CSV columns detected:', Object.keys(records[0]));
-          console.log('First row data:', JSON.stringify(records[0]));
-        }
-
-        let totalProcessed = 0;
-        let inserted = 0;
-        let skipped = 0;
-        let usersCreated = 0;
-        let usersSkipped = 0;
-        const rejectedRows: Array<{
-          rowNumber: number;
-          reason: string;
-          data: { id: string; name: string; company: string; email: string; phone: string; location: string; status: string }
-        }> = [];
-        const createdCredentials: Array<{ name: string; email: string; password: string; company: string }> = [];
-
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i;
-
-        const mapLocation = (value?: string | null) => {
-          if (!value) return null;
-          const v = value.trim().toLowerCase();
-          if (v.includes('barwa')) return 'BARWA_TOWERS';
-          if (v.includes('element') || v.includes('mariott')) return 'ELEMENT_MARIOTT';
-          if (v.includes('marina') && v.includes('50')) return 'MARINA_50';
-          return null;
-        };
-
-        const mapStatus = (value?: string | null): number | undefined => {
-          if (!value) return undefined; // No default - require explicit status
-          const v = value.trim().toLowerCase();
-          if (v === 'active' || v === '1') return 1;
-          if (v === 'inactive' || v === '0') return 0;
-          return undefined; // Unknown value - reject for review
-        };
-
-        const cleanPhone = (value?: string | null) => {
-          if (!value) return '';
-          let v = value.replace(/[\s\-()]/g, '');
-          if (v.startsWith('+')) {
-            v = v.slice(1);
-          }
-          return v;
-        };
-
-        for (let index = 0; index < records.length; index++) {
-          const row = records[index];
-          const rowNumber = index + 2; // header is row 1
-          totalProcessed += 1;
-
-          const reasons: string[] = [];
-
-          const externalIdRaw = (row['ID'] ?? '').toString().trim();
-          const nameRaw = (row['Name'] ?? '').toString().trim();
-          const companyRaw = (row['Company'] ?? '').toString().trim();
-          const emailRaw = (row['Email Address'] ?? '').toString().trim();
-          const phoneRaw = (row['Phone Number'] ?? '').toString().trim();
-          const locationRaw = (row['Location'] ?? '').toString().trim();
-          const statusRaw = (row['Status'] ?? '').toString().trim();
-
-          const name = nameRaw || '';
-          if (!name) {
-            reasons.push('Missing name');
-          }
-
-          const company = companyRaw || null;
-
-          const email = emailRaw ? emailRaw.toLowerCase() : null;
-          if (email && !emailRegex.test(email)) {
-            reasons.push('Invalid email format');
-          }
-
-          // Phone is required - validate presence and format
-          let phone = cleanPhone(phoneRaw);
-          if (!phone) {
-            reasons.push('Missing phone');
-          } else if (/[a-zA-Z]/.test(phone)) {
-            reasons.push('Invalid phone (contains letters)');
-          }
-          // Convert empty string to null for database
-          const phoneValue = phone || null;
-
-          const location = mapLocation(locationRaw || null);
-
-          const status = mapStatus(statusRaw || null);
-          if (status === undefined) {
-            reasons.push('Invalid or missing status');
-          }
-
-          if (reasons.length > 0) {
-            rejectedRows.push({
-              rowNumber,
-              reason: reasons.join('; '),
-              data: {
-                id: externalIdRaw,
-                name: nameRaw,
-                company: companyRaw,
-                email: emailRaw,
-                phone: phoneRaw,
-                location: locationRaw,
-                status: statusRaw,
-              },
+          if (xlsxContent && typeof xlsxContent === "string") {
+            // Parse XLSX from base64
+            console.log(
+              `XLSX content received, length: ${xlsxContent.length} chars`,
+            );
+            const XLSX = require("xlsx");
+            const buffer = Buffer.from(xlsxContent, "base64");
+            const workbook = XLSX.read(buffer, { type: "buffer" });
+            const sheetName = workbook.SheetNames[0];
+            const sheet = workbook.Sheets[sheetName];
+            records = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+            console.log(
+              `XLSX parsed successfully, ${records.length} records found`,
+            );
+          } else if (
+            csvContent &&
+            typeof csvContent === "string" &&
+            csvContent.trim()
+          ) {
+            // Parse CSV
+            console.log(
+              `CSV content received, length: ${csvContent.length} chars`,
+            );
+            const { parse } = await import("csv-parse/sync");
+            records = parse(csvContent, {
+              columns: true,
+              skip_empty_lines: true,
+              trim: true,
+              relax_column_count: true,
             });
-            continue;
+            console.log(
+              `CSV parsed successfully, ${records.length} records found`,
+            );
+          } else {
+            return res
+              .status(400)
+              .json({ message: "csvContent or xlsxContent is required" });
           }
 
-          const externalId = externalIdRaw || null;
-
-          // Check if host already exists by externalId
-          let hostId: bigint | null = null;
-          let hostIsNew = false;
-
-          if (externalId) {
-            const existingHost = await prisma.host.findUnique({
-              where: { externalId },
-            });
-            if (existingHost) {
-              // Host exists - skip host creation but may need to create user
-              skipped += 1;
-              hostId = existingHost.id;
-            }
+          console.log(
+            `File parsed successfully, ${records.length} records found`,
+          );
+          if (records.length > 0) {
+            console.log("CSV columns detected:", Object.keys(records[0]));
+            console.log("First row data:", JSON.stringify(records[0]));
           }
 
-          // If validate only, count and continue (no DB changes)
-          if (validateOnly) {
-            if (!hostId) {
-              inserted += 1; // New host would be created
-            }
-            // Check if user would be created (for new or existing host)
-            const userEmail = email || `host_${hostId || 'new'}@system.local`;
-            if (hostId) {
-              // For existing host, check if user exists
-              const existingUserByHostId = await prisma.user.findFirst({
-                where: { hostId: hostId },
-              });
-              if (!existingUserByHostId) {
-                const existingUserByEmail = await prisma.user.findUnique({
-                  where: { email: userEmail },
-                });
-                if (!existingUserByEmail) {
-                  usersCreated += 1; // User would be created for existing host
-                }
-              }
-            } else {
-              // For new host, user will be created (unless email conflict)
-              const existingUserByEmail = await prisma.user.findUnique({
-                where: { email: userEmail },
-              });
-              if (!existingUserByEmail) {
-                usersCreated += 1; // User would be created for new host
-              }
-            }
-            continue;
-          }
+          let totalProcessed = 0;
+          let inserted = 0;
+          let skipped = 0;
+          let usersCreated = 0;
+          let usersSkipped = 0;
+          const rejectedRows: Array<{
+            rowNumber: number;
+            reason: string;
+            data: {
+              id: string;
+              name: string;
+              company: string;
+              email: string;
+              phone: string;
+              location: string;
+              status: string;
+            };
+          }> = [];
+          const createdCredentials: Array<{
+            name: string;
+            email: string;
+            password: string;
+            company: string;
+          }> = [];
 
-          // Create host if it doesn't exist
-          if (!hostId) {
-            try {
-              const createdHost = await prisma.host.create({
-                data: {
-                  externalId,
-                  name,
-                  company: company ?? '',
-                  email,
-                  phone: phoneValue,
-                  location: location as any,
-                  status: status ?? 1,
-                },
-              });
-              hostId = createdHost.id;
-              hostIsNew = true;
-              inserted += 1;
-            } catch (e) {
-              const errorMsg = e instanceof Error ? e.message : 'Unknown database error';
-              console.error(`Row ${rowNumber} database error:`, e);
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i;
+
+          const mapLocation = (value?: string | null) => {
+            if (!value) return null;
+            const v = value.trim().toLowerCase();
+            if (v.includes("barwa")) return "BARWA_TOWERS";
+            if (v.includes("element") || v.includes("mariott"))
+              return "ELEMENT_MARIOTT";
+            if (v.includes("marina") && v.includes("50")) return "MARINA_50";
+            return null;
+          };
+
+          const mapStatus = (value?: string | null): number | undefined => {
+            if (!value) return undefined; // No default - require explicit status
+            const v = value.trim().toLowerCase();
+            if (v === "active" || v === "1") return 1;
+            if (v === "inactive" || v === "0") return 0;
+            return undefined; // Unknown value - reject for review
+          };
+
+          const cleanPhone = (value?: string | null) => {
+            if (!value) return "";
+            let v = value.replace(/[\s\-()]/g, "");
+            if (v.startsWith("+")) {
+              v = v.slice(1);
+            }
+            return v;
+          };
+
+          for (let index = 0; index < records.length; index++) {
+            const row = records[index];
+            const rowNumber = index + 2; // header is row 1
+            totalProcessed += 1;
+
+            const reasons: string[] = [];
+
+            const externalIdRaw = (row["ID"] ?? "").toString().trim();
+            const nameRaw = (row["Name"] ?? "").toString().trim();
+            const companyRaw = (row["Company"] ?? "").toString().trim();
+            const emailRaw = (row["Email Address"] ?? "").toString().trim();
+            const phoneRaw = (row["Phone Number"] ?? "").toString().trim();
+            const locationRaw = (row["Location"] ?? "").toString().trim();
+            const statusRaw = (row["Status"] ?? "").toString().trim();
+
+            const name = nameRaw || "";
+            if (!name) {
+              reasons.push("Missing name");
+            }
+
+            const company = companyRaw || null;
+
+            const email = emailRaw ? emailRaw.toLowerCase() : null;
+            if (email && !emailRegex.test(email)) {
+              reasons.push("Invalid email format");
+            }
+
+            // Phone is required - validate presence and format
+            const phone = cleanPhone(phoneRaw);
+            if (!phone) {
+              reasons.push("Missing phone");
+            } else if (/[a-zA-Z]/.test(phone)) {
+              reasons.push("Invalid phone (contains letters)");
+            }
+            // Convert empty string to null for database
+            const phoneValue = phone || null;
+
+            const location = mapLocation(locationRaw || null);
+
+            const status = mapStatus(statusRaw || null);
+            if (status === undefined) {
+              reasons.push("Invalid or missing status");
+            }
+
+            if (reasons.length > 0) {
               rejectedRows.push({
                 rowNumber,
-                reason: `Database error: ${errorMsg}`,
+                reason: reasons.join("; "),
                 data: {
                   id: externalIdRaw,
                   name: nameRaw,
@@ -1961,100 +2430,192 @@ async function bootstrap() {
               });
               continue;
             }
-          }
 
-          // Create User account for the Host (new or existing host without user)
-          try {
-            const userEmail = email || `host_${hostId}@system.local`;
+            const externalId = externalIdRaw || null;
 
-            // Check if user already exists by email
-            const existingUserByEmail = await prisma.user.findUnique({
-              where: { email: userEmail },
-            });
-            if (existingUserByEmail) {
-              usersSkipped += 1;
-            } else {
-              // Check if user already exists by hostId
-              const existingUserByHostId = await prisma.user.findFirst({
-                where: { hostId: hostId },
+            // Check if host already exists by externalId
+            let hostId: bigint | null = null;
+            let hostIsNew = false;
+
+            if (externalId) {
+              const existingHost = await prisma.host.findUnique({
+                where: { externalId },
               });
-              if (existingUserByHostId) {
-                usersSkipped += 1;
-              } else {
-                // Create new user for this host
-                const crypto = require('crypto');
-                const randomPassword = crypto.randomBytes(8).toString('hex'); // 16 char password
-                const hashedPassword = await bcrypt.hash(randomPassword, 12);
+              if (existingHost) {
+                // Host exists - skip host creation but may need to create user
+                skipped += 1;
+                hostId = existingHost.id;
+              }
+            }
 
-                await prisma.user.create({
+            // If validate only, count and continue (no DB changes)
+            if (validateOnly) {
+              if (!hostId) {
+                inserted += 1; // New host would be created
+              }
+              // Check if user would be created (for new or existing host)
+              const userEmail = email || `host_${hostId || "new"}@system.local`;
+              if (hostId) {
+                // For existing host, check if user exists
+                const existingUserByHostId = await prisma.user.findFirst({
+                  where: { hostId: hostId },
+                });
+                if (!existingUserByHostId) {
+                  const existingUserByEmail = await prisma.user.findUnique({
+                    where: { email: userEmail },
+                  });
+                  if (!existingUserByEmail) {
+                    usersCreated += 1; // User would be created for existing host
+                  }
+                }
+              } else {
+                // For new host, user will be created (unless email conflict)
+                const existingUserByEmail = await prisma.user.findUnique({
+                  where: { email: userEmail },
+                });
+                if (!existingUserByEmail) {
+                  usersCreated += 1; // User would be created for new host
+                }
+              }
+              continue;
+            }
+
+            // Create host if it doesn't exist
+            if (!hostId) {
+              try {
+                const createdHost = await prisma.host.create({
                   data: {
-                    email: userEmail,
-                    password: hashedPassword,
-                    name: name,
-                    role: 'HOST',
-                    hostId: hostId,
+                    externalId,
+                    name,
+                    company: company ?? "",
+                    email,
+                    phone: phoneValue,
+                    location: location as any,
+                    status: status ?? 1,
                   },
                 });
-                usersCreated += 1;
+                hostId = createdHost.id;
+                hostIsNew = true;
+                inserted += 1;
+              } catch (e) {
+                const errorMsg =
+                  e instanceof Error ? e.message : "Unknown database error";
+                console.error(`Row ${rowNumber} database error:`, e);
+                rejectedRows.push({
+                  rowNumber,
+                  reason: `Database error: ${errorMsg}`,
+                  data: {
+                    id: externalIdRaw,
+                    name: nameRaw,
+                    company: companyRaw,
+                    email: emailRaw,
+                    phone: phoneRaw,
+                    location: locationRaw,
+                    status: statusRaw,
+                  },
+                });
+                continue;
+              }
+            }
 
-                // Store credentials for export
-                createdCredentials.push({
-                  name: name,
-                  email: userEmail,
-                  password: randomPassword,
-                  company: company ?? '',
+            // Create User account for the Host (new or existing host without user)
+            try {
+              const userEmail = email || `host_${hostId}@system.local`;
+
+              // Check if user already exists by email
+              const existingUserByEmail = await prisma.user.findUnique({
+                where: { email: userEmail },
+              });
+              if (existingUserByEmail) {
+                usersSkipped += 1;
+              } else {
+                // Check if user already exists by hostId
+                const existingUserByHostId = await prisma.user.findFirst({
+                  where: { hostId: hostId },
+                });
+                if (existingUserByHostId) {
+                  usersSkipped += 1;
+                } else {
+                  // Create new user for this host
+                  const crypto = require("crypto");
+                  const randomPassword = crypto.randomBytes(8).toString("hex"); // 16 char password
+                  const hashedPassword = await bcrypt.hash(randomPassword, 12);
+
+                  await prisma.user.create({
+                    data: {
+                      email: userEmail,
+                      password: hashedPassword,
+                      name: name,
+                      role: "HOST",
+                      hostId: hostId,
+                    },
+                  });
+                  usersCreated += 1;
+
+                  // Store credentials for export
+                  createdCredentials.push({
+                    name: name,
+                    email: userEmail,
+                    password: randomPassword,
+                    company: company ?? "",
+                  });
+                }
+              }
+            } catch (e) {
+              const errorMsg =
+                e instanceof Error ? e.message : "Unknown database error";
+              console.error(`Row ${rowNumber} user creation error:`, e);
+              // Don't reject the row if host was created, just log user creation failure
+              if (!hostIsNew) {
+                rejectedRows.push({
+                  rowNumber,
+                  reason: `User creation error: ${errorMsg}`,
+                  data: {
+                    id: externalIdRaw,
+                    name: nameRaw,
+                    company: companyRaw,
+                    email: emailRaw,
+                    phone: phoneRaw,
+                    location: locationRaw,
+                    status: statusRaw,
+                  },
                 });
               }
             }
-          } catch (e) {
-            const errorMsg = e instanceof Error ? e.message : 'Unknown database error';
-            console.error(`Row ${rowNumber} user creation error:`, e);
-            // Don't reject the row if host was created, just log user creation failure
-            if (!hostIsNew) {
-              rejectedRows.push({
-                rowNumber,
-                reason: `User creation error: ${errorMsg}`,
-                data: {
-                  id: externalIdRaw,
-                  name: nameRaw,
-                  company: companyRaw,
-                  email: emailRaw,
-                  phone: phoneRaw,
-                  location: locationRaw,
-                  status: statusRaw,
-                },
-              });
-            }
           }
+
+          const rejected = rejectedRows.length;
+
+          console.log(
+            `Bulk import completed: ${totalProcessed} processed, ${inserted} inserted, ${skipped} skipped, ${rejected} rejected`,
+          );
+
+          res.json({
+            totalProcessed,
+            inserted,
+            skipped,
+            rejected,
+            rejectedRows,
+            createdCredentials,
+            usersCreated,
+            usersSkipped,
+          });
+        } catch (error) {
+          console.error("Bulk import error:", error);
+          res.status(500).json({
+            message: `Import failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+          });
         }
-
-        const rejected = rejectedRows.length;
-
-        console.log(`Bulk import completed: ${totalProcessed} processed, ${inserted} inserted, ${skipped} skipped, ${rejected} rejected`);
-
-        res.json({
-          totalProcessed,
-          inserted,
-          skipped,
-          rejected,
-          rejectedRows,
-          createdCredentials,
-          usersCreated,
-          usersSkipped,
-        });
-      } catch (error) {
-        console.error('Bulk import error:', error);
-        res.status(500).json({
-          message: `Import failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        });
-      }
-    });
+      },
+    );
 
     app.use(admin.options.rootPath, adminRouter);
-    console.log(`Admin dashboard at http://localhost:${process.env.PORT || 3000}${admin.options.rootPath}`);
+    console.log(
+      `Admin dashboard at http://localhost:${process.env.PORT || 3000}${admin.options.rootPath}`,
+    );
   } catch (err) {
-    console.error('AdminJS setup failed:', err);
-    console.log('API will run without Admin dashboard.');
+    console.error("AdminJS setup failed:", err);
+    console.log("API will run without Admin dashboard.");
   }
 
   const port = process.env.PORT || 3000;

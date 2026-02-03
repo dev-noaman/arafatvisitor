@@ -1,7 +1,7 @@
 // Main AdminJS Configuration
 // Modular setup with custom dashboard, role-based access, and custom components
 
-import type { AdminJSOptions } from 'adminjs';
+import type { AdminJSOptions } from "adminjs";
 
 // Type for AdminJS action context
 interface AdminContext {
@@ -28,28 +28,30 @@ interface AdminRecord {
 // Type for Prisma client (minimal interface)
 interface PrismaClient {
   host: {
-    findUnique: (args: { where: { id: bigint } }) => Promise<{ company?: string } | null>;
+    findUnique: (args: {
+      where: { id: bigint };
+    }) => Promise<{ company?: string } | null>;
   };
 }
 
 // Component paths for bundling (relative to this file)
 export const componentPaths = {
-  Dashboard: './components/Dashboard',
-  VisitorCards: './components/VisitorCards',
-  ReportsPanel: './components/ReportsPanel',
-  SettingsPanel: './components/SettingsPanel',
-  SendQrModal: './components/SendQrModal',
-  ChangePasswordModal: './components/ChangePasswordModal',
-  UserPasswordField: './components/UserPasswordField',
-  EditProfilePanel: './components/EditProfilePanel',
-  BulkImportHosts: './components/BulkImportHosts',
+  Dashboard: "./components/Dashboard",
+  VisitorCards: "./components/VisitorCards",
+  ReportsPanel: "./components/ReportsPanel",
+  SettingsPanel: "./components/SettingsPanel",
+  SendQrModal: "./components/SendQrModal",
+  ChangePasswordModal: "./components/ChangePasswordModal",
+  UserPasswordField: "./components/UserPasswordField",
+  EditProfilePanel: "./components/EditProfilePanel",
+  BulkImportHosts: "./components/BulkImportHosts",
 };
 
 // AdminJS branding configuration
 export const brandingConfig = {
-  companyName: 'Our Admin Panel',
+  companyName: "Our Admin Panel",
   logo: false as const,
-  favicon: '/favicon.ico',
+  favicon: "/favicon.ico",
   withMadeWithLove: false,
 };
 
@@ -81,34 +83,31 @@ export const customStyles = `
 // Role-based navigation visibility
 export const getNavigationForRole = (role: string) => {
   const baseNav = [
-    { name: 'Dashboard Stats', icon: 'Dashboard' },
-    { name: 'Hosts', icon: 'User' },
-    { name: 'Deliveries', icon: 'Package' },
-    { name: 'Visitors', icon: 'UserCheck' },
-    { name: 'Pre Register', icon: 'Calendar' },
+    { name: "Dashboard Stats", icon: "Dashboard" },
+    { name: "Hosts", icon: "User" },
+    { name: "Deliveries", icon: "Package" },
+    { name: "Visitors", icon: "UserCheck" },
+    { name: "Pre Register", icon: "Calendar" },
   ];
 
-  if (role === 'ADMIN') {
+  if (role === "ADMIN") {
     return [
       ...baseNav,
-      { name: 'Reports', icon: 'FileText' },
-      { name: 'Settings', icon: 'Settings' },
+      { name: "Reports", icon: "FileText" },
+      { name: "Settings", icon: "Settings" },
     ];
   }
 
-  if (role === 'HOST') {
-    return [
-      ...baseNav,
-      { name: 'Reports', icon: 'FileText' },
-    ];
+  if (role === "HOST") {
+    return [...baseNav, { name: "Reports", icon: "FileText" }];
   }
 
   // RECEPTION - limited navigation
   return [
-    { name: 'Dashboard', icon: 'Dashboard' },
-    { name: 'Deliveries', icon: 'Package' },
-    { name: 'Visitors', icon: 'UserCheck' },
-    { name: 'Pre Register', icon: 'Calendar' },
+    { name: "Dashboard", icon: "Dashboard" },
+    { name: "Deliveries", icon: "Package" },
+    { name: "Visitors", icon: "UserCheck" },
+    { name: "Pre Register", icon: "Calendar" },
   ];
 };
 
@@ -121,9 +120,9 @@ export const buildAdminOptions = (
   prisma: PrismaClient,
   Components: Record<string, string>,
 ): AdminJSOptions => ({
-  rootPath: '/admin',
-  loginPath: '/admin/login',
-  logoutPath: '/admin/logout',
+  rootPath: "/admin",
+  loginPath: "/admin/login",
+  logoutPath: "/admin/logout",
   branding: brandingConfig,
   dashboard: {
     component: Components.Dashboard,
@@ -131,51 +130,55 @@ export const buildAdminOptions = (
   pages: {
     Reports: {
       component: Components.ReportsPanel,
-      icon: 'FileText',
+      icon: "FileText",
     },
     Settings: {
       component: Components.SettingsPanel,
-      icon: 'Settings',
+      icon: "Settings",
     },
     EditProfile: {
       component: Components.EditProfilePanel,
-      icon: 'User',
+      icon: "User",
     },
   },
   resources: [
     // Hosts Resource
     {
-      resource: { model: getModel('Host'), client: prisma },
+      resource: { model: getModel("Host"), client: prisma },
       options: {
-        id: 'Hosts',
-        navigation: { name: 'Hosts', icon: 'User' },
-        listProperties: ['name', 'company', 'email', 'phone', 'location'],
-        filterProperties: ['company', 'location', 'status'],
-        sort: { sortBy: 'company', direction: 'asc' as const },
+        id: "Hosts",
+        navigation: { name: "Hosts", icon: "User" },
+        listProperties: ["name", "company", "email", "phone", "location"],
+        filterProperties: ["company", "location", "status"],
+        sort: { sortBy: "company", direction: "asc" as const },
         properties: {
           status: {
             availableValues: [
-              { value: 1, label: 'Active' },
-              { value: 0, label: 'InActive' },
+              { value: 1, label: "Active" },
+              { value: 0, label: "InActive" },
             ],
           },
         },
         actions: {
           new: {
-            isAccessible: ({ currentAdmin }: AdminContext) => currentAdmin?.role === 'ADMIN',
+            isAccessible: ({ currentAdmin }: AdminContext) =>
+              currentAdmin?.role === "ADMIN",
           },
           edit: {
-            isAccessible: ({ currentAdmin }: AdminContext) => currentAdmin?.role === 'ADMIN',
+            isAccessible: ({ currentAdmin }: AdminContext) =>
+              currentAdmin?.role === "ADMIN",
           },
           delete: {
-            isAccessible: ({ currentAdmin }: AdminContext) => currentAdmin?.role === 'ADMIN',
+            isAccessible: ({ currentAdmin }: AdminContext) =>
+              currentAdmin?.role === "ADMIN",
           },
           bulkImport: {
-            actionType: 'bulk' as const,
-            label: 'Bulk Import',
-            icon: 'Upload',
+            actionType: "bulk" as const,
+            label: "Bulk Import",
+            icon: "Upload",
             component: Components.BulkImportHosts,
-            isAccessible: ({ currentAdmin }: AdminContext) => currentAdmin?.role === 'ADMIN',
+            isAccessible: ({ currentAdmin }: AdminContext) =>
+              currentAdmin?.role === "ADMIN",
             handler: async () => {
               // Handled by component
               return {};
@@ -185,13 +188,16 @@ export const buildAdminOptions = (
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             before: async (request: any, context: AdminContext) => {
               const { currentAdmin } = context;
-              if (currentAdmin?.role === 'HOST' && currentAdmin?.hostId) {
+              if (currentAdmin?.role === "HOST" && currentAdmin?.hostId) {
                 // Host can only see hosts from same company
                 const host = await prisma.host.findUnique({
                   where: { id: BigInt(currentAdmin.hostId) },
                 });
                 if (host) {
-                  request.query = { ...request.query, 'filters.company': host.company };
+                  request.query = {
+                    ...request.query,
+                    "filters.company": host.company,
+                  };
                 }
               }
               return request;
@@ -202,74 +208,94 @@ export const buildAdminOptions = (
     },
     // Deliveries Resource
     {
-      resource: { model: getModel('Delivery'), client: prisma },
+      resource: { model: getModel("Delivery"), client: prisma },
       options: {
-        id: 'Deliveries',
-        navigation: { name: 'Deliveries', icon: 'Package' },
-        listProperties: ['courier', 'recipient', 'host', 'location', 'status', 'receivedAt', 'pickedUpAt'],
-        filterProperties: ['status', 'location', 'receivedAt'],
+        id: "Deliveries",
+        navigation: { name: "Deliveries", icon: "Package" },
+        listProperties: [
+          "courier",
+          "recipient",
+          "host",
+          "location",
+          "status",
+          "receivedAt",
+          "pickedUpAt",
+        ],
+        filterProperties: ["status", "location", "receivedAt"],
         actions: {
           // Reception can create, Host cannot
           new: {
             isAccessible: ({ currentAdmin }: AdminContext) => {
               const role = currentAdmin?.role;
-              return role === 'ADMIN' || role === 'RECEPTION';
+              return role === "ADMIN" || role === "RECEPTION";
             },
           },
           edit: {
-            isAccessible: ({ currentAdmin }: AdminContext) => currentAdmin?.role === 'ADMIN',
+            isAccessible: ({ currentAdmin }: AdminContext) =>
+              currentAdmin?.role === "ADMIN",
           },
           delete: {
-            isAccessible: ({ currentAdmin }: AdminContext) => currentAdmin?.role === 'ADMIN',
+            isAccessible: ({ currentAdmin }: AdminContext) =>
+              currentAdmin?.role === "ADMIN",
           },
           // Mark Picked Up action - Host only
           markPickedUp: {
-            actionType: 'record' as const,
-            label: 'Mark Picked Up',
-            icon: 'CheckCircle',
-            guard: 'Are you sure you want to mark this delivery as picked up?',
+            actionType: "record" as const,
+            label: "Mark Picked Up",
+            icon: "CheckCircle",
+            guard: "Are you sure you want to mark this delivery as picked up?",
             isVisible: true,
             isAccessible: ({ currentAdmin, record }: AdminContext) => {
               const role = currentAdmin?.role;
               const status = record?.params?.status;
 
               // Must be RECEIVED status (no skipping)
-              if (status !== 'RECEIVED') return false;
+              if (status !== "RECEIVED") return false;
               // Reception NEVER picks up
-              if (role === 'RECEPTION') return false;
+              if (role === "RECEPTION") return false;
               // Admin can pick up any
-              if (role === 'ADMIN') return true;
+              if (role === "ADMIN") return true;
               // Host can pick up own company deliveries
-              if (role === 'HOST') {
-                return record?.params?.hostId?.toString() === currentAdmin?.hostId?.toString();
+              if (role === "HOST") {
+                return (
+                  record?.params?.hostId?.toString() ===
+                  currentAdmin?.hostId?.toString()
+                );
               }
               return false;
             },
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            handler: async (request: any, response: any, context: AdminContext) => {
+            handler: async (
+              request: any,
+              response: any,
+              context: AdminContext,
+            ) => {
               const { record } = context;
 
               if (!record || !record.params) {
                 return {
-                  notice: { type: 'error', message: 'Record not found' },
+                  notice: { type: "error", message: "Record not found" },
                 };
               }
 
-              if (record.params.status !== 'RECEIVED') {
+              if (record.params.status !== "RECEIVED") {
                 return {
                   record: record.toJSON(),
-                  notice: { type: 'error', message: 'Invalid state transition' },
+                  notice: {
+                    type: "error",
+                    message: "Invalid state transition",
+                  },
                 };
               }
 
               await record.update({
-                status: 'PICKED_UP',
+                status: "PICKED_UP",
                 pickedUpAt: new Date(),
               });
 
               return {
                 record: record.toJSON(),
-                notice: { type: 'success', message: 'Marked as picked up' },
+                notice: { type: "success", message: "Marked as picked up" },
               };
             },
           },
@@ -277,10 +303,13 @@ export const buildAdminOptions = (
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             before: async (request: any, context: AdminContext) => {
               const { currentAdmin } = context;
-              if (currentAdmin?.role === 'HOST' && currentAdmin?.hostId) {
-                request.query = { ...request.query, 'filters.hostId': currentAdmin.hostId };
+              if (currentAdmin?.role === "HOST" && currentAdmin?.hostId) {
+                request.query = {
+                  ...request.query,
+                  "filters.hostId": currentAdmin.hostId,
+                };
               }
-              if (currentAdmin?.role === 'RECEPTION') {
+              if (currentAdmin?.role === "RECEPTION") {
                 // Reception sees all at their location (no filter by hostId)
               }
               return request;
@@ -291,58 +320,71 @@ export const buildAdminOptions = (
     },
     // Visitors Resource (Visit with CHECKED_IN, CHECKED_OUT)
     {
-      resource: { model: getModel('Visit'), client: prisma },
+      resource: { model: getModel("Visit"), client: prisma },
       options: {
-        id: 'Visitors',
-        navigation: { name: 'Visitors', icon: 'UserCheck' },
-        listProperties: ['visitorName', 'visitorPhone', 'host', 'purpose', 'status', 'checkInAt'],
-        filterProperties: ['status', 'location', 'checkInAt'],
+        id: "Visitors",
+        navigation: { name: "Visitors", icon: "UserCheck" },
+        listProperties: [
+          "visitorName",
+          "visitorPhone",
+          "host",
+          "purpose",
+          "status",
+          "checkInAt",
+        ],
+        filterProperties: ["status", "location", "checkInAt"],
         // Custom list component for card view
         // component: Components.VisitorCards,
         actions: {
           new: {
             isAccessible: ({ currentAdmin }: AdminContext) => {
               const role = currentAdmin?.role;
-              return role === 'ADMIN' || role === 'RECEPTION';
+              return role === "ADMIN" || role === "RECEPTION";
             },
           },
           edit: {
-            isAccessible: ({ currentAdmin }: AdminContext) => currentAdmin?.role === 'ADMIN',
+            isAccessible: ({ currentAdmin }: AdminContext) =>
+              currentAdmin?.role === "ADMIN",
           },
           // Checkout action
           checkout: {
-            actionType: 'record' as const,
-            label: 'Check Out',
-            icon: 'LogOut',
-            guard: 'Check out this visitor?',
+            actionType: "record" as const,
+            label: "Check Out",
+            icon: "LogOut",
+            guard: "Check out this visitor?",
             isVisible: true,
-            isAccessible: ({ record }: AdminContext) => record?.params?.status === 'CHECKED_IN',
+            isAccessible: ({ record }: AdminContext) =>
+              record?.params?.status === "CHECKED_IN",
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            handler: async (request: any, response: any, context: AdminContext) => {
+            handler: async (
+              request: any,
+              response: any,
+              context: AdminContext,
+            ) => {
               const { record } = context;
 
               if (!record) {
                 return {
-                  notice: { type: 'error', message: 'Record not found' },
+                  notice: { type: "error", message: "Record not found" },
                 };
               }
 
               await record.update({
-                status: 'CHECKED_OUT',
+                status: "CHECKED_OUT",
                 checkOutAt: new Date(),
               });
 
               return {
                 record: record.toJSON(),
-                notice: { type: 'success', message: 'Visitor checked out' },
+                notice: { type: "success", message: "Visitor checked out" },
               };
             },
           },
           // Send QR action - all roles
           sendQr: {
-            actionType: 'record' as const,
-            label: 'Send QR',
-            icon: 'Send',
+            actionType: "record" as const,
+            label: "Send QR",
+            icon: "Send",
             component: Components.SendQrModal,
             isVisible: true,
             isAccessible: ({ record }: AdminContext) => {
@@ -350,10 +392,16 @@ export const buildAdminOptions = (
               return !!record?.params?.id;
             },
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            handler: async (request: any, response: any, context: AdminContext) => {
+            handler: async (
+              request: any,
+              response: any,
+              context: AdminContext,
+            ) => {
               // Handled by component
               if (!context.record) {
-                return { notice: { type: 'error', message: 'Record not found' } };
+                return {
+                  notice: { type: "error", message: "Record not found" },
+                };
               }
               return { record: context.record.toJSON() };
             },
@@ -365,11 +413,14 @@ export const buildAdminOptions = (
               // Filter to show only CHECKED_IN and CHECKED_OUT
               request.query = {
                 ...request.query,
-                'filters.status': request.query?.['filters.status'] || ['CHECKED_IN', 'CHECKED_OUT'],
+                "filters.status": request.query?.["filters.status"] || [
+                  "CHECKED_IN",
+                  "CHECKED_OUT",
+                ],
               };
 
-              if (currentAdmin?.role === 'HOST' && currentAdmin?.hostId) {
-                request.query['filters.hostId'] = currentAdmin.hostId;
+              if (currentAdmin?.role === "HOST" && currentAdmin?.hostId) {
+                request.query["filters.hostId"] = currentAdmin.hostId;
               }
               return request;
             },
@@ -379,17 +430,26 @@ export const buildAdminOptions = (
     },
     // Pre Register Resource (Visit with PRE_REGISTERED, PENDING_APPROVAL, APPROVED, REJECTED)
     {
-      resource: { model: getModel('Visit'), client: prisma },
+      resource: { model: getModel("Visit"), client: prisma },
       options: {
-        id: 'PreRegister',
-        navigation: { name: 'Pre Register', icon: 'Calendar' },
-        listProperties: ['visitorName', 'visitorPhone', 'host', 'expectedDate', 'status', 'createdAt'],
-        filterProperties: ['status', 'location', 'expectedDate'],
+        id: "PreRegister",
+        navigation: { name: "Pre Register", icon: "Calendar" },
+        listProperties: [
+          "visitorName",
+          "visitorPhone",
+          "host",
+          "expectedDate",
+          "status",
+          "createdAt",
+        ],
+        filterProperties: ["status", "location", "expectedDate"],
         actions: {
           new: {
             isAccessible: ({ currentAdmin }: AdminContext) => {
               const role = currentAdmin?.role;
-              return role === 'ADMIN' || role === 'HOST' || role === 'RECEPTION';
+              return (
+                role === "ADMIN" || role === "HOST" || role === "RECEPTION"
+              );
             },
           },
           edit: {
@@ -397,36 +457,43 @@ export const buildAdminOptions = (
           },
           // Approve action
           approve: {
-            actionType: 'record' as const,
-            label: 'Approve',
-            icon: 'Check',
-            variant: 'success' as const,
-            guard: 'Approve this pre-registration?',
+            actionType: "record" as const,
+            label: "Approve",
+            icon: "Check",
+            variant: "success" as const,
+            guard: "Approve this pre-registration?",
             isVisible: true,
             isAccessible: ({ currentAdmin, record }: AdminContext) => {
               const status = record?.params?.status;
-              if (status !== 'PENDING_APPROVAL') return false;
+              if (status !== "PENDING_APPROVAL") return false;
 
               const role = currentAdmin?.role;
-              if (role === 'RECEPTION') return false; // Reception never approves
-              if (role === 'ADMIN') return true;
-              if (role === 'HOST') {
-                return record?.params?.hostId?.toString() === currentAdmin?.hostId?.toString();
+              if (role === "RECEPTION") return false; // Reception never approves
+              if (role === "ADMIN") return true;
+              if (role === "HOST") {
+                return (
+                  record?.params?.hostId?.toString() ===
+                  currentAdmin?.hostId?.toString()
+                );
               }
               return false;
             },
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            handler: async (request: any, response: any, context: AdminContext) => {
+            handler: async (
+              request: any,
+              response: any,
+              context: AdminContext,
+            ) => {
               const { record } = context;
 
               if (!record) {
                 return {
-                  notice: { type: 'error', message: 'Record not found' },
+                  notice: { type: "error", message: "Record not found" },
                 };
               }
 
               await record.update({
-                status: 'APPROVED',
+                status: "APPROVED",
                 approvedAt: new Date(),
               });
 
@@ -434,42 +501,52 @@ export const buildAdminOptions = (
 
               return {
                 record: record.toJSON(),
-                notice: { type: 'success', message: 'Pre-registration approved' },
+                notice: {
+                  type: "success",
+                  message: "Pre-registration approved",
+                },
               };
             },
           },
           // Reject action
           reject: {
-            actionType: 'record' as const,
-            label: 'Reject',
-            icon: 'X',
-            variant: 'danger' as const,
-            guard: 'Reject this pre-registration?',
+            actionType: "record" as const,
+            label: "Reject",
+            icon: "X",
+            variant: "danger" as const,
+            guard: "Reject this pre-registration?",
             isVisible: true,
             isAccessible: ({ currentAdmin, record }: AdminContext) => {
               const status = record?.params?.status;
-              if (status !== 'PENDING_APPROVAL') return false;
+              if (status !== "PENDING_APPROVAL") return false;
 
               const role = currentAdmin?.role;
-              if (role === 'RECEPTION') return false;
-              if (role === 'ADMIN') return true;
-              if (role === 'HOST') {
-                return record?.params?.hostId?.toString() === currentAdmin?.hostId?.toString();
+              if (role === "RECEPTION") return false;
+              if (role === "ADMIN") return true;
+              if (role === "HOST") {
+                return (
+                  record?.params?.hostId?.toString() ===
+                  currentAdmin?.hostId?.toString()
+                );
               }
               return false;
             },
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            handler: async (request: any, response: any, context: AdminContext) => {
+            handler: async (
+              request: any,
+              response: any,
+              context: AdminContext,
+            ) => {
               const { record } = context;
 
               if (!record) {
                 return {
-                  notice: { type: 'error', message: 'Record not found' },
+                  notice: { type: "error", message: "Record not found" },
                 };
               }
 
               await record.update({
-                status: 'REJECTED',
+                status: "REJECTED",
                 rejectedAt: new Date(),
               });
 
@@ -477,7 +554,10 @@ export const buildAdminOptions = (
 
               return {
                 record: record.toJSON(),
-                notice: { type: 'success', message: 'Pre-registration rejected' },
+                notice: {
+                  type: "success",
+                  message: "Pre-registration rejected",
+                },
               };
             },
           },
@@ -486,14 +566,20 @@ export const buildAdminOptions = (
             before: async (request: any, context: AdminContext) => {
               const { currentAdmin } = context;
               // Filter to show only pre-registration statuses
-              const preRegStatuses = ['PRE_REGISTERED', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED'];
+              const preRegStatuses = [
+                "PRE_REGISTERED",
+                "PENDING_APPROVAL",
+                "APPROVED",
+                "REJECTED",
+              ];
               request.query = {
                 ...request.query,
-                'filters.status': request.query?.['filters.status'] || preRegStatuses,
+                "filters.status":
+                  request.query?.["filters.status"] || preRegStatuses,
               };
 
-              if (currentAdmin?.role === 'HOST' && currentAdmin?.hostId) {
-                request.query['filters.hostId'] = currentAdmin.hostId;
+              if (currentAdmin?.role === "HOST" && currentAdmin?.hostId) {
+                request.query["filters.hostId"] = currentAdmin.hostId;
               }
               return request;
             },
@@ -503,11 +589,11 @@ export const buildAdminOptions = (
     },
     // Users Resource (Admin only)
     {
-      resource: { model: getModel('User'), client: prisma },
+      resource: { model: getModel("User"), client: prisma },
       options: {
-        id: 'Users',
-        navigation: { name: 'System', icon: 'Users' },
-        listProperties: ['name', 'email', 'role', 'createdAt'],
+        id: "Users",
+        navigation: { name: "System", icon: "Users" },
+        listProperties: ["name", "email", "role", "createdAt"],
         properties: {
           password: {
             isVisible: { list: false, show: false, edit: true, filter: false },
@@ -527,53 +613,58 @@ export const buildAdminOptions = (
         },
         actions: {
           list: {
-            isAccessible: ({ currentAdmin }: AdminContext) => currentAdmin?.role === 'ADMIN',
+            isAccessible: ({ currentAdmin }: AdminContext) =>
+              currentAdmin?.role === "ADMIN",
           },
           new: {
-            isAccessible: ({ currentAdmin }: AdminContext) => currentAdmin?.role === 'ADMIN',
+            isAccessible: ({ currentAdmin }: AdminContext) =>
+              currentAdmin?.role === "ADMIN",
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             before: async (request: any) => {
-              if (request.method === 'post') {
+              if (request.method === "post") {
                 const { email } = request.payload;
                 if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-                  throw new Error('Invalid email address format');
+                  throw new Error("Invalid email address format");
                 }
               }
               return request;
             },
           },
           edit: {
-            isAccessible: ({ currentAdmin }: AdminContext) => currentAdmin?.role === 'ADMIN',
+            isAccessible: ({ currentAdmin }: AdminContext) =>
+              currentAdmin?.role === "ADMIN",
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             before: async (request: any) => {
-              if (request.method === 'post') {
+              if (request.method === "post") {
                 const { email } = request.payload;
                 if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-                  throw new Error('Invalid email address format');
+                  throw new Error("Invalid email address format");
                 }
               }
               return request;
             },
           },
           delete: {
-            isAccessible: ({ currentAdmin }: AdminContext) => currentAdmin?.role === 'ADMIN',
+            isAccessible: ({ currentAdmin }: AdminContext) =>
+              currentAdmin?.role === "ADMIN",
           },
         },
-
       },
     },
     // Audit Log Resource (Admin only, read-only)
     {
-      resource: { model: getModel('AuditLog'), client: prisma },
+      resource: { model: getModel("AuditLog"), client: prisma },
       options: {
-        id: 'AuditLog',
-        navigation: { name: 'System', icon: 'FileText' },
+        id: "AuditLog",
+        navigation: { name: "System", icon: "FileText" },
         actions: {
           list: {
-            isAccessible: ({ currentAdmin }: AdminContext) => currentAdmin?.role === 'ADMIN',
+            isAccessible: ({ currentAdmin }: AdminContext) =>
+              currentAdmin?.role === "ADMIN",
           },
           show: {
-            isAccessible: ({ currentAdmin }: AdminContext) => currentAdmin?.role === 'ADMIN',
+            isAccessible: ({ currentAdmin }: AdminContext) =>
+              currentAdmin?.role === "ADMIN",
           },
           new: { isAccessible: false },
           edit: { isAccessible: false },
@@ -583,28 +674,28 @@ export const buildAdminOptions = (
     },
   ],
   locale: {
-    language: 'en',
+    language: "en",
     translations: {
       labels: {
-        Hosts: 'Hosts',
-        Deliveries: 'Deliveries',
-        Visitors: 'Visitors',
-        PreRegister: 'Pre Register',
-        Users: 'Users',
-        AuditLog: 'Audit Log',
+        Hosts: "Hosts",
+        Deliveries: "Deliveries",
+        Visitors: "Visitors",
+        PreRegister: "Pre Register",
+        Users: "Users",
+        AuditLog: "Audit Log",
         location: {
-          BARWA_TOWERS: 'Barwa Towers',
-          MARINA_50: 'Marina 50',
-          ELEMENT_MARIOTT: 'Element Marriott',
+          BARWA_TOWERS: "Barwa Towers",
+          MARINA_50: "Marina 50",
+          ELEMENT_MARIOTT: "Element Marriott",
         },
       },
       actions: {
-        markPickedUp: 'Mark Picked Up',
-        checkout: 'Check Out',
-        sendQr: 'Send QR',
-        approve: 'Approve',
-        reject: 'Reject',
-        bulkImport: 'Bulk Import',
+        markPickedUp: "Mark Picked Up",
+        checkout: "Check Out",
+        sendQr: "Send QR",
+        approve: "Approve",
+        reject: "Reject",
+        bulkImport: "Bulk Import",
       },
     },
   },

@@ -1,13 +1,22 @@
-import { Controller, Get, Post, Body, Patch, Param, Query, UseGuards } from '@nestjs/common';
-import { DeliveriesService } from './deliveries.service';
-import { CreateDeliveryDto } from './dto/create-delivery.dto';
-import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../common/guards/roles.guard';
-import { Roles } from '../common/decorators/roles.decorator';
-import { CurrentUser } from '../common/decorators/current-user.decorator';
-import { Role } from '@prisma/client';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Query,
+  UseGuards,
+} from "@nestjs/common";
+import { DeliveriesService } from "./deliveries.service";
+import { CreateDeliveryDto } from "./dto/create-delivery.dto";
+import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
+import { RolesGuard } from "../common/guards/roles.guard";
+import { Roles } from "../common/decorators/roles.decorator";
+import { CurrentUser } from "../common/decorators/current-user.decorator";
+import { Role } from "@prisma/client";
 
-@Controller('deliveries')
+@Controller("deliveries")
 @UseGuards(JwtAuthGuard)
 export class DeliveriesController {
   constructor(private readonly deliveriesService: DeliveriesService) {}
@@ -15,17 +24,20 @@ export class DeliveriesController {
   @Get()
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN, Role.RECEPTION)
-  findAll(@Query('location') location: string, @Query('search') search?: string) {
+  findAll(
+    @Query("location") location: string,
+    @Query("search") search?: string,
+  ) {
     if (!location) {
-      return this.deliveriesService.findAll('Barwa Towers', search);
+      return this.deliveriesService.findAll("Barwa Towers", search);
     }
     return this.deliveriesService.findAll(location, search);
   }
 
-  @Get('my')
+  @Get("my")
   @UseGuards(RolesGuard)
   @Roles(Role.HOST)
-  findMy(@CurrentUser('sub') userId: number) {
+  findMy(@CurrentUser("sub") userId: number) {
     return this.deliveriesService.findMy(userId);
   }
 
@@ -34,17 +46,17 @@ export class DeliveriesController {
   @Roles(Role.ADMIN, Role.RECEPTION)
   create(
     @Body() dto: CreateDeliveryDto,
-    @Query('location') location: string,
-    @CurrentUser('sub') userId?: number,
+    @Query("location") location: string,
+    @CurrentUser("sub") userId?: number,
   ) {
-    const loc = location || 'Barwa Towers';
+    const loc = location || "Barwa Towers";
     return this.deliveriesService.create(dto, loc, userId);
   }
 
-  @Patch(':id/receive')
+  @Patch(":id/receive")
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN, Role.RECEPTION)
-  receive(@Param('id') id: string, @CurrentUser('sub') userId?: number) {
+  receive(@Param("id") id: string, @CurrentUser("sub") userId?: number) {
     return this.deliveriesService.receive(id, userId);
   }
 }
