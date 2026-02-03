@@ -941,7 +941,8 @@ async function bootstrap() {
                 icon: "X",
                 variant: "danger" as const,
                 guard: "Reject this pre-registration?",
-                isVisible: true,
+                isVisible: ({ record }: any) =>
+                  record?.params?.status === "PENDING_APPROVAL",
                 isAccessible: ({ currentAdmin, record }: any) => {
                   const status = record?.params?.status;
                   if (status !== "PENDING_APPROVAL") return false;
@@ -971,13 +972,54 @@ async function bootstrap() {
                   };
                 },
               },
+              // Re-approve action for rejected visits
+              reapprove: {
+                actionType: "record" as const,
+                label: "Re-approve",
+                icon: "RefreshCw",
+                variant: "info" as const,
+                guard: "Re-approve this rejected pre-registration?",
+                isVisible: ({ record }: any) =>
+                  record?.params?.status === "REJECTED",
+                isAccessible: ({ currentAdmin, record }: any) => {
+                  const status = record?.params?.status;
+                  if (status !== "REJECTED") return false;
+                  const role = currentAdmin?.role;
+                  if (role === "RECEPTION") return false;
+                  if (role === "ADMIN") return true;
+                  if (role === "HOST") {
+                    return (
+                      record?.params?.hostId?.toString() ===
+                      currentAdmin?.hostId?.toString()
+                    );
+                  }
+                  return false;
+                },
+                handler: async (request: any, response: any, context: any) => {
+                  const { record } = context;
+                  await record.update({
+                    status: "APPROVED",
+                    approvedAt: new Date(),
+                    rejectedAt: null,
+                    rejectionReason: null,
+                  });
+                  return {
+                    record: record.toJSON(),
+                    notice: {
+                      type: "success",
+                      message: "Pre-registration re-approved",
+                    },
+                  };
+                },
+              },
               list: {
                 before: async (request: any, context: any) => {
                   const { currentAdmin } = context;
+                  // Default to showing PENDING_APPROVAL and REJECTED
                   if (!request.query?.["filters.status"]) {
                     request.query = {
                       ...request.query,
-                      "filters.status": "PENDING_APPROVAL",
+                      "filters.status": ["PENDING_APPROVAL", "REJECTED"],
                     };
                   }
                   if (currentAdmin?.role === "HOST" && currentAdmin?.hostId) {
