@@ -298,14 +298,20 @@ PRE_REGISTERED → PENDING_APPROVAL → APPROVED → CHECKED_IN → CHECKED_OUT
 ### Seeding Commands
 ```bash
 cd backend
-npx prisma db seed     # Run seed script
+npx prisma db seed     # Run seed script (clears and recreates test data)
 npx prisma studio      # Open database GUI
 ```
 
 ### Test Data Details
+**IMPORTANT**: Seed script clears existing test data before creating new records to avoid duplicates.
+
 All test data uses:
 - **Phone**: +97450707317 (for WhatsApp testing)
 - **Email**: adel.noaman@arafatgroup.com (for email testing)
+
+Test data is identified by:
+- Hosts: `externalId` starting with `TEST-`
+- Visitors: `visitorPhone` = +97450707317
 
 ### Test Hosts (10)
 | Name | Company | Location |
@@ -365,7 +371,15 @@ POST /admin/api/send-qr         # Send QR via email/whatsapp
 Sends HTML email with embedded QR code image, visitor name, host info, and purpose.
 
 ### WhatsApp Message
-Sends text message with link to check-in page and QR token.
+Sends a **visitor pass card image** with:
+- Header: "VISITOR PASS"
+- Visitor name and company
+- QR code (centered)
+- Host name and company
+- Purpose of visit
+- Date
+
+The card is generated using `node-canvas` and sent as an image via wbiztool API (`msg_type: 1`).
 
 ## Notification Services
 
