@@ -371,8 +371,8 @@ jobs:
           # Run new migrations (safe - won't delete data)
           npx prisma migrate deploy
 
-          # Clear ALL AdminJS caches aggressively to force complete rebuild
-          rm -rf .adminjs 2>/dev/null || true
+          # Clear AdminJS caches but preserve the pre-built bundle
+          # The .adminjs/bundle.js is committed and should NOT be deleted
           rm -rf node_modules/.cache 2>/dev/null || true
           rm -rf node_modules/.adminjs 2>/dev/null || true
           rm -rf dist/.adminjs 2>/dev/null || true
