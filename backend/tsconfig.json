@@ -1,4 +1,5 @@
 {
+  "exclude": ["src/admin/components/**/*.tsx"],
   "compilerOptions": {
     "module": "commonjs",
     "moduleResolution": "node",
