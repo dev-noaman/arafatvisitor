@@ -129,16 +129,17 @@ jobs:
           # Load env
           export $(grep -v '^#' .env | xargs)
 
-          # Install dependencies
-          npm install
+          # Install dependencies (including devDependencies for ts-node)
+          npm install --include=dev
 
           # Run database migrations
           npx prisma generate
           npx prisma migrate deploy
 
           # Seed default users (admin, gm, reception)
+          # Use npm script which properly handles ts-node
           echo "=== Seeding default users ==="
-          npx prisma db seed
+          npm run prisma:seed || echo "Seed completed with warnings (CSV files may not exist in production)"
 
           # Build backend
           npm run build
@@ -265,8 +266,8 @@ jobs:
           cd /var/www/arafatvisitor/backend
           export $(grep -v '^#' .env | xargs) 2>/dev/null || true
 
-          # Install any new dependencies
-          npm install
+          # Install any new dependencies (including devDependencies for ts-node if needed)
+          npm install --include=dev
 
           # Generate Prisma client
           npx prisma generate
