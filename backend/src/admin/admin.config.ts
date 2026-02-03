@@ -10,6 +10,19 @@ interface AdminContext {
     hostId?: string;
     email?: string;
   };
+  record?: AdminRecord;
+}
+
+// Type for AdminJS record
+interface AdminRecord {
+  params?: {
+    id?: string;
+    status?: string;
+    hostId?: string;
+    [key: string]: unknown;
+  };
+  toJSON: () => unknown;
+  update: (data: Record<string, unknown>) => Promise<void>;
 }
 
 // Type for Prisma client (minimal interface)
@@ -198,16 +211,16 @@ export const buildAdminOptions = (
         actions: {
           // Reception can create, Host cannot
           new: {
-            isAccessible: ({ currentAdmin }: any) => {
+            isAccessible: ({ currentAdmin }: AdminContext) => {
               const role = currentAdmin?.role;
               return role === 'ADMIN' || role === 'RECEPTION';
             },
           },
           edit: {
-            isAccessible: ({ currentAdmin }: any) => currentAdmin?.role === 'ADMIN',
+            isAccessible: ({ currentAdmin }: AdminContext) => currentAdmin?.role === 'ADMIN',
           },
           delete: {
-            isAccessible: ({ currentAdmin }: any) => currentAdmin?.role === 'ADMIN',
+            isAccessible: ({ currentAdmin }: AdminContext) => currentAdmin?.role === 'ADMIN',
           },
           // Mark Picked Up action - Host only
           markPickedUp: {
@@ -216,7 +229,7 @@ export const buildAdminOptions = (
             icon: 'CheckCircle',
             guard: 'Are you sure you want to mark this delivery as picked up?',
             isVisible: true,
-            isAccessible: ({ currentAdmin, record }: any) => {
+            isAccessible: ({ currentAdmin, record }: AdminContext) => {
               const role = currentAdmin?.role;
               const status = record?.params?.status;
 
@@ -232,7 +245,8 @@ export const buildAdminOptions = (
               }
               return false;
             },
-            handler: async (request: any, response: any, context: any) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            handler: async (request: any, response: any, context: AdminContext) => {
               const { record } = context;
 
               if (record.params.status !== 'RECEIVED') {
@@ -281,13 +295,13 @@ export const buildAdminOptions = (
         // component: Components.VisitorCards,
         actions: {
           new: {
-            isAccessible: ({ currentAdmin }: any) => {
+            isAccessible: ({ currentAdmin }: AdminContext) => {
               const role = currentAdmin?.role;
               return role === 'ADMIN' || role === 'RECEPTION';
             },
           },
           edit: {
-            isAccessible: ({ currentAdmin }: any) => currentAdmin?.role === 'ADMIN',
+            isAccessible: ({ currentAdmin }: AdminContext) => currentAdmin?.role === 'ADMIN',
           },
           // Checkout action
           checkout: {
@@ -296,8 +310,9 @@ export const buildAdminOptions = (
             icon: 'LogOut',
             guard: 'Check out this visitor?',
             isVisible: true,
-            isAccessible: ({ record }: any) => record?.params?.status === 'CHECKED_IN',
-            handler: async (request: any, response: any, context: any) => {
+            isAccessible: ({ record }: AdminContext) => record?.params?.status === 'CHECKED_IN',
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            handler: async (request: any, response: any, context: AdminContext) => {
               const { record } = context;
 
               await record.update({
@@ -318,11 +333,12 @@ export const buildAdminOptions = (
             icon: 'Send',
             component: Components.SendQrModal,
             isVisible: true,
-            isAccessible: ({ record }: any) => {
+            isAccessible: ({ record }: AdminContext) => {
               // Show if visit has a QR token
               return !!record?.params?.id;
             },
-            handler: async (request: any, response: any, context: any) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            handler: async (request: any, response: any, context: AdminContext) => {
               // Handled by component
               return { record: context.record.toJSON() };
             },
@@ -356,7 +372,7 @@ export const buildAdminOptions = (
         filterProperties: ['status', 'location', 'expectedDate'],
         actions: {
           new: {
-            isAccessible: ({ currentAdmin }: any) => {
+            isAccessible: ({ currentAdmin }: AdminContext) => {
               const role = currentAdmin?.role;
               return role === 'ADMIN' || role === 'HOST' || role === 'RECEPTION';
             },
@@ -372,7 +388,7 @@ export const buildAdminOptions = (
             variant: 'success' as const,
             guard: 'Approve this pre-registration?',
             isVisible: true,
-            isAccessible: ({ currentAdmin, record }: any) => {
+            isAccessible: ({ currentAdmin, record }: AdminContext) => {
               const status = record?.params?.status;
               if (status !== 'PENDING_APPROVAL') return false;
 
@@ -384,7 +400,8 @@ export const buildAdminOptions = (
               }
               return false;
             },
-            handler: async (request: any, response: any, context: any) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            handler: async (request: any, response: any, context: AdminContext) => {
               const { record } = context;
 
               await record.update({
@@ -408,7 +425,7 @@ export const buildAdminOptions = (
             variant: 'danger' as const,
             guard: 'Reject this pre-registration?',
             isVisible: true,
-            isAccessible: ({ currentAdmin, record }: any) => {
+            isAccessible: ({ currentAdmin, record }: AdminContext) => {
               const status = record?.params?.status;
               if (status !== 'PENDING_APPROVAL') return false;
 
@@ -420,7 +437,8 @@ export const buildAdminOptions = (
               }
               return false;
             },
-            handler: async (request: any, response: any, context: any) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            handler: async (request: any, response: any, context: AdminContext) => {
               const { record } = context;
 
               await record.update({
@@ -482,10 +500,11 @@ export const buildAdminOptions = (
         },
         actions: {
           list: {
-            isAccessible: ({ currentAdmin }: any) => currentAdmin?.role === 'ADMIN',
+            isAccessible: ({ currentAdmin }: AdminContext) => currentAdmin?.role === 'ADMIN',
           },
           new: {
-            isAccessible: ({ currentAdmin }: any) => currentAdmin?.role === 'ADMIN',
+            isAccessible: ({ currentAdmin }: AdminContext) => currentAdmin?.role === 'ADMIN',
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             before: async (request: any) => {
               if (request.method === 'post') {
                 const { email } = request.payload;
@@ -497,7 +516,8 @@ export const buildAdminOptions = (
             },
           },
           edit: {
-            isAccessible: ({ currentAdmin }: any) => currentAdmin?.role === 'ADMIN',
+            isAccessible: ({ currentAdmin }: AdminContext) => currentAdmin?.role === 'ADMIN',
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             before: async (request: any) => {
               if (request.method === 'post') {
                 const { email } = request.payload;
@@ -509,7 +529,7 @@ export const buildAdminOptions = (
             },
           },
           delete: {
-            isAccessible: ({ currentAdmin }: any) => currentAdmin?.role === 'ADMIN',
+            isAccessible: ({ currentAdmin }: AdminContext) => currentAdmin?.role === 'ADMIN',
           },
         },
 
@@ -523,10 +543,10 @@ export const buildAdminOptions = (
         navigation: { name: 'System', icon: 'FileText' },
         actions: {
           list: {
-            isAccessible: ({ currentAdmin }: any) => currentAdmin?.role === 'ADMIN',
+            isAccessible: ({ currentAdmin }: AdminContext) => currentAdmin?.role === 'ADMIN',
           },
           show: {
-            isAccessible: ({ currentAdmin }: any) => currentAdmin?.role === 'ADMIN',
+            isAccessible: ({ currentAdmin }: AdminContext) => currentAdmin?.role === 'ADMIN',
           },
           new: { isAccessible: false },
           edit: { isAccessible: false },
