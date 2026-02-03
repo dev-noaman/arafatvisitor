@@ -769,20 +769,28 @@ export class AdminApiController {
 
   @Get("dashboard/pending-approvals")
   async getPendingApprovals() {
-    const pendingVisits = await this.prisma.visit.findMany({
-      where: { status: "PENDING_APPROVAL" },
+    const visits = await this.prisma.visit.findMany({
+      where: {
+        status: { in: ["PENDING_APPROVAL", "REJECTED"] },
+      },
       include: { host: true },
-      orderBy: { expectedDate: "asc" },
-      take: 10,
+      orderBy: [
+        { status: "asc" }, // PENDING_APPROVAL comes before REJECTED alphabetically
+        { createdAt: "desc" },
+      ],
+      take: 20,
     });
 
-    return pendingVisits.map((v) => ({
+    return visits.map((v) => ({
       id: v.id,
       visitorName: v.visitorName,
       visitorPhone: v.visitorPhone,
       hostName: v.host?.name || "Unknown",
       hostCompany: v.host?.company || "Unknown",
       expectedDate: v.expectedDate?.toISOString() || v.createdAt.toISOString(),
+      status: v.status,
+      rejectionReason: v.rejectionReason,
+      rejectedAt: v.rejectedAt?.toISOString(),
     }));
   }
 
@@ -928,7 +936,8 @@ export class AdminApiController {
       throw new HttpException("Visit not found", HttpStatus.NOT_FOUND);
     }
 
-    if (visit.status !== "PENDING_APPROVAL") {
+    // Allow approving from PENDING_APPROVAL or REJECTED (re-approve)
+    if (visit.status !== "PENDING_APPROVAL" && visit.status !== "REJECTED") {
       throw new HttpException(
         "Invalid status for approval",
         HttpStatus.BAD_REQUEST,
@@ -940,6 +949,9 @@ export class AdminApiController {
       data: {
         status: "APPROVED",
         approvedAt: new Date(),
+        // Clear rejection data when re-approving
+        rejectedAt: null,
+        rejectionReason: null,
       },
     });
 

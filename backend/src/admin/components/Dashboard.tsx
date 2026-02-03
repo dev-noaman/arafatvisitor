@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, H2, H3, H4, Text, Table, TableRow, TableCell, TableHead, TableBody, Icon, Loader, Button } from '@adminjs/design-system';
+import { Box, H2, H3, H4, Text, Table, TableRow, TableCell, TableHead, TableBody, Icon, Loader, Button, Badge } from '@adminjs/design-system';
 import { useCurrentAdmin } from 'adminjs';
 
 interface KPIData {
@@ -15,6 +15,9 @@ interface PendingApproval {
   hostName: string;
   hostCompany: string;
   expectedDate: string;
+  status: 'PENDING_APPROVAL' | 'REJECTED';
+  rejectionReason?: string;
+  rejectedAt?: string;
 }
 
 interface ReceivedDelivery {
@@ -228,6 +231,7 @@ const Dashboard: React.FC = () => {
                   <TableCell style={{ color: textColor }}>Host</TableCell>
                   <TableCell style={{ color: textColor }}>Company</TableCell>
                   <TableCell style={{ color: textColor }}>Expected</TableCell>
+                  <TableCell style={{ color: textColor }}>Status</TableCell>
                   {canApprove && <TableCell style={{ color: textColor }}>Actions</TableCell>}
                 </TableRow>
               </TableHead>
@@ -238,24 +242,49 @@ const Dashboard: React.FC = () => {
                     <TableCell style={{ color: textColor }}>{item.hostName}</TableCell>
                     <TableCell style={{ color: textColor }}>{item.hostCompany}</TableCell>
                     <TableCell style={{ color: textColor }}>{new Date(item.expectedDate).toLocaleDateString()}</TableCell>
+                    <TableCell>
+                      <Box flex flexDirection="column" style={{ gap: '4px' }}>
+                        <Badge
+                          variant={item.status === 'PENDING_APPROVAL' ? 'warning' : 'danger'}
+                          outline
+                        >
+                          {item.status === 'PENDING_APPROVAL' ? 'Pending' : 'Rejected'}
+                        </Badge>
+                        {item.status === 'REJECTED' && item.rejectedAt && (
+                          <Text fontSize="xs" style={{ color: mutedColor }}>
+                            {new Date(item.rejectedAt).toLocaleDateString()}
+                          </Text>
+                        )}
+                      </Box>
+                    </TableCell>
                     {canApprove && (
                       <TableCell>
-                        <Box flex flexDirection="row" style={{ gap: '8px', whiteSpace: 'nowrap' }}>
+                        {item.status === 'PENDING_APPROVAL' ? (
+                          <Box flex flexDirection="row" style={{ gap: '8px', whiteSpace: 'nowrap' }}>
+                            <Button
+                              variant="success"
+                              size="sm"
+                              onClick={() => handleApprove(item.id)}
+                            >
+                              Approve
+                            </Button>
+                            <Button
+                              variant="danger"
+                              size="sm"
+                              onClick={() => handleReject(item.id)}
+                            >
+                              Reject
+                            </Button>
+                          </Box>
+                        ) : (
                           <Button
-                            variant="success"
+                            variant="info"
                             size="sm"
                             onClick={() => handleApprove(item.id)}
                           >
-                            Approve
+                            Re-approve
                           </Button>
-                          <Button
-                            variant="danger"
-                            size="sm"
-                            onClick={() => handleReject(item.id)}
-                          >
-                            Reject
-                          </Button>
-                        </Box>
+                        )}
                       </TableCell>
                     )}
                   </TableRow>
