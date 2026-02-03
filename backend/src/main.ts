@@ -1482,6 +1482,106 @@ async function bootstrap() {
       }
     });
 
+    // GET /admin/api/qr/:visitId - Get QR code for a visit
+    expressApp.get(`${rootPath}/api/qr/:visitId`, settingsSessionMiddleware, async (req: any, res: any) => {
+      const { visitId } = req.params;
+      try {
+        const visit = await prisma.visit.findUnique({
+          where: { id: visitId },
+          include: { qrToken: true },
+        });
+        if (!visit) {
+          return res.status(404).json({ message: 'Visit not found' });
+        }
+        const token = visit.qrToken?.token || visit.sessionId;
+        const QRCode = require('qrcode');
+        const qrDataUrl = await QRCode.toDataURL(token, { width: 300, margin: 2 });
+        res.json({ qrDataUrl, token });
+      } catch (e) {
+        console.error('QR generation error:', e);
+        res.status(500).json({ message: 'Failed to generate QR code' });
+      }
+    });
+
+    // POST /admin/api/send-qr - Send QR code via WhatsApp or Email
+    expressApp.post(`${rootPath}/api/send-qr`, settingsSessionMiddleware, jsonParser, async (req: any, res: any) => {
+      const { visitId, method } = req.body;
+      console.log('[send-qr] Starting for visitId:', visitId, 'method:', method);
+
+      try {
+        const visit = await prisma.visit.findUnique({
+          where: { id: visitId },
+          include: { qrToken: true, host: true },
+        });
+
+        if (!visit) {
+          return res.status(404).json({ message: 'Visit not found' });
+        }
+
+        console.log('[send-qr] Visit found:', visit.visitorName);
+
+        const token = visit.qrToken?.token || visit.sessionId;
+        const QRCode = require('qrcode');
+        const qrDataUrl = await QRCode.toDataURL(token, { width: 300, margin: 2 });
+        console.log('[send-qr] QR generated, length:', qrDataUrl.length);
+
+        if (method === 'whatsapp') {
+          if (!visit.visitorPhone) {
+            return res.status(400).json({ message: 'No phone number available' });
+          }
+
+          const qrLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/check-in?session=${token}`;
+          const message = `Hello ${visit.visitorName}!\n\nYour QR code for visiting ${visit.host?.company || 'our office'} is ready.\n\nPlease use this link to access your QR code:\n${qrLink}\n\nOr show this QR code at reception for check-in.`;
+
+          console.log('[send-qr] Sending WhatsApp to:', visit.visitorPhone);
+          const { WhatsAppService } = await import('./notifications/whatsapp.service');
+          const whatsappService = app.get(WhatsAppService);
+          const sent = await whatsappService.send(visit.visitorPhone, message);
+          console.log('[send-qr] WhatsApp result:', sent);
+
+          if (!sent) {
+            return res.status(503).json({ message: 'WhatsApp service failed to send message. Check configuration.' });
+          }
+          return res.json({ success: true, message: 'QR sent via WhatsApp' });
+        }
+
+        if (method === 'email') {
+          if (!visit.visitorEmail) {
+            return res.status(400).json({ message: 'No email address available' });
+          }
+
+          console.log('[send-qr] Sending email to:', visit.visitorEmail);
+          const { EmailService } = await import('./notifications/email.service');
+          const emailService = app.get(EmailService);
+          const sent = await emailService.send({
+            to: visit.visitorEmail,
+            subject: `Your Visit QR Code - ${visit.host?.company || 'Office Visit'}`,
+            html: `
+              <h2>Hello ${visit.visitorName}!</h2>
+              <p>Your QR code for visiting <strong>${visit.host?.company || 'our office'}</strong> is ready.</p>
+              <p>Please show this QR code at reception for check-in:</p>
+              <img src="${qrDataUrl}" alt="QR Code" style="width: 200px; height: 200px;" />
+              <p>Host: ${visit.host?.name || 'N/A'}</p>
+              <p>Purpose: ${visit.purpose}</p>
+              <br />
+              <p>Thank you!</p>
+            `,
+          });
+          console.log('[send-qr] Email result:', sent);
+
+          if (!sent) {
+            return res.status(503).json({ message: 'Email service failed to send. Check SMTP configuration.' });
+          }
+          return res.json({ success: true, message: 'QR sent via Email' });
+        }
+
+        return res.status(400).json({ message: 'Invalid send method' });
+      } catch (e) {
+        console.error('[send-qr] Error:', e);
+        return res.status(500).json({ message: 'Failed to send QR: ' + (e instanceof Error ? e.message : 'Unknown error') });
+      }
+    });
+
     // POST /admin/api/settings/update
     expressApp.post(`${rootPath}/api/settings/update`, settingsSessionMiddleware, jsonParser, requireAdminSession, async (req: any, res: any) => {
       const fs = require('fs');
