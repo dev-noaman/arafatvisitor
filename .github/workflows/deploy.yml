@@ -289,26 +289,21 @@ jobs:
           echo "INITIAL_SETUP_COMPLETE"
           ENDSSH
 
-      - name: Update environment config
+      - name: Update environment variables
         if: github.event.inputs.init != 'true'
         run: |
-          # Write env values to temp file locally, then upload via stdin
-          ENV_CONTENT="SMTP_HOST=${{ secrets.SMTP_HOST }}
-          SMTP_PORT=${{ secrets.SMTP_PORT }}
-          SMTP_USER=${{ secrets.SMTP_USER }}
-          SMTP_PASS=${{ secrets.SMTP_PASS }}
-          SMTP_FROM=${{ secrets.SMTP_FROM }}
-          WHATSAPP_ENDPOINT=${{ secrets.WHATSAPP_ENDPOINT }}
-          WHATSAPP_CLIENT_ID=${{ secrets.WHATSAPP_CLIENT_ID }}
-          WHATSAPP_CLIENT=${{ secrets.WHATSAPP_CLIENT }}
-          WHATSAPP_API_KEY=${{ secrets.WHATSAPP_API_KEY }}
-          NODE_ENV=production"
-
-          # Remove leading whitespace and upload
-          echo "$ENV_CONTENT" | sed 's/^          //' | sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh ${{ env.SSH_OPTS }} ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} "cat > /tmp/new-env-vars.txt"
-
-          # Update .env on server
-          sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh ${{ env.SSH_OPTS }} ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} "cd /var/www/arafatvisitor/backend && sed -i '/^SMTP_/d;/^WHATSAPP_/d;/^NODE_ENV=/d' .env && cat /tmp/new-env-vars.txt >> .env && rm /tmp/new-env-vars.txt && echo 'Environment updated'"
+          sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh ${{ env.SSH_OPTS }} ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} "cd /var/www/arafatvisitor/backend && sed -i '/^SMTP_/d' .env && sed -i '/^WHATSAPP_/d' .env && sed -i '/^NODE_ENV=/d' .env"
+          sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh ${{ env.SSH_OPTS }} ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} "echo 'SMTP_HOST=${{ secrets.SMTP_HOST }}' >> /var/www/arafatvisitor/backend/.env"
+          sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh ${{ env.SSH_OPTS }} ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} "echo 'SMTP_PORT=${{ secrets.SMTP_PORT }}' >> /var/www/arafatvisitor/backend/.env"
+          sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh ${{ env.SSH_OPTS }} ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} "echo 'SMTP_USER=${{ secrets.SMTP_USER }}' >> /var/www/arafatvisitor/backend/.env"
+          sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh ${{ env.SSH_OPTS }} ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} "echo 'SMTP_PASS=${{ secrets.SMTP_PASS }}' >> /var/www/arafatvisitor/backend/.env"
+          sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh ${{ env.SSH_OPTS }} ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} "echo 'SMTP_FROM=${{ secrets.SMTP_FROM }}' >> /var/www/arafatvisitor/backend/.env"
+          sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh ${{ env.SSH_OPTS }} ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} "echo 'WHATSAPP_ENDPOINT=${{ secrets.WHATSAPP_ENDPOINT }}' >> /var/www/arafatvisitor/backend/.env"
+          sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh ${{ env.SSH_OPTS }} ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} "echo 'WHATSAPP_CLIENT_ID=${{ secrets.WHATSAPP_CLIENT_ID }}' >> /var/www/arafatvisitor/backend/.env"
+          sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh ${{ env.SSH_OPTS }} ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} "echo 'WHATSAPP_CLIENT=${{ secrets.WHATSAPP_CLIENT }}' >> /var/www/arafatvisitor/backend/.env"
+          sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh ${{ env.SSH_OPTS }} ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} "echo 'WHATSAPP_API_KEY=${{ secrets.WHATSAPP_API_KEY }}' >> /var/www/arafatvisitor/backend/.env"
+          sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh ${{ env.SSH_OPTS }} ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} "echo 'NODE_ENV=production' >> /var/www/arafatvisitor/backend/.env"
+          echo "Environment variables updated"
 
       - name: Update Deployment (single SSH session)
         if: github.event.inputs.init != 'true'
