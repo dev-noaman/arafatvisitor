@@ -556,29 +556,21 @@ async function bootstrap() {
                 icon: "CheckCircle",
                 guard:
                   "Are you sure you want to mark this delivery as picked up?",
-                isVisible: true,
-                isAccessible: ({ currentAdmin, record }: any) => {
+                isVisible: ({ record }: any) =>
+                  record?.params?.status === "RECEIVED",
+                isAccessible: ({ currentAdmin }: any) => {
                   const role = currentAdmin?.role;
-                  const status = record?.params?.status;
-                  if (status !== "RECEIVED") return false;
-                  if (role === "RECEPTION") return false;
-                  if (role === "ADMIN") return true;
-                  if (role === "HOST") {
-                    return (
-                      record?.params?.hostId?.toString() ===
-                      currentAdmin?.hostId?.toString()
-                    );
-                  }
-                  return false;
+                  return role === "ADMIN" || role === "HOST";
                 },
                 handler: async (request: any, response: any, context: any) => {
                   const { record } = context;
-                  if (record.params.status !== "RECEIVED") {
+                  const status = record?.params?.status;
+                  if (status !== "RECEIVED") {
                     return {
                       record: record.toJSON(),
                       notice: {
                         type: "error",
-                        message: "Invalid state transition",
+                        message: `Cannot mark as picked up: status is ${status}`,
                       },
                     };
                   }
