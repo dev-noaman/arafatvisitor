@@ -15,24 +15,24 @@ const SendQrModal: React.FC<ActionProps> = (props) => {
 
   useEffect(() => {
     // Load QR code image
+    const loadQrCode = async () => {
+      try {
+        const res = await fetch(`/admin/api/qr/${visitId}`, {
+          credentials: 'include',
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setQrImageUrl(data.qrDataUrl);
+        }
+      } catch (error) {
+        console.error('Failed to load QR code:', error);
+      }
+    };
+
     if (visitId) {
       loadQrCode();
     }
   }, [visitId]);
-
-  const loadQrCode = async () => {
-    try {
-      const res = await fetch(`/admin/api/qr/${visitId}`, {
-        credentials: 'include',
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setQrImageUrl(data.qrDataUrl);
-      }
-    } catch (error) {
-      console.error('Failed to load QR code:', error);
-    }
-  };
 
   const handleSend = async (method: 'whatsapp' | 'email') => {
     if (!visitId) return;

@@ -28,13 +28,6 @@ async function clearTestData() {
   });
   console.log(`Deleted ${deletedHosts.count} test hosts`);
 
-  // Delete test deliveries (orphaned ones will be deleted by cascade, but let's clean by test host pattern)
-  const testHostEmails = [
-    'ahmed.rashid@qp.qa', 'sarah.j@ooredoo.qa', 'm.hassan@qatarairways.com',
-    'f.althani@qnb.com', 'j.smith@ashghal.gov.qa', 'n.sulaiti@vodafone.qa',
-    'd.wilson@qf.org.qa', 'm.kuwari@katara.qa', 'k.ibrahim@qatarenergy.qa', 'l.brown@hamad.qa'
-  ];
-
   console.log('Test data cleared successfully');
 }
 
@@ -116,7 +109,7 @@ async function seedUsers() {
     const email = row.Email?.trim();
     const name = row.Name?.trim();
     const password = row.password?.trim();
-    const roleString = row.Role?.trim() as any;
+    const roleString = row.Role?.trim() as string | undefined;
 
     // Skip rows without required fields
     if (!email || !name) {
@@ -201,7 +194,7 @@ async function seedHostsFromCsv() {
   let existingCount = 0;
   let errorCount = 0;
   let invalidCount = 0;
-  const invalidRows: any[] = [];
+  const invalidRows: Record<string, unknown>[] = [];
 
   for (const row of records) {
     const name = row.Name?.trim();

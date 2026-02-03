@@ -3,6 +3,22 @@
 
 import type { AdminJSOptions } from 'adminjs';
 
+// Type for AdminJS action context
+interface AdminContext {
+  currentAdmin?: {
+    role?: string;
+    hostId?: string;
+    email?: string;
+  };
+}
+
+// Type for Prisma client (minimal interface)
+interface PrismaClient {
+  host: {
+    findUnique: (args: { where: { id: bigint } }) => Promise<{ company?: string } | null>;
+  };
+}
+
 // Component paths for bundling (relative to this file)
 export const componentPaths = {
   Dashboard: './components/Dashboard',
@@ -83,10 +99,13 @@ export const getNavigationForRole = (role: string) => {
   ];
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ModelGetter = (name: string) => any;
+
 // Export admin options builder function
 export const buildAdminOptions = (
-  getModel: (name: string) => any,
-  prisma: any,
+  getModel: ModelGetter,
+  prisma: PrismaClient,
   Components: Record<string, string>,
 ): AdminJSOptions => ({
   rootPath: '/admin',
@@ -130,27 +149,28 @@ export const buildAdminOptions = (
         },
         actions: {
           new: {
-            isAccessible: ({ currentAdmin }: any) => currentAdmin?.role === 'ADMIN',
+            isAccessible: ({ currentAdmin }: AdminContext) => currentAdmin?.role === 'ADMIN',
           },
           edit: {
-            isAccessible: ({ currentAdmin }: any) => currentAdmin?.role === 'ADMIN',
+            isAccessible: ({ currentAdmin }: AdminContext) => currentAdmin?.role === 'ADMIN',
           },
           delete: {
-            isAccessible: ({ currentAdmin }: any) => currentAdmin?.role === 'ADMIN',
+            isAccessible: ({ currentAdmin }: AdminContext) => currentAdmin?.role === 'ADMIN',
           },
           bulkImport: {
             actionType: 'bulk' as const,
             label: 'Bulk Import',
             icon: 'Upload',
             component: Components.BulkImportHosts,
-            isAccessible: ({ currentAdmin }: any) => currentAdmin?.role === 'ADMIN',
-            handler: async (request: any, response: any, context: any) => {
+            isAccessible: ({ currentAdmin }: AdminContext) => currentAdmin?.role === 'ADMIN',
+            handler: async () => {
               // Handled by component
               return {};
             },
           },
           list: {
-            before: async (request: any, context: any) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            before: async (request: any, context: AdminContext) => {
               const { currentAdmin } = context;
               if (currentAdmin?.role === 'HOST' && currentAdmin?.hostId) {
                 // Host can only see hosts from same company
@@ -234,7 +254,8 @@ export const buildAdminOptions = (
             },
           },
           list: {
-            before: async (request: any, context: any) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            before: async (request: any, context: AdminContext) => {
               const { currentAdmin } = context;
               if (currentAdmin?.role === 'HOST' && currentAdmin?.hostId) {
                 request.query = { ...request.query, 'filters.hostId': currentAdmin.hostId };
@@ -307,7 +328,8 @@ export const buildAdminOptions = (
             },
           },
           list: {
-            before: async (request: any, context: any) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            before: async (request: any, context: AdminContext) => {
               const { currentAdmin } = context;
               // Filter to show only CHECKED_IN and CHECKED_OUT
               request.query = {
@@ -415,7 +437,8 @@ export const buildAdminOptions = (
             },
           },
           list: {
-            before: async (request: any, context: any) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            before: async (request: any, context: AdminContext) => {
               const { currentAdmin } = context;
               // Filter to show only pre-registration statuses
               const preRegStatuses = ['PRE_REGISTERED', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED'];
