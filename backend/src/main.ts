@@ -760,10 +760,11 @@ async function bootstrap() {
               list: {
                 before: async (request: any, context: any) => {
                   const { currentAdmin } = context;
+                  // Show APPROVED (expected), CHECKED_IN (on-site), CHECKED_OUT (left)
                   if (!request.query?.["filters.status"]) {
                     request.query = {
                       ...request.query,
-                      "filters.status": "CHECKED_IN",
+                      "filters.status": ["APPROVED", "CHECKED_IN", "CHECKED_OUT"],
                     };
                   }
                   if (currentAdmin?.role === "HOST" && currentAdmin?.hostId) {
