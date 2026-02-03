@@ -352,9 +352,9 @@ export const buildAdminOptions = (
             label: "Check Out",
             icon: "LogOut",
             guard: "Check out this visitor?",
-            isVisible: true,
-            isAccessible: ({ record }: AdminContext) =>
+            isVisible: ({ record }: AdminContext) =>
               record?.params?.status === "CHECKED_IN",
+            isAccessible: true,
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             handler: async (
               request: any,
@@ -366,6 +366,16 @@ export const buildAdminOptions = (
               if (!record) {
                 return {
                   notice: { type: "error", message: "Record not found" },
+                };
+              }
+
+              if (record.params?.status !== "CHECKED_IN") {
+                return {
+                  record: record.toJSON(),
+                  notice: {
+                    type: "error",
+                    message: `Cannot check out: visitor status is ${record.params?.status || "unknown"}`,
+                  },
                 };
               }
 

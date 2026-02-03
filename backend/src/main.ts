@@ -715,11 +715,20 @@ async function bootstrap() {
                 label: "Check Out",
                 icon: "LogOut",
                 guard: "Check out this visitor?",
-                isVisible: true,
-                isAccessible: ({ record }: any) =>
+                isVisible: ({ record }: any) =>
                   record?.params?.status === "CHECKED_IN",
+                isAccessible: true,
                 handler: async (request: any, response: any, context: any) => {
                   const { record } = context;
+                  if (record?.params?.status !== "CHECKED_IN") {
+                    return {
+                      record: record.toJSON(),
+                      notice: {
+                        type: "error",
+                        message: `Cannot check out: visitor status is ${record?.params?.status || "unknown"}`,
+                      },
+                    };
+                  }
                   await record.update({
                     status: "CHECKED_OUT",
                     checkOutAt: new Date(),
