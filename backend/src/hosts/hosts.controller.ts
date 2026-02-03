@@ -11,6 +11,8 @@ import {
   UseInterceptors,
   UploadedFile,
   ParseIntPipe,
+  HttpException,
+  HttpStatus,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { HostsService } from './hosts.service';
@@ -22,6 +24,11 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Public } from '../common/decorators/public.decorator';
 import { Role } from '@prisma/client';
+
+class ImportDto {
+  csvContent?: string;
+  xlsxContent?: string;
+}
 
 @Controller('hosts')
 export class HostsController {
@@ -67,11 +74,25 @@ export class HostsController {
   @Post('import')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
-  @UseInterceptors(FileInterceptor('file'))
-  async import(@UploadedFile() file: Express.Multer.File) {
-    if (!file?.buffer) {
-      return { imported: 0, skipped: 0, errors: ['No file uploaded'] };
+  async import(@Body() body: ImportDto, @Query('validate') validate?: string) {
+    const isValidate = validate === 'true';
+
+    if (!body.csvContent && !body.xlsxContent) {
+      throw new HttpException('Please provide either csvContent or xlsxContent', HttpStatus.BAD_REQUEST);
     }
-    return this.csvImportService.importFromBuffer(file.buffer);
+
+    if (body.xlsxContent) {
+      if (isValidate) {
+        return this.csvImportService.validateFromXlsxBase64(body.xlsxContent);
+      }
+      return this.csvImportService.importFromXlsxBase64(body.xlsxContent);
+    }
+
+    // Handle CSV content
+    const buffer = Buffer.from(body.csvContent!, 'utf-8');
+    if (isValidate) {
+      return this.csvImportService.validateFromCsvBuffer(buffer);
+    }
+    return this.csvImportService.importFromBuffer(buffer);
   }
 }

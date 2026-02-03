@@ -13,6 +13,7 @@ export const componentPaths = {
   ChangePasswordModal: './components/ChangePasswordModal',
   UserPasswordField: './components/UserPasswordField',
   EditProfilePanel: './components/EditProfilePanel',
+  BulkImportHosts: './components/BulkImportHosts',
 };
 
 // AdminJS branding configuration
@@ -136,6 +137,17 @@ export const buildAdminOptions = (
           },
           delete: {
             isAccessible: ({ currentAdmin }: any) => currentAdmin?.role === 'ADMIN',
+          },
+          bulkImport: {
+            actionType: 'bulk' as const,
+            label: 'Bulk Import',
+            icon: 'Upload',
+            component: Components.BulkImportHosts,
+            isAccessible: ({ currentAdmin }: any) => currentAdmin?.role === 'ADMIN',
+            handler: async (request: any, response: any, context: any) => {
+              // Handled by component
+              return {};
+            },
           },
           list: {
             before: async (request: any, context: any) => {

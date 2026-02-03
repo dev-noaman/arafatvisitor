@@ -17,6 +17,7 @@ import { Public } from '../common/decorators/public.decorator';
 import * as bcrypt from 'bcrypt';
 import * as QRCode from 'qrcode';
 import * as crypto from 'crypto';
+import * as XLSX from 'xlsx';
 // csv-parse import moved to dynamic import inside method for ESM compatibility
 
 // Note: These endpoints are meant to be accessed through the AdminJS session
@@ -87,12 +88,25 @@ export class AdminApiController {
   // ============ HOSTS BULK IMPORT ============
 
   @Post('hosts/import')
-  async importHosts(@Body() body: { csvContent?: string }) {
+  async importHosts(@Body() body: { csvContent?: string; xlsxContent?: string }, @Query('validate') validate?: string) {
     console.log('Bulk import request received, body keys:', body ? Object.keys(body) : 'null');
 
-    try {
-      const { csvContent } = body || {};
+    const isValidate = validate === 'true';
 
+    try {
+      const { csvContent, xlsxContent } = body || {};
+
+      if (!csvContent && !xlsxContent) {
+        throw new HttpException('csvContent or xlsxContent is required', HttpStatus.BAD_REQUEST);
+      }
+
+      // Handle XLSX content
+      if (xlsxContent) {
+        console.log(`XLSX content received, length: ${xlsxContent.length} chars`);
+        return this.importFromXlsxBase64(xlsxContent, isValidate);
+      }
+
+      // Handle CSV content
       if (!csvContent || typeof csvContent !== 'string' || !csvContent.trim()) {
         console.log('csvContent validation failed:', {
           hasBody: !!body,
@@ -315,6 +329,341 @@ export class AdminApiController {
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
+  }
+
+  private async importFromXlsxBase64(base64: string, validate: boolean) {
+    console.log(`XLSX import started, validate: ${validate}`);
+
+    try {
+      // Remove data URL prefix if present
+      const base64Data = base64.includes(',') ? base64.split(',')[1] : base64;
+      const buffer = Buffer.from(base64Data, 'base64');
+      const workbook = XLSX.read(buffer, { type: 'buffer' });
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const records = XLSX.utils.sheet_to_json(worksheet, { defval: '' }) as Record<string, any>[];
+
+      console.log(`XLSX parsed successfully, ${records.length} records found`);
+
+      if (validate) {
+        return this.validateXlsxRecords(records);
+      }
+
+      return this.processXlsxRecords(records);
+    } catch (error) {
+      console.error('XLSX import error:', error);
+      throw new HttpException(
+        `XLSX import failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  private async validateXlsxRecords(records: Record<string, any>[]) {
+    let totalProcessed = 0;
+    let inserted = 0;
+    let skipped = 0;
+    let rejected = 0;
+    const rejectedRows: Array<{ rowNumber: number; reason: string; data: any }> = [];
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i;
+
+    const mapLocation = (value?: string | null) => {
+      if (!value) return null;
+      const v = value.trim();
+      if (v === 'Arafat - Barwa Towers') return 'BARWA_TOWERS';
+      if (v === 'Arafat - Element Hotel') return 'ELEMENT_MARIOTT';
+      if (v === 'Arafat - Marina 50 Tower') return 'MARINA_50';
+      return null;
+    };
+
+    const mapStatus = (value?: string | null) => {
+      if (!value) return undefined;
+      const v = value.trim().toLowerCase();
+      if (v === 'active') return 1;
+      if (v === 'inactive') return 0;
+      return undefined;
+    };
+
+    const cleanPhone = (value?: string | null) => {
+      if (!value) return '';
+      let v = value.replace(/[\s\-()]/g, '');
+      if (v.startsWith('+')) {
+        v = v.slice(1);
+      }
+      const isQatar = v.startsWith('974');
+      if (!isQatar && /^\d{6}$/.test(v)) {
+        v = `974${v}`;
+      } else if (isQatar) {
+        const rest = v.slice(3);
+        if (rest.length === 6) {
+          v = `974${rest}`;
+        }
+      }
+      return v;
+    };
+
+    for (let index = 0; index < records.length; index++) {
+      const row = records[index];
+      const rowNumber = index + 2;
+      totalProcessed += 1;
+
+      const reasons: string[] = [];
+
+      const externalIdRaw = (row['ID'] || row['id'] || '').toString().trim();
+      const nameRaw = (row['Name'] || row['name'] || '').toString().trim();
+      const companyRaw = (row['Company'] || row['company'] || '').toString().trim();
+      const emailRaw = (row['Email Address'] || row['Email'] || row['email'] || '').toString().trim();
+      const phoneRaw = (row['Phone Number'] || row['Phone'] || row['phone'] || '').toString().trim();
+      const locationRaw = (row['Location'] || row['location'] || '').toString().trim();
+      const statusRaw = (row['Status'] || row['status'] || '').toString().trim();
+
+      const name = nameRaw || '';
+      if (!name) {
+        reasons.push('Missing name');
+      }
+
+      const company = companyRaw || null;
+
+      const email = emailRaw ? emailRaw.toLowerCase() : null;
+      if (email && !emailRegex.test(email)) {
+        reasons.push('Invalid email format');
+      }
+
+      let phone = cleanPhone(phoneRaw);
+      if (!phone) {
+        reasons.push('Invalid or missing phone');
+      } else if (/[a-zA-Z]/.test(phone)) {
+        reasons.push('Invalid phone (contains letters)');
+      }
+
+      const location = mapLocation(locationRaw || null);
+
+      const status = mapStatus(statusRaw || null);
+      if (status === undefined) {
+        reasons.push('Invalid status');
+      }
+
+      if (reasons.length > 0) {
+        rejectedRows.push({
+          rowNumber,
+          reason: reasons.join('; '),
+          data: {
+            id: externalIdRaw || '',
+            name: name || '',
+            company: company || '',
+            email: email || '',
+            phone: phone || '',
+            location: locationRaw || '',
+            status: statusRaw || '',
+          },
+        });
+        rejected++;
+        continue;
+      }
+
+      const externalId = externalIdRaw || null;
+
+      // Check if host already exists by externalId
+      if (externalId) {
+        const existingHost = await this.prisma.host.findUnique({
+          where: { externalId },
+        });
+        if (existingHost) {
+          skipped++;
+          continue;
+        }
+      }
+
+      inserted++;
+    }
+
+    return {
+      totalProcessed,
+      inserted,
+      skipped,
+      rejected,
+      rejectedRows,
+      usersCreated: 0,
+      usersSkipped: 0,
+    };
+  }
+
+  private async processXlsxRecords(records: Record<string, any>[]) {
+    let totalProcessed = 0;
+    let inserted = 0;
+    let skipped = 0;
+    let usersCreated = 0;
+    let usersSkipped = 0;
+    const rejectedRows: Array<{ rowNumber: number; reason: string }> = [];
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i;
+
+    const mapLocation = (value?: string | null) => {
+      if (!value) return null;
+      const v = value.trim();
+      if (v === 'Arafat - Barwa Towers') return 'BARWA_TOWERS';
+      if (v === 'Arafat - Element Hotel') return 'ELEMENT_MARIOTT';
+      if (v === 'Arafat - Marina 50 Tower') return 'MARINA_50';
+      return null;
+    };
+
+    const mapStatus = (value?: string | null) => {
+      if (!value) return undefined;
+      const v = value.trim().toLowerCase();
+      if (v === 'active') return 1;
+      if (v === 'inactive') return 0;
+      return undefined;
+    };
+
+    const cleanPhone = (value?: string | null) => {
+      if (!value) return '';
+      let v = value.replace(/[\s\-()]/g, '');
+      if (v.startsWith('+')) {
+        v = v.slice(1);
+      }
+      const isQatar = v.startsWith('974');
+      if (!isQatar && /^\d{6}$/.test(v)) {
+        v = `974${v}`;
+      } else if (isQatar) {
+        const rest = v.slice(3);
+        if (rest.length === 6) {
+          v = `974${rest}`;
+        }
+      }
+      return v;
+    };
+
+    for (let index = 0; index < records.length; index++) {
+      const row = records[index];
+      const rowNumber = index + 2;
+      totalProcessed += 1;
+
+      const reasons: string[] = [];
+
+      const externalIdRaw = (row['ID'] || row['id'] || '').toString().trim();
+      const nameRaw = (row['Name'] || row['name'] || '').toString().trim();
+      const companyRaw = (row['Company'] || row['company'] || '').toString().trim();
+      const emailRaw = (row['Email Address'] || row['Email'] || row['email'] || '').toString().trim();
+      const phoneRaw = (row['Phone Number'] || row['Phone'] || row['phone'] || '').toString().trim();
+      const locationRaw = (row['Location'] || row['location'] || '').toString().trim();
+      const statusRaw = (row['Status'] || row['status'] || '').toString().trim();
+
+      const name = nameRaw || '';
+      if (!name) {
+        reasons.push('Missing name');
+      }
+
+      const company = companyRaw || null;
+
+      const email = emailRaw ? emailRaw.toLowerCase() : null;
+      if (email && !emailRegex.test(email)) {
+        reasons.push('Invalid email format');
+      }
+
+      let phone = cleanPhone(phoneRaw);
+      if (!phone) {
+        reasons.push('Invalid or missing phone');
+      } else if (/[a-zA-Z]/.test(phone)) {
+        reasons.push('Invalid phone (contains letters)');
+      }
+
+      const location = mapLocation(locationRaw || null);
+
+      const status = mapStatus(statusRaw || null);
+      if (status === undefined) {
+        reasons.push('Invalid status');
+      }
+
+      if (reasons.length > 0) {
+        rejectedRows.push({ rowNumber, reason: reasons.join('; ') });
+        continue;
+      }
+
+      const externalId = externalIdRaw || null;
+
+      // Check if host already exists by externalId
+      if (externalId) {
+        const existingHost = await this.prisma.host.findUnique({
+          where: { externalId },
+        });
+        if (existingHost) {
+          skipped++;
+          continue;
+        }
+      }
+
+      try {
+        const createdHost = await this.prisma.host.create({
+          data: {
+            externalId,
+            name,
+            company: company ?? '',
+            email,
+            phone,
+            location: location as any,
+            status: status ?? 1,
+          },
+        });
+        inserted++;
+
+        // Auto-create User account for new Host
+        const userEmail = email || `host_${createdHost.id}@system.local`;
+
+        // Check if User with email already exists
+        const existingUserByEmail = await this.prisma.user.findUnique({
+          where: { email: userEmail },
+        });
+        if (existingUserByEmail) {
+          usersSkipped++;
+        } else {
+          // Check if User with hostId already exists
+          const existingUserByHostId = await this.prisma.user.findFirst({
+            where: { hostId: createdHost.id },
+          });
+          if (existingUserByHostId) {
+            usersSkipped++;
+          } else {
+            // Generate random 32-char password
+            const randomPassword = crypto.randomBytes(16).toString('hex');
+            const hashedPassword = await bcrypt.hash(randomPassword, 12);
+
+            // Create User with role=HOST and hostId
+            await this.prisma.user.create({
+              data: {
+                email: userEmail,
+                password: hashedPassword,
+                name: name,
+                role: 'HOST',
+                hostId: createdHost.id,
+              },
+            });
+            usersCreated++;
+          }
+        }
+      } catch (e) {
+        const errorMsg = e instanceof Error ? e.message : 'Unknown database error';
+        console.error(`Row ${rowNumber} database error:`, e);
+        rejectedRows.push({
+          rowNumber,
+          reason: `Database error: ${errorMsg}`,
+        });
+      }
+    }
+
+    const rejected = rejectedRows.length;
+
+    console.log(`XLSX import completed: ${totalProcessed} processed, ${inserted} inserted, ${skipped} skipped, ${rejected} rejected`);
+
+    return {
+      totalProcessed,
+      inserted,
+      skipped,
+      rejected,
+      rejectedRows,
+      usersCreated,
+      usersSkipped,
+    };
   }
 
   // ============ PENDING APPROVALS ============
