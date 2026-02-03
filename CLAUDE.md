@@ -186,6 +186,94 @@ npm run test:e2e   # Run end-to-end tests
 - **Reports**: Visit and delivery reports
 - **Settings**: System configuration (SMTP, WhatsApp)
 
+### Custom AdminJS Theme
+
+The admin panel uses custom styling to override the default AdminJS theme.
+
+#### Theme Files
+```
+backend/public/
+├── admin-custom.css   # Custom CSS overrides
+└── admin-scripts.js   # Custom JavaScript behavior
+```
+
+#### Custom CSS (`admin-custom.css`)
+- **Forced Light Mode**: Dark mode variables remapped to light colors
+- **Always-Visible Sidebar**: Sidebar remains open and visible at all times
+- **Hidden Theme Toggle**: Dark mode toggle button is hidden
+- **Compact Tables**: Reduced padding and font sizes for better data density
+- **Custom Colors**: Brand-aligned color scheme
+
+Key CSS customizations:
+```css
+/* Force light mode */
+:root, [data-theme="dark"] {
+  --color-bg: #ffffff;
+  --color-text: #1e1e2d;
+}
+
+/* Sidebar always visible */
+aside[data-css="sidebar"] {
+  transform: translateX(0) !important;
+  width: 240px !important;
+}
+
+/* Hide dark mode toggle */
+[data-testid="theme-toggle"],
+button[title*="theme"],
+button[title*="Theme"] {
+  display: none !important;
+}
+
+/* Compact table rows */
+.adminjs_TableRow td {
+  padding: 8px 12px !important;
+  font-size: 13px !important;
+}
+```
+
+#### Custom JavaScript (`admin-scripts.js`)
+- **Force Light Mode**: Removes dark mode attributes on page load
+- **Prevent Theme Changes**: Overrides localStorage to block theme switching
+- **Sidebar Auto-Open**: Ensures sidebar is always expanded
+- **Navigation Cleanup**: Removes unwanted labels from navigation items
+
+Key JS customizations:
+```javascript
+// Force light mode on load
+document.documentElement.removeAttribute('data-theme');
+document.body.classList.remove('dark-theme');
+
+// Override localStorage to prevent dark mode
+const originalSetItem = localStorage.setItem;
+localStorage.setItem = function(key, value) {
+  if (key === 'adminjs-theme' && value === 'dark') {
+    return; // Block dark mode
+  }
+  originalSetItem.call(this, key, value);
+};
+
+// Force sidebar open
+const sidebar = document.querySelector('aside[data-css="sidebar"]');
+if (sidebar) {
+  sidebar.style.transform = 'translateX(0)';
+}
+```
+
+#### How Theme is Loaded
+In `backend/src/main.ts`, static files are served from `backend/public/`:
+```typescript
+expressApp.use('/admin/public', express.static(join(__dirname, '..', 'public')));
+```
+
+AdminJS config in `backend/src/admin/admin.config.ts` includes the custom assets:
+```typescript
+assets: {
+  styles: ['/admin/public/admin-custom.css'],
+  scripts: ['/admin/public/admin-scripts.js'],
+}
+```
+
 ## Visit Workflow
 
 ```
