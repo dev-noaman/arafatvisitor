@@ -159,8 +159,204 @@ npm run test:e2e   # Run end-to-end tests
 ## Recent Changes
 - 004-fullstack-unit-testing: Added TypeScript 5.9 (frontend), TypeScript 5.1 (backend)
 - 002-host-user-sync: Added TypeScript 5.9, NestJS (Node.js backend) + NestJS, Prisma ORM, AdminJS, bcrypt
-
 - **001-visitor-kiosk-ui**: Initial kiosk UI with walk-in check-in, QR scanning, delivery management, authentication, and role-based dashboard
 
 <!-- MANUAL ADDITIONS START -->
+
+## Admin Panel
+
+### URLs
+- **Admin Panel**: http://localhost:3000/admin
+- **Quick Login**: http://localhost:3000/admin/quick-login
+
+### Test Login Credentials
+| Role | Email | Password |
+|------|-------|----------|
+| Admin | admin@arafatvisitor.cloud | admin123 |
+| GM | gm@arafatvisitor.cloud | gm123 |
+| Host | host@arafatvisitor.cloud | host123 |
+| Reception | reception@arafatvisitor.cloud | reception123 |
+
+### Admin Panel Sections
+- **Hosts**: Manage host/employee records
+- **Deliveries**: Track package deliveries
+- **Visitors**: Currently checked-in visitors (CHECKED_IN, CHECKED_OUT)
+- **Pre Register**: Pre-registered visits awaiting approval (PRE_REGISTERED, PENDING_APPROVAL, APPROVED, REJECTED)
+- **Users**: System user management (Admin only)
+- **Reports**: Visit and delivery reports
+- **Settings**: System configuration (SMTP, WhatsApp)
+
+## Visit Workflow
+
+```
+Pre Register Panel                    Visitors Panel
+────────────────────────────────────────────────────
+PRE_REGISTERED → PENDING_APPROVAL → APPROVED → CHECKED_IN → CHECKED_OUT
+                        ↓
+                    REJECTED
+```
+
+| Status | Panel | Description |
+|--------|-------|-------------|
+| PRE_REGISTERED | Pre Register | Visit scheduled, awaiting approval |
+| PENDING_APPROVAL | Pre Register | Visitor arrived, waiting for host |
+| APPROVED | Pre Register | Host approved, ready for check-in |
+| REJECTED | Pre Register | Host rejected the visit |
+| CHECKED_IN | Visitors | Visitor currently on-site |
+| CHECKED_OUT | Visitors | Visitor has left |
+
+## Test Seed Data
+
+### Seeding Commands
+```bash
+cd backend
+npx prisma db seed     # Run seed script
+npx prisma studio      # Open database GUI
+```
+
+### Test Data Details
+All test data uses:
+- **Phone**: +97450707317 (for WhatsApp testing)
+- **Email**: adel.noaman@arafatgroup.com (for email testing)
+
+### Test Hosts (10)
+| Name | Company | Location |
+|------|---------|----------|
+| Ahmed Al-Rashid | Qatar Petroleum | Barwa Towers |
+| Sarah Johnson | Ooredoo Qatar | Marina 50 |
+| Mohammed Hassan | Qatar Airways | Element Mariott |
+| Fatima Al-Thani | QNB Group | Barwa Towers |
+| John Smith | Ashghal | Marina 50 |
+| Noura Al-Sulaiti | Vodafone Qatar | Element Mariott |
+| David Wilson | Qatar Foundation | Barwa Towers |
+| Maryam Al-Kuwari | Katara Hospitality | Marina 50 |
+| Khalid Ibrahim | Qatar Energy | Element Mariott |
+| Lisa Brown | Hamad Medical Corp | Barwa Towers |
+
+### Test Visitors (10)
+**Pre Register Panel (5):**
+| Name | Status |
+|------|--------|
+| Michael Chen | PRE_REGISTERED |
+| Aisha Al-Mahmoud | PENDING_APPROVAL |
+| Robert Garcia | APPROVED |
+| Huda Al-Baker | REJECTED |
+| James Wilson | PRE_REGISTERED |
+
+**Visitors Panel (5):**
+| Name | Status |
+|------|--------|
+| Layla Hassan | CHECKED_IN |
+| Thomas Anderson | CHECKED_IN |
+| Reem Al-Naimi | CHECKED_OUT |
+| Daniel Lee | CHECKED_IN |
+| Salma Youssef | CHECKED_OUT |
+
+### Test Deliveries (10)
+One delivery per host via DHL, FedEx, Aramex, Qatar Post, UPS, TNT Express.
+
+## Send QR Feature
+
+### Functionality
+Send QR codes to visitors via Email or WhatsApp from the Admin Panel.
+
+### How to Use
+1. Go to **Visitors** or **Pre Register** panel
+2. Click on a visitor record
+3. Click **Send QR** button
+4. Choose **Email** or **WhatsApp**
+
+### API Endpoints
+```
+GET  /admin/api/qr/:visitId     # Get QR code data URL
+POST /admin/api/send-qr         # Send QR via email/whatsapp
+     Body: { visitId: string, method: 'email' | 'whatsapp' }
+```
+
+### Email Template
+Sends HTML email with embedded QR code image, visitor name, host info, and purpose.
+
+### WhatsApp Message
+Sends text message with link to check-in page and QR token.
+
+## Notification Services
+
+### Email (SMTP)
+Configured in `.env`:
+```
+SMTP_HOST=smtp.emailit.com
+SMTP_PORT=587
+SMTP_USER=emailit
+SMTP_PASS=<secret>
+SMTP_FROM=info@abcgroup.cloud
+```
+
+### WhatsApp (wbiztool)
+Configured in `.env`:
+```
+WHATSAPP_ENDPOINT=https://wbiztool.com/api/v1/
+WHATSAPP_CLIENT_ID=11158
+WHATSAPP_CLIENT=5219
+WHATSAPP_API_KEY=<secret>
+```
+
+## Key API Endpoints
+
+### Admin API (no JWT, session-based)
+```
+GET  /admin/api/dashboard/kpis              # Dashboard statistics
+GET  /admin/api/dashboard/pending-approvals # Pending visits
+GET  /admin/api/dashboard/received-deliveries # Pending deliveries
+GET  /admin/api/dashboard/charts            # Chart data
+GET  /admin/api/dashboard/current-visitors  # Active visitors
+POST /admin/api/dashboard/approve/:id       # Approve visit
+POST /admin/api/dashboard/reject/:id        # Reject visit
+POST /admin/api/dashboard/checkout/:sessionId # Check out visitor
+GET  /admin/api/qr/:visitId                 # Get QR code
+POST /admin/api/send-qr                     # Send QR email/whatsapp
+POST /admin/api/change-password             # Change user password
+GET  /admin/api/settings                    # Get system settings
+POST /admin/api/settings/test-email         # Test SMTP
+POST /admin/api/settings/test-whatsapp      # Test WhatsApp
+POST /admin/api/hosts/import                # Bulk import hosts (CSV/XLSX)
+```
+
+### Public API (JWT required)
+```
+POST /auth/login                # Login, get JWT
+POST /auth/forgot-password      # Request password reset
+POST /auth/reset-password       # Reset password with token
+GET  /visits/active             # Active visitors
+GET  /visits/history            # Visit history
+POST /visits                    # Create walk-in visit
+POST /visits/pre-register       # Pre-register visit
+GET  /visits/:sessionId         # Get visit by session
+POST /visits/:sessionId/checkout # Check out visitor
+GET  /deliveries                # List deliveries
+POST /deliveries                # Create delivery
+```
+
+## Database Schema (Key Models)
+
+### User
+- id, email, password, name, role (ADMIN/RECEPTION/HOST), hostId
+
+### Host
+- id, externalId, name, company, email, phone, location, status
+
+### Visit
+- id, sessionId, visitorName, visitorCompany, visitorPhone, visitorEmail
+- hostId, purpose, location, status, expectedDate
+- checkInAt, checkOutAt, approvedAt, rejectedAt
+
+### QrToken
+- id, visitId, token, expiresAt, usedAt
+
+### Delivery
+- id, recipient, hostId, courier, location, status, notes
+- receivedAt, pickedUpAt
+
+### Location Enum
+- BARWA_TOWERS, MARINA_50, ELEMENT_MARIOTT
+
 <!-- MANUAL ADDITIONS END -->
