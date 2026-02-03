@@ -1561,64 +1561,16 @@ async function bootstrap() {
           ctx.font = 'bold 28px Arial, sans-serif';
           ctx.fillText(visit.visitorName || 'Visitor', cardWidth / 2, 130);
 
-          // Company
+          // Visitor Company
           ctx.fillStyle = '#64748b';
           ctx.font = '18px Arial, sans-serif';
           ctx.fillText(visit.visitorCompany || '', cardWidth / 2, 160);
 
-          // Divider line
-          ctx.strokeStyle = '#e2e8f0';
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.moveTo(40, 185);
-          ctx.lineTo(cardWidth - 40, 185);
-          ctx.stroke();
-
-          // Host section
-          ctx.fillStyle = '#475569';
-          ctx.font = '14px Arial, sans-serif';
-          ctx.fillText('VISITING', cardWidth / 2, 215);
-
-          ctx.fillStyle = '#1e293b';
-          ctx.font = 'bold 20px Arial, sans-serif';
-          ctx.fillText(visit.host?.name || 'Host', cardWidth / 2, 245);
-
-          ctx.fillStyle = '#64748b';
-          ctx.font = '16px Arial, sans-serif';
-          ctx.fillText(visit.host?.company || '', cardWidth / 2, 270);
-
-          // Purpose
-          ctx.fillStyle = '#475569';
-          ctx.font = '14px Arial, sans-serif';
-          ctx.fillText('PURPOSE', cardWidth / 2, 310);
-
-          ctx.fillStyle = '#1e293b';
-          ctx.font = '16px Arial, sans-serif';
-          const purpose = visit.purpose || 'Visit';
-          const maxPurposeWidth = cardWidth - 80;
-          if (ctx.measureText(purpose).width > maxPurposeWidth) {
-            ctx.fillText(purpose.substring(0, 30) + '...', cardWidth / 2, 335);
-          } else {
-            ctx.fillText(purpose, cardWidth / 2, 335);
-          }
-
-          // Date
-          const visitDate = visit.expectedDate || visit.createdAt || new Date();
-          const dateStr = new Date(visitDate).toLocaleDateString('en-US', {
-            weekday: 'short',
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric'
-          });
-          ctx.fillStyle = '#475569';
-          ctx.font = '14px Arial, sans-serif';
-          ctx.fillText(dateStr, cardWidth / 2, 365);
-
-          // QR Code - load from data URL
+          // QR Code - load from data URL (in the middle)
           const qrImage = await loadImage(qrDataUrl);
-          const qrSize = 180;
+          const qrSize = 200;
           const qrX = (cardWidth - qrSize) / 2;
-          const qrY = 390;
+          const qrY = 190;
 
           // QR background
           ctx.fillStyle = '#ffffff';
@@ -1630,10 +1582,54 @@ async function bootstrap() {
           // Draw QR code
           ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
 
-          // Footer text
+          // Scan instruction
           ctx.fillStyle = '#94a3b8';
           ctx.font = '12px Arial, sans-serif';
-          ctx.fillText('Scan at reception for check-in', cardWidth / 2, cardHeight - 15);
+          ctx.fillText('Scan at reception for check-in', cardWidth / 2, qrY + qrSize + 30);
+
+          // Divider line
+          ctx.strokeStyle = '#e2e8f0';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(40, 450);
+          ctx.lineTo(cardWidth - 40, 450);
+          ctx.stroke();
+
+          // Host section (bottom)
+          ctx.fillStyle = '#475569';
+          ctx.font = '14px Arial, sans-serif';
+          ctx.fillText('VISITING', cardWidth / 2, 475);
+
+          ctx.fillStyle = '#1e293b';
+          ctx.font = 'bold 18px Arial, sans-serif';
+          ctx.fillText(visit.host?.name || 'Host', cardWidth / 2, 500);
+
+          ctx.fillStyle = '#64748b';
+          ctx.font = '14px Arial, sans-serif';
+          ctx.fillText(visit.host?.company || '', cardWidth / 2, 520);
+
+          // Purpose
+          ctx.fillStyle = '#1e293b';
+          ctx.font = '14px Arial, sans-serif';
+          const purpose = visit.purpose || 'Visit';
+          const maxPurposeWidth = cardWidth - 80;
+          if (ctx.measureText(purpose).width > maxPurposeWidth) {
+            ctx.fillText(purpose.substring(0, 35) + '...', cardWidth / 2, 545);
+          } else {
+            ctx.fillText(purpose, cardWidth / 2, 545);
+          }
+
+          // Date (at the bottom)
+          const visitDate = visit.expectedDate || visit.createdAt || new Date();
+          const dateStr = new Date(visitDate).toLocaleDateString('en-US', {
+            weekday: 'short',
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+          });
+          ctx.fillStyle = '#475569';
+          ctx.font = 'bold 14px Arial, sans-serif';
+          ctx.fillText(dateStr, cardWidth / 2, 575);
 
           // Convert canvas to base64
           const cardBase64 = canvas.toBuffer('image/png').toString('base64');
