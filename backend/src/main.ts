@@ -905,23 +905,24 @@ async function bootstrap() {
                 icon: "Check",
                 variant: "success" as const,
                 guard: "Approve this pre-registration?",
-                isVisible: true,
-                isAccessible: ({ currentAdmin, record }: any) => {
-                  const status = record?.params?.status;
-                  if (status !== "PENDING_APPROVAL") return false;
+                isVisible: ({ record }: any) =>
+                  record?.params?.status === "PENDING_APPROVAL",
+                isAccessible: ({ currentAdmin }: any) => {
                   const role = currentAdmin?.role;
-                  if (role === "RECEPTION") return false;
-                  if (role === "ADMIN") return true;
-                  if (role === "HOST") {
-                    return (
-                      record?.params?.hostId?.toString() ===
-                      currentAdmin?.hostId?.toString()
-                    );
-                  }
-                  return false;
+                  return role === "ADMIN" || role === "HOST";
                 },
                 handler: async (request: any, response: any, context: any) => {
                   const { record } = context;
+                  const status = record?.params?.status;
+                  if (status !== "PENDING_APPROVAL") {
+                    return {
+                      record: record.toJSON(),
+                      notice: {
+                        type: "error",
+                        message: `Cannot approve: status is ${status}`,
+                      },
+                    };
+                  }
                   await record.update({
                     status: "APPROVED",
                     approvedAt: new Date(),
@@ -943,22 +944,22 @@ async function bootstrap() {
                 guard: "Reject this pre-registration?",
                 isVisible: ({ record }: any) =>
                   record?.params?.status === "PENDING_APPROVAL",
-                isAccessible: ({ currentAdmin, record }: any) => {
-                  const status = record?.params?.status;
-                  if (status !== "PENDING_APPROVAL") return false;
+                isAccessible: ({ currentAdmin }: any) => {
                   const role = currentAdmin?.role;
-                  if (role === "RECEPTION") return false;
-                  if (role === "ADMIN") return true;
-                  if (role === "HOST") {
-                    return (
-                      record?.params?.hostId?.toString() ===
-                      currentAdmin?.hostId?.toString()
-                    );
-                  }
-                  return false;
+                  return role === "ADMIN" || role === "HOST";
                 },
                 handler: async (request: any, response: any, context: any) => {
                   const { record } = context;
+                  const status = record?.params?.status;
+                  if (status !== "PENDING_APPROVAL") {
+                    return {
+                      record: record.toJSON(),
+                      notice: {
+                        type: "error",
+                        message: `Cannot reject: status is ${status}`,
+                      },
+                    };
+                  }
                   await record.update({
                     status: "REJECTED",
                     rejectedAt: new Date(),
@@ -981,22 +982,22 @@ async function bootstrap() {
                 guard: "Re-approve this rejected pre-registration?",
                 isVisible: ({ record }: any) =>
                   record?.params?.status === "REJECTED",
-                isAccessible: ({ currentAdmin, record }: any) => {
-                  const status = record?.params?.status;
-                  if (status !== "REJECTED") return false;
+                isAccessible: ({ currentAdmin }: any) => {
                   const role = currentAdmin?.role;
-                  if (role === "RECEPTION") return false;
-                  if (role === "ADMIN") return true;
-                  if (role === "HOST") {
-                    return (
-                      record?.params?.hostId?.toString() ===
-                      currentAdmin?.hostId?.toString()
-                    );
-                  }
-                  return false;
+                  return role === "ADMIN" || role === "HOST";
                 },
                 handler: async (request: any, response: any, context: any) => {
                   const { record } = context;
+                  const status = record?.params?.status;
+                  if (status !== "REJECTED") {
+                    return {
+                      record: record.toJSON(),
+                      notice: {
+                        type: "error",
+                        message: `Cannot re-approve: status is ${status}`,
+                      },
+                    };
+                  }
                   await record.update({
                     status: "APPROVED",
                     approvedAt: new Date(),
