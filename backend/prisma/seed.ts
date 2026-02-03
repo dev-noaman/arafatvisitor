@@ -444,8 +444,9 @@ async function seedTestVisitorsWithQr(hosts: { id: bigint; name: string; locatio
   const purposes = ['Business Meeting', 'Interview', 'Contractor Visit', 'Client Presentation', 'Audit',
                     'Consultation', 'Site Inspection', 'Training', 'Board Meeting', 'Partnership Discussion'];
 
-  // All visitors use the same test phone number
+  // All visitors use the same test phone and email
   const testPhone = '+97450707317';
+  const testEmail = 'adel.noaman@arafatgroup.com';
 
   const createdVisits: { id: string; visitorName: string; token: string; status: string }[] = [];
 
@@ -457,7 +458,7 @@ async function seedTestVisitorsWithQr(hosts: { id: bigint; name: string; locatio
 
     // Check if visitor already exists
     const existing = await prisma.visit.findFirst({
-      where: { visitorEmail: `testvisitor${i + 1}@example.com` }
+      where: { visitorName, visitorPhone: testPhone }
     });
 
     if (existing) {
@@ -479,7 +480,7 @@ async function seedTestVisitorsWithQr(hosts: { id: bigint; name: string; locatio
         visitorName,
         visitorCompany: `Company ${i + 1}`,
         visitorPhone: testPhone,
-        visitorEmail: `testvisitor${i + 1}@example.com`,
+        visitorEmail: testEmail,
         purpose: purposes[i],
         location: host.location,
         status,
