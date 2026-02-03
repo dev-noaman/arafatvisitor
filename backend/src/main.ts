@@ -175,6 +175,10 @@ async function bootstrap() {
         "BulkImportHosts",
         path.join(componentsDir, "BulkImportHosts"),
       ),
+      DeliveryShow: componentLoader.add(
+        "DeliveryShow",
+        path.join(componentsDir, "DeliveryShow"),
+      ),
     };
     componentLoader.override("LoggedIn", path.join(componentsDir, "LoggedIn"));
     componentLoader.override(
@@ -521,6 +525,9 @@ async function bootstrap() {
               },
             },
             actions: {
+              show: {
+                component: Components.DeliveryShow,
+              },
               new: {
                 isAccessible: ({ currentAdmin }: any) => {
                   const role = currentAdmin?.role;
