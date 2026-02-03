@@ -249,6 +249,12 @@ export const buildAdminOptions = (
             handler: async (request: any, response: any, context: AdminContext) => {
               const { record } = context;
 
+              if (!record || !record.params) {
+                return {
+                  notice: { type: 'error', message: 'Record not found' },
+                };
+              }
+
               if (record.params.status !== 'RECEIVED') {
                 return {
                   record: record.toJSON(),
@@ -315,6 +321,12 @@ export const buildAdminOptions = (
             handler: async (request: any, response: any, context: AdminContext) => {
               const { record } = context;
 
+              if (!record) {
+                return {
+                  notice: { type: 'error', message: 'Record not found' },
+                };
+              }
+
               await record.update({
                 status: 'CHECKED_OUT',
                 checkOutAt: new Date(),
@@ -340,6 +352,9 @@ export const buildAdminOptions = (
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             handler: async (request: any, response: any, context: AdminContext) => {
               // Handled by component
+              if (!context.record) {
+                return { notice: { type: 'error', message: 'Record not found' } };
+              }
               return { record: context.record.toJSON() };
             },
           },
@@ -404,6 +419,12 @@ export const buildAdminOptions = (
             handler: async (request: any, response: any, context: AdminContext) => {
               const { record } = context;
 
+              if (!record) {
+                return {
+                  notice: { type: 'error', message: 'Record not found' },
+                };
+              }
+
               await record.update({
                 status: 'APPROVED',
                 approvedAt: new Date(),
@@ -440,6 +461,12 @@ export const buildAdminOptions = (
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             handler: async (request: any, response: any, context: AdminContext) => {
               const { record } = context;
+
+              if (!record) {
+                return {
+                  notice: { type: 'error', message: 'Record not found' },
+                };
+              }
 
               await record.update({
                 status: 'REJECTED',

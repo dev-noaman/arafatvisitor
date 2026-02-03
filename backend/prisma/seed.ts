@@ -142,7 +142,7 @@ async function seedUsers() {
     }
 
     // Map role string to Role enum, default to RECEPTION
-    const role = ['ADMIN', 'RECEPTION', 'HOST'].includes(roleString)
+    const role = roleString && ['ADMIN', 'RECEPTION', 'HOST'].includes(roleString)
       ? (roleString as 'ADMIN' | 'RECEPTION' | 'HOST')
       : 'RECEPTION';
 

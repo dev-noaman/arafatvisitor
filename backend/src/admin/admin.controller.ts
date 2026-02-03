@@ -18,7 +18,14 @@ import * as bcrypt from 'bcrypt';
 import * as QRCode from 'qrcode';
 import * as crypto from 'crypto';
 import * as XLSX from 'xlsx';
+import { Prisma } from '@prisma/client';
 // csv-parse import moved to dynamic import inside method for ESM compatibility
+
+// Type for visit with host relation
+type VisitWithHost = Prisma.VisitGetPayload<{ include: { host: true } }>;
+
+// Type for delivery with host relation
+type DeliveryWithHost = Prisma.DeliveryGetPayload<{ include: { host: true } }>;
 
 // Note: These endpoints are meant to be accessed through the AdminJS session
 // They use @Public() to bypass JWT auth - they rely on AdminJS cookie authentication
@@ -70,7 +77,7 @@ export class AdminApiController {
 
   @Post('profile/update')
   async updateProfile(@Body() body: { email: string; name?: string }) {
-    const { email, name } = body || ({} as any);
+    const { email, name } = body ?? { email: '', name: undefined };
     if (!email) {
       throw new HttpException('Email is required', HttpStatus.BAD_REQUEST);
     }
@@ -118,12 +125,12 @@ export class AdminApiController {
 
       console.log(`CSV content received, length: ${csvContent.length} chars`);
 
-      let records: any[];
+      let records: Record<string, unknown>[];
       try {
         // Dynamic import for ESM compatibility
         const csvParseModule = await import('csv-parse/sync');
         // csv-parse/sync exports { parse } directly
-        const parse = (csvParseModule as any).parse;
+        const parse = (csvParseModule as { parse: (input: string, options: unknown) => Record<string, unknown>[] }).parse;
         if (typeof parse !== 'function') {
           console.error('csv-parse module exports:', Object.keys(csvParseModule));
           throw new Error('csv-parse parse function not found');
@@ -214,7 +221,7 @@ export class AdminApiController {
           reasons.push('Invalid email format');
         }
 
-        let phone = cleanPhone(phoneRaw);
+        const phone: string = cleanPhone(phoneRaw);
         if (!phone) {
           reasons.push('Invalid or missing phone');
         } else if (/[a-zA-Z]/.test(phone)) {
@@ -255,7 +262,7 @@ export class AdminApiController {
               company: company ?? '',
               email,
               phone,
-              location: location as any,
+              location: location as 'BARWA_TOWERS' | 'ELEMENT_MARIOTT' | 'MARINA_50' | null,
               status: status ?? 1,
             },
           });
@@ -341,7 +348,7 @@ export class AdminApiController {
       const workbook = XLSX.read(buffer, { type: 'buffer' });
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
-      const records = XLSX.utils.sheet_to_json(worksheet, { defval: '' }) as Record<string, any>[];
+      const records = XLSX.utils.sheet_to_json(worksheet, { defval: '' }) as Record<string, unknown>[];
 
       console.log(`XLSX parsed successfully, ${records.length} records found`);
 
@@ -359,12 +366,12 @@ export class AdminApiController {
     }
   }
 
-  private async validateXlsxRecords(records: Record<string, any>[]) {
+  private async validateXlsxRecords(records: Record<string, unknown>[]) {
     let totalProcessed = 0;
     let inserted = 0;
     let skipped = 0;
     let rejected = 0;
-    const rejectedRows: Array<{ rowNumber: number; reason: string; data: any }> = [];
+    const rejectedRows: Array<{ rowNumber: number; reason: string; data: Record<string, string> }> = [];
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i;
 
@@ -430,7 +437,7 @@ export class AdminApiController {
         reasons.push('Invalid email format');
       }
 
-      let phone = cleanPhone(phoneRaw);
+      const phone: string = cleanPhone(phoneRaw);
       if (!phone) {
         reasons.push('Invalid or missing phone');
       } else if (/[a-zA-Z]/.test(phone)) {
@@ -438,6 +445,9 @@ export class AdminApiController {
       }
 
       const location = mapLocation(locationRaw || null);
+      if (locationRaw && !location) {
+        reasons.push('Invalid location');
+      }
 
       const status = mapStatus(statusRaw || null);
       if (status === undefined) {
@@ -489,7 +499,7 @@ export class AdminApiController {
     };
   }
 
-  private async processXlsxRecords(records: Record<string, any>[]) {
+  private async processXlsxRecords(records: Record<string, unknown>[]) {
     let totalProcessed = 0;
     let inserted = 0;
     let skipped = 0;
@@ -561,7 +571,7 @@ export class AdminApiController {
         reasons.push('Invalid email format');
       }
 
-      let phone = cleanPhone(phoneRaw);
+      const phone = cleanPhone(phoneRaw);
       if (!phone) {
         reasons.push('Invalid or missing phone');
       } else if (/[a-zA-Z]/.test(phone)) {
@@ -601,7 +611,7 @@ export class AdminApiController {
             company: company ?? '',
             email,
             phone,
-            location: location as any,
+            location: location as 'BARWA_TOWERS' | 'ELEMENT_MARIOTT' | 'MARINA_50' | null,
             status: status ?? 1,
           },
         });
@@ -1065,22 +1075,25 @@ export class AdminApiController {
     @Query('location') location?: string,
     @Query('company') company?: string,
     @Query('status') status?: string,
-  ) {
-    const where: any = {};
+  ): Promise<VisitWithHost[]> {
+    const where: Prisma.VisitWhereInput = {};
 
-    if (dateFrom) {
-      where.checkInAt = { ...where.checkInAt, gte: new Date(dateFrom) };
-    }
-    if (dateTo) {
-      const endDate = new Date(dateTo);
-      endDate.setHours(23, 59, 59, 999);
-      where.checkInAt = { ...where.checkInAt, lte: endDate };
+    if (dateFrom || dateTo) {
+      where.checkInAt = {};
+      if (dateFrom) {
+        where.checkInAt.gte = new Date(dateFrom);
+      }
+      if (dateTo) {
+        const endDate = new Date(dateTo);
+        endDate.setHours(23, 59, 59, 999);
+        where.checkInAt.lte = endDate;
+      }
     }
     if (location) {
-      where.location = location;
+      where.location = location as Prisma.EnumLocationFilter;
     }
     if (status) {
-      where.status = status;
+      where.status = status as Prisma.EnumVisitStatusFilter;
     }
 
     const visits = await this.prisma.visit.findMany({
@@ -1131,7 +1144,7 @@ export class AdminApiController {
     if (format === 'excel') {
       const xlsx = await import('xlsx');
       const ws = xlsx.utils.json_to_sheet(
-        data.map((v: any) => ({
+        data.map((v: VisitWithHost) => ({
           'Visitor Name': v.visitorName,
           'Visitor Company': v.visitorCompany,
           'Phone': v.visitorPhone,
@@ -1160,22 +1173,25 @@ export class AdminApiController {
     @Query('location') location?: string,
     @Query('company') company?: string,
     @Query('status') status?: string,
-  ) {
-    const where: any = {};
+  ): Promise<DeliveryWithHost[]> {
+    const where: Prisma.DeliveryWhereInput = {};
 
-    if (dateFrom) {
-      where.receivedAt = { ...where.receivedAt, gte: new Date(dateFrom) };
-    }
-    if (dateTo) {
-      const endDate = new Date(dateTo);
-      endDate.setHours(23, 59, 59, 999);
-      where.receivedAt = { ...where.receivedAt, lte: endDate };
+    if (dateFrom || dateTo) {
+      where.receivedAt = {};
+      if (dateFrom) {
+        where.receivedAt.gte = new Date(dateFrom);
+      }
+      if (dateTo) {
+        const endDate = new Date(dateTo);
+        endDate.setHours(23, 59, 59, 999);
+        where.receivedAt.lte = endDate;
+      }
     }
     if (location) {
-      where.location = location;
+      where.location = location as Prisma.EnumLocationFilter;
     }
     if (status) {
-      where.status = status;
+      where.status = status as Prisma.EnumDeliveryStatusFilter;
     }
 
     const deliveries = await this.prisma.delivery.findMany({
@@ -1224,7 +1240,7 @@ export class AdminApiController {
     if (format === 'excel') {
       const xlsx = await import('xlsx');
       const ws = xlsx.utils.json_to_sheet(
-        data.map((d: any) => ({
+        data.map((d: DeliveryWithHost) => ({
           'Courier': d.courier,
           'Recipient': d.recipient,
           'Host': d.host?.name || '',
@@ -1390,7 +1406,7 @@ export class AdminApiController {
 
   // ============ HELPER METHODS ============
 
-  private generateCsv(data: any[], columns: string[]): string {
+  private generateCsv<T extends Record<string, unknown>>(data: T[], columns: (keyof T & string)[]): string {
     const header = columns.join(',');
     const rows = data.map((item) =>
       columns
@@ -1400,7 +1416,7 @@ export class AdminApiController {
           if (typeof value === 'string' && value.includes(',')) {
             return `"${value}"`;
           }
-          return value;
+          return String(value);
         })
         .join(','),
     );
