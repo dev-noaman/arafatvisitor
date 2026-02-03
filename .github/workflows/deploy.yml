@@ -213,18 +213,16 @@ jobs:
           cd /var/www/arafatvisitor/backend
           if [ ! -f .env ]; then
               JWT_SECRET=$(openssl rand -base64 32)
-              COOKIE_SECRET=$(openssl rand -base64 32)
               echo "DATABASE_URL=postgresql://${{ env.DB_USER }}:${{ secrets.DB_PASSWORD }}@localhost:5432/${{ env.DB_NAME }}" > .env
               echo "JWT_SECRET=${JWT_SECRET}" >> .env
-              echo "ADMINJS_COOKIE_SECRET=${COOKIE_SECRET}" >> .env
+              echo "ADMINJS_COOKIE_SECRET=arafat-vms-adminjs-cookie-secret-2026" >> .env
               echo "PORT=3000" >> .env
               echo "Created new .env file"
           else
               echo ".env file already exists - preserving configuration"
               # Ensure ADMINJS_COOKIE_SECRET exists
               if ! grep -q "ADMINJS_COOKIE_SECRET" .env; then
-                  COOKIE_SECRET=$(openssl rand -base64 32)
-                  echo "ADMINJS_COOKIE_SECRET=${COOKIE_SECRET}" >> .env
+                  echo "ADMINJS_COOKIE_SECRET=arafat-vms-adminjs-cookie-secret-2026" >> .env
                   echo "Added missing ADMINJS_COOKIE_SECRET"
               fi
           fi
@@ -371,8 +369,7 @@ jobs:
 
           # Ensure ADMINJS_COOKIE_SECRET exists in .env
           if ! grep -q "ADMINJS_COOKIE_SECRET" .env 2>/dev/null; then
-              COOKIE_SECRET=$(openssl rand -base64 32)
-              echo "ADMINJS_COOKIE_SECRET=${COOKIE_SECRET}" >> .env
+              echo "ADMINJS_COOKIE_SECRET=arafat-vms-adminjs-cookie-secret-2026" >> .env
               echo "Added missing ADMINJS_COOKIE_SECRET"
           fi
 
