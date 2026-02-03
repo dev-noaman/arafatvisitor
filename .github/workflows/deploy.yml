@@ -117,33 +117,13 @@ jobs:
           cd /var/www/arafatvisitor/backend
           if [ ! -f .env ]; then
               JWT_SECRET=$(openssl rand -base64 32)
-              ADMINJS_SECRET=$(openssl rand -base64 32)
               echo "DATABASE_URL=postgresql://${{ env.DB_USER }}:${{ secrets.DB_PASSWORD }}@localhost:5432/${{ env.DB_NAME }}" > .env
               echo "JWT_SECRET=${JWT_SECRET}" >> .env
               echo "PORT=3000" >> .env
-              echo "NODE_ENV=production" >> .env
               echo "Created new .env file"
+          else
+              echo ".env file already exists - preserving configuration"
           fi
-
-          # Always update SMTP and WhatsApp settings from secrets
-          echo "=== Updating SMTP and WhatsApp configuration ==="
-
-          # SMTP settings
-          grep -q "^SMTP_HOST=" .env && sed -i "s|^SMTP_HOST=.*|SMTP_HOST=${{ secrets.SMTP_HOST }}|" .env || echo "SMTP_HOST=${{ secrets.SMTP_HOST }}" >> .env
-          grep -q "^SMTP_PORT=" .env && sed -i "s|^SMTP_PORT=.*|SMTP_PORT=${{ secrets.SMTP_PORT }}|" .env || echo "SMTP_PORT=${{ secrets.SMTP_PORT }}" >> .env
-          grep -q "^SMTP_USER=" .env && sed -i "s|^SMTP_USER=.*|SMTP_USER=${{ secrets.SMTP_USER }}|" .env || echo "SMTP_USER=${{ secrets.SMTP_USER }}" >> .env
-          grep -q "^SMTP_PASS=" .env && sed -i "s|^SMTP_PASS=.*|SMTP_PASS=${{ secrets.SMTP_PASS }}|" .env || echo "SMTP_PASS=${{ secrets.SMTP_PASS }}" >> .env
-          grep -q "^SMTP_FROM=" .env && sed -i "s|^SMTP_FROM=.*|SMTP_FROM=${{ secrets.SMTP_FROM }}|" .env || echo "SMTP_FROM=${{ secrets.SMTP_FROM }}" >> .env
-
-          # WhatsApp settings
-          grep -q "^WHATSAPP_ENDPOINT=" .env && sed -i "s|^WHATSAPP_ENDPOINT=.*|WHATSAPP_ENDPOINT=${{ secrets.WHATSAPP_ENDPOINT }}|" .env || echo "WHATSAPP_ENDPOINT=${{ secrets.WHATSAPP_ENDPOINT }}" >> .env
-          grep -q "^WHATSAPP_CLIENT_ID=" .env && sed -i "s|^WHATSAPP_CLIENT_ID=.*|WHATSAPP_CLIENT_ID=${{ secrets.WHATSAPP_CLIENT_ID }}|" .env || echo "WHATSAPP_CLIENT_ID=${{ secrets.WHATSAPP_CLIENT_ID }}" >> .env
-          grep -q "^WHATSAPP_CLIENT=" .env && sed -i "s|^WHATSAPP_CLIENT=.*|WHATSAPP_CLIENT=${{ secrets.WHATSAPP_CLIENT }}|" .env || echo "WHATSAPP_CLIENT=${{ secrets.WHATSAPP_CLIENT }}" >> .env
-          grep -q "^WHATSAPP_API_KEY=" .env && sed -i "s|^WHATSAPP_API_KEY=.*|WHATSAPP_API_KEY=${{ secrets.WHATSAPP_API_KEY }}|" .env || echo "WHATSAPP_API_KEY=${{ secrets.WHATSAPP_API_KEY }}" >> .env
-
-          # Ensure NODE_ENV is set
-          grep -q "^NODE_ENV=" .env || echo "NODE_ENV=production" >> .env
-          echo "Environment configuration updated"
 
           echo "=== Building backend ==="
           # Load env
@@ -227,22 +207,6 @@ jobs:
                   proxy_set_header Connection "upgrade";
               }
 
-              # Prevent caching of ALL AdminJS static assets (JS, CSS, etc)
-              location ~* ^/admin/frontend/.+\.(js|css|map)$ {
-                  proxy_pass http://127.0.0.1:3000;
-                  proxy_http_version 1.1;
-                  proxy_set_header Host $host;
-                  proxy_set_header X-Real-IP $remote_addr;
-                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                  proxy_set_header X-Forwarded-Proto $scheme;
-
-                  # Aggressive no-cache headers
-                  add_header Cache-Control "no-cache, no-store, must-revalidate, max-age=0" always;
-                  add_header Pragma "no-cache" always;
-                  add_header Expires "0" always;
-                  add_header X-Accel-Expires "0" always;
-              }
-
               location /admin {
                   proxy_pass http://127.0.0.1:3000/admin;
 
@@ -257,9 +221,13 @@ jobs:
                   proxy_set_header Connection "upgrade";
                   proxy_cache_bypass $http_upgrade;
 
-                  # No-cache headers for AdminJS HTML pages
-                  add_header Cache-Control "no-cache, no-store, must-revalidate" always;
-                  add_header Pragma "no-cache" always;
+                  # Prevent caching of AdminJS bundles
+                  location ~* /admin/frontend/assets/.*\.js$ {
+                      proxy_pass http://127.0.0.1:3000;
+                      add_header Cache-Control "no-cache, no-store, must-revalidate";
+                      add_header Pragma "no-cache";
+                      add_header Expires "0";
+                  }
               }
           }
           NGINXCONF
@@ -295,8 +263,6 @@ jobs:
           sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh ${{ env.SSH_OPTS }} ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} << 'ENDSSH'
           set -e
           cd /var/www/arafatvisitor/backend
-
-          echo "=== Starting deployment ==="
           export $(grep -v '^#' .env | xargs) 2>/dev/null || true
 
           # Install any new dependencies
@@ -308,17 +274,11 @@ jobs:
           # Run new migrations (safe - won't delete data)
           npx prisma migrate deploy
 
-          # Clear ALL caches to force AdminJS component rebuild
-          echo "=== Clearing all caches ==="
+          # Clear AdminJS component cache to force rebuild
           rm -rf .adminjs 2>/dev/null || true
           rm -rf node_modules/.cache 2>/dev/null || true
-          rm -rf dist 2>/dev/null || true
 
-          # Also clear any tmp files
-          rm -rf /tmp/adminjs-* 2>/dev/null || true
-
-          # Rebuild backend from scratch
-          echo "=== Rebuilding backend ==="
+          # Rebuild backend
           npm run build
 
           # Force full restart (delete and recreate) to clear all caches
@@ -388,22 +348,6 @@ jobs:
                   proxy_set_header Connection "upgrade";
               }
 
-              # Prevent caching of ALL AdminJS static assets (JS, CSS, etc)
-              location ~* ^/admin/frontend/.+\.(js|css|map)$ {
-                  proxy_pass http://127.0.0.1:3000;
-                  proxy_http_version 1.1;
-                  proxy_set_header Host $host;
-                  proxy_set_header X-Real-IP $remote_addr;
-                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                  proxy_set_header X-Forwarded-Proto $scheme;
-
-                  # Aggressive no-cache headers
-                  add_header Cache-Control "no-cache, no-store, must-revalidate, max-age=0" always;
-                  add_header Pragma "no-cache" always;
-                  add_header Expires "0" always;
-                  add_header X-Accel-Expires "0" always;
-              }
-
               location /admin {
                   proxy_pass http://127.0.0.1:3000/admin;
 
@@ -418,9 +362,13 @@ jobs:
                   proxy_set_header Connection "upgrade";
                   proxy_cache_bypass $http_upgrade;
 
-                  # No-cache headers for AdminJS HTML pages
-                  add_header Cache-Control "no-cache, no-store, must-revalidate" always;
-                  add_header Pragma "no-cache" always;
+                  # Prevent caching of AdminJS bundles
+                  location ~* /admin/frontend/assets/.*\.js$ {
+                      proxy_pass http://127.0.0.1:3000;
+                      add_header Cache-Control "no-cache, no-store, must-revalidate";
+                      add_header Pragma "no-cache";
+                      add_header Expires "0";
+                  }
               }
           }
           NGINXCONF
