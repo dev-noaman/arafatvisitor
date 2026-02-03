@@ -387,6 +387,9 @@ jobs:
 
           export $(grep -v '^#' .env | xargs) 2>/dev/null || true
 
+          # Install canvas native dependencies (for QR card image generation)
+          apt-get update && apt-get install -y build-essential libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev 2>/dev/null || true
+
           # Install any new dependencies (including devDependencies for ts-node if needed)
           npm install --include=dev
 
