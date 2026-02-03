@@ -292,29 +292,23 @@ jobs:
       - name: Update environment config
         if: github.event.inputs.init != 'true'
         run: |
-          # Create env update script
-          cat > /tmp/env-update.sh << 'SCRIPT'
-          cd /var/www/arafatvisitor/backend
-          sed -i '/^SMTP_/d' .env 2>/dev/null || true
-          sed -i '/^WHATSAPP_/d' .env 2>/dev/null || true
-          sed -i '/^NODE_ENV=/d' .env 2>/dev/null || true
-          SCRIPT
+          # Write env values to temp file locally, then upload via stdin
+          ENV_CONTENT="SMTP_HOST=${{ secrets.SMTP_HOST }}
+          SMTP_PORT=${{ secrets.SMTP_PORT }}
+          SMTP_USER=${{ secrets.SMTP_USER }}
+          SMTP_PASS=${{ secrets.SMTP_PASS }}
+          SMTP_FROM=${{ secrets.SMTP_FROM }}
+          WHATSAPP_ENDPOINT=${{ secrets.WHATSAPP_ENDPOINT }}
+          WHATSAPP_CLIENT_ID=${{ secrets.WHATSAPP_CLIENT_ID }}
+          WHATSAPP_CLIENT=${{ secrets.WHATSAPP_CLIENT }}
+          WHATSAPP_API_KEY=${{ secrets.WHATSAPP_API_KEY }}
+          NODE_ENV=production"
 
-          # Add the actual values (GitHub substitutes these)
-          echo "echo 'SMTP_HOST=${{ secrets.SMTP_HOST }}' >> .env" >> /tmp/env-update.sh
-          echo "echo 'SMTP_PORT=${{ secrets.SMTP_PORT }}' >> .env" >> /tmp/env-update.sh
-          echo "echo 'SMTP_USER=${{ secrets.SMTP_USER }}' >> .env" >> /tmp/env-update.sh
-          echo "echo 'SMTP_PASS=${{ secrets.SMTP_PASS }}' >> .env" >> /tmp/env-update.sh
-          echo "echo 'SMTP_FROM=${{ secrets.SMTP_FROM }}' >> .env" >> /tmp/env-update.sh
-          echo "echo 'WHATSAPP_ENDPOINT=${{ secrets.WHATSAPP_ENDPOINT }}' >> .env" >> /tmp/env-update.sh
-          echo "echo 'WHATSAPP_CLIENT_ID=${{ secrets.WHATSAPP_CLIENT_ID }}' >> .env" >> /tmp/env-update.sh
-          echo "echo 'WHATSAPP_CLIENT=${{ secrets.WHATSAPP_CLIENT }}' >> .env" >> /tmp/env-update.sh
-          echo "echo 'WHATSAPP_API_KEY=${{ secrets.WHATSAPP_API_KEY }}' >> .env" >> /tmp/env-update.sh
-          echo "echo 'NODE_ENV=production' >> .env" >> /tmp/env-update.sh
+          # Remove leading whitespace and upload
+          echo "$ENV_CONTENT" | sed 's/^          //' | sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh ${{ env.SSH_OPTS }} ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} "cat > /tmp/new-env-vars.txt"
 
-          # Upload and run
-          sshpass -p '${{ secrets.VPS_PASSWORD }}' scp ${{ env.SSH_OPTS }} /tmp/env-update.sh ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }}:/tmp/
-          sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh ${{ env.SSH_OPTS }} ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} "bash /tmp/env-update.sh && rm /tmp/env-update.sh"
+          # Update .env on server
+          sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh ${{ env.SSH_OPTS }} ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} "cd /var/www/arafatvisitor/backend && sed -i '/^SMTP_/d;/^WHATSAPP_/d;/^NODE_ENV=/d' .env && cat /tmp/new-env-vars.txt >> .env && rm /tmp/new-env-vars.txt && echo 'Environment updated'"
 
       - name: Update Deployment (single SSH session)
         if: github.event.inputs.init != 'true'
@@ -323,11 +317,12 @@ jobs:
           set -e
           cd /var/www/arafatvisitor/backend
 
-          echo "=== Environment configuration updated ==="
+          echo "=== Starting deployment ==="
           export $(grep -v '^#' .env | xargs) 2>/dev/null || true
 
           # Install any new dependencies
           npm install
+          ENDSSH
 
           # Generate Prisma client
           npx prisma generate
