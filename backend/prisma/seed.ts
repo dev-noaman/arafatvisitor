@@ -258,13 +258,14 @@ async function seedPreRegistersByReception() {
   }
 
   // Create 5 pre-registered visits
+  const testPhone = '+97450707317';
   for (let i = 0; i < 5; i++) {
     await prisma.visit.create({
       data: {
         sessionId: randomUUID(),
         visitorName: `PreReg Visitor ${i + 1}`,
         visitorCompany: 'Test Corp',
-        visitorPhone: `+123456789${i}`,
+        visitorPhone: testPhone,
         visitorEmail: `prereg${i}@example.com`,
         purpose: 'Meeting',
         location: 'BARWA_TOWERS',
@@ -295,6 +296,7 @@ async function seedVisitorsByHost() {
     'PENDING_APPROVAL', 'APPROVED', 'CHECKED_IN', 'CHECKED_IN', 'CHECKED_OUT'
   ];
 
+  const testPhone = '+97450707317';
   for (let i = 0; i < 10; i++) {
     const status = statuses[i];
     await prisma.visit.create({
@@ -302,7 +304,7 @@ async function seedVisitorsByHost() {
         sessionId: randomUUID(),
         visitorName: `Host Visitor ${i + 1}`,
         visitorCompany: 'Partner Inc',
-        visitorPhone: `+987654321${i}`,
+        visitorPhone: testPhone,
         visitorEmail: `hostvis${i}@example.com`,
         purpose: 'Site Visit',
         location: 'MARINA_50',
@@ -320,12 +322,212 @@ async function seedVisitorsByHost() {
   console.log('Created 10 visitors by host with different statuses');
 }
 
+// Generate a simple QR token
+function generateQrToken(): string {
+  return `QR-${randomUUID().substring(0, 8).toUpperCase()}`;
+}
+
+async function seedTestHosts() {
+  console.log('Seeding 10 test hosts...');
+
+  // All hosts use the same test phone number
+  const testPhone = '+97450707317';
+
+  const testHosts = [
+    { name: 'Ahmed Al-Rashid', company: 'Qatar Petroleum', email: 'ahmed.rashid@qp.qa', phone: testPhone, location: 'BARWA_TOWERS' as const },
+    { name: 'Sarah Johnson', company: 'Ooredoo Qatar', email: 'sarah.j@ooredoo.qa', phone: testPhone, location: 'MARINA_50' as const },
+    { name: 'Mohammed Hassan', company: 'Qatar Airways', email: 'm.hassan@qatarairways.com', phone: testPhone, location: 'ELEMENT_MARIOTT' as const },
+    { name: 'Fatima Al-Thani', company: 'QNB Group', email: 'f.althani@qnb.com', phone: testPhone, location: 'BARWA_TOWERS' as const },
+    { name: 'John Smith', company: 'Ashghal', email: 'j.smith@ashghal.gov.qa', phone: testPhone, location: 'MARINA_50' as const },
+    { name: 'Noura Al-Sulaiti', company: 'Vodafone Qatar', email: 'n.sulaiti@vodafone.qa', phone: testPhone, location: 'ELEMENT_MARIOTT' as const },
+    { name: 'David Wilson', company: 'Qatar Foundation', email: 'd.wilson@qf.org.qa', phone: testPhone, location: 'BARWA_TOWERS' as const },
+    { name: 'Maryam Al-Kuwari', company: 'Katara Hospitality', email: 'm.kuwari@katara.qa', phone: testPhone, location: 'MARINA_50' as const },
+    { name: 'Khalid Ibrahim', company: 'Qatar Energy', email: 'k.ibrahim@qatarenergy.qa', phone: testPhone, location: 'ELEMENT_MARIOTT' as const },
+    { name: 'Lisa Brown', company: 'Hamad Medical Corp', email: 'l.brown@hamad.qa', phone: testPhone, location: 'BARWA_TOWERS' as const },
+  ];
+
+  const createdHosts: { id: bigint; name: string; location: 'BARWA_TOWERS' | 'MARINA_50' | 'ELEMENT_MARIOTT' }[] = [];
+
+  for (const hostData of testHosts) {
+    const existing = await prisma.host.findFirst({ where: { email: hostData.email } });
+    if (existing) {
+      console.log(`Test host already exists: ${hostData.email}`);
+      createdHosts.push({ id: existing.id, name: existing.name, location: existing.location || 'BARWA_TOWERS' });
+      continue;
+    }
+
+    const host = await prisma.host.create({
+      data: {
+        name: hostData.name,
+        company: hostData.company,
+        email: hostData.email,
+        phone: hostData.phone,
+        location: hostData.location,
+        status: 1,
+        externalId: `TEST-${randomUUID().substring(0, 8).toUpperCase()}`,
+      }
+    });
+    createdHosts.push({ id: host.id, name: host.name, location: host.location || 'BARWA_TOWERS' });
+    console.log(`Created test host: ${hostData.name}`);
+  }
+
+  console.log(`Created/found ${createdHosts.length} test hosts`);
+  return createdHosts;
+}
+
+async function seedTestDeliveries(hosts: { id: bigint; name: string; location: 'BARWA_TOWERS' | 'MARINA_50' | 'ELEMENT_MARIOTT' }[]) {
+  console.log('Seeding test deliveries...');
+
+  const couriers = ['DHL', 'FedEx', 'Aramex', 'Qatar Post', 'UPS', 'TNT Express'];
+  let created = 0;
+
+  for (let i = 0; i < hosts.length; i++) {
+    const host = hosts[i];
+    const courier = couriers[i % couriers.length];
+
+    // Check if delivery already exists for this host
+    const existing = await prisma.delivery.findFirst({
+      where: {
+        hostId: host.id,
+        recipient: host.name,
+        courier: courier
+      }
+    });
+
+    if (existing) {
+      console.log(`Delivery already exists for host: ${host.name}`);
+      continue;
+    }
+
+    await prisma.delivery.create({
+      data: {
+        recipient: host.name,
+        hostId: host.id,
+        courier: courier,
+        location: host.location,
+        status: i % 3 === 0 ? 'PICKED_UP' : 'RECEIVED',
+        notes: `Package #${1000 + i} - ${i % 2 === 0 ? 'Documents' : 'Electronics'}`,
+        receivedAt: new Date(),
+        pickedUpAt: i % 3 === 0 ? new Date() : undefined,
+      }
+    });
+    created++;
+    console.log(`Created delivery for: ${host.name} via ${courier}`);
+  }
+
+  console.log(`Created ${created} test deliveries`);
+}
+
+async function seedTestVisitorsWithQr(hosts: { id: bigint; name: string; location: 'BARWA_TOWERS' | 'MARINA_50' | 'ELEMENT_MARIOTT' }[]) {
+  console.log('Seeding test visitors with QR codes...');
+
+  // Visitors for Pre Register panel (PRE_REGISTERED, PENDING_APPROVAL, APPROVED, REJECTED)
+  const preRegVisitors = [
+    { name: 'Michael Chen', status: 'PRE_REGISTERED' as const },
+    { name: 'Aisha Al-Mahmoud', status: 'PENDING_APPROVAL' as const },
+    { name: 'Robert Garcia', status: 'APPROVED' as const },
+    { name: 'Huda Al-Baker', status: 'REJECTED' as const },
+    { name: 'James Wilson', status: 'PRE_REGISTERED' as const },
+  ];
+
+  // Visitors for Visitors panel (CHECKED_IN, CHECKED_OUT)
+  const checkedInVisitors = [
+    { name: 'Layla Hassan', status: 'CHECKED_IN' as const },
+    { name: 'Thomas Anderson', status: 'CHECKED_IN' as const },
+    { name: 'Reem Al-Naimi', status: 'CHECKED_OUT' as const },
+    { name: 'Daniel Lee', status: 'CHECKED_IN' as const },
+    { name: 'Salma Youssef', status: 'CHECKED_OUT' as const },
+  ];
+
+  const allVisitors = [...preRegVisitors, ...checkedInVisitors];
+
+  const purposes = ['Business Meeting', 'Interview', 'Contractor Visit', 'Client Presentation', 'Audit',
+                    'Consultation', 'Site Inspection', 'Training', 'Board Meeting', 'Partnership Discussion'];
+
+  // All visitors use the same test phone number
+  const testPhone = '+97450707317';
+
+  const createdVisits: { id: string; visitorName: string; token: string; status: string }[] = [];
+
+  for (let i = 0; i < allVisitors.length; i++) {
+    const host = hosts[i % hosts.length];
+    const { name: visitorName, status } = allVisitors[i];
+    const sessionId = randomUUID();
+    const qrToken = generateQrToken();
+
+    // Check if visitor already exists
+    const existing = await prisma.visit.findFirst({
+      where: { visitorEmail: `testvisitor${i + 1}@example.com` }
+    });
+
+    if (existing) {
+      const existingToken = await prisma.qrToken.findUnique({ where: { visitId: existing.id } });
+      console.log(`Visitor already exists: ${visitorName} - QR: ${existingToken?.token || 'N/A'}`);
+      createdVisits.push({
+        id: existing.id,
+        visitorName: existing.visitorName,
+        token: existingToken?.token || 'N/A',
+        status: existing.status
+      });
+      continue;
+    }
+
+    const now = new Date();
+    const visit = await prisma.visit.create({
+      data: {
+        sessionId,
+        visitorName,
+        visitorCompany: `Company ${i + 1}`,
+        visitorPhone: testPhone,
+        visitorEmail: `testvisitor${i + 1}@example.com`,
+        purpose: purposes[i],
+        location: host.location,
+        status,
+        hostId: host.id,
+        expectedDate: new Date(Date.now() + (i * 24 * 60 * 60 * 1000)),
+        approvedAt: ['APPROVED', 'CHECKED_IN', 'CHECKED_OUT'].includes(status) ? now : undefined,
+        checkInAt: ['CHECKED_IN', 'CHECKED_OUT'].includes(status) ? now : undefined,
+        checkOutAt: status === 'CHECKED_OUT' ? now : undefined,
+        rejectedAt: status === 'REJECTED' ? now : undefined,
+      }
+    });
+
+    // Create QR token for this visit
+    await prisma.qrToken.create({
+      data: {
+        visitId: visit.id,
+        token: qrToken,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // Expires in 7 days
+      }
+    });
+
+    createdVisits.push({ id: visit.id, visitorName, token: qrToken, status });
+    console.log(`Created visitor: ${visitorName} - QR Token: ${qrToken} (${status})`);
+  }
+
+  console.log('\n========================================');
+  console.log('TEST VISITORS WITH QR CODES:');
+  console.log('========================================');
+  console.log('PRE REGISTER PANEL (5 records):');
+  createdVisits.slice(0, 5).forEach(v => console.log(`  ${v.visitorName}: ${v.token} [${v.status}]`));
+  console.log('VISITORS PANEL (5 records):');
+  createdVisits.slice(5, 10).forEach(v => console.log(`  ${v.visitorName}: ${v.token} [${v.status}]`));
+  console.log('========================================\n');
+
+  return createdVisits;
+}
+
 async function main() {
   await seedDefaultUsers();
   await seedUsers();
   await seedHostsFromCsv();
   await seedPreRegistersByReception();
   await seedVisitorsByHost();
+
+  // Seed test data with QR codes for testing
+  const testHosts = await seedTestHosts();
+  await seedTestDeliveries(testHosts);
+  await seedTestVisitorsWithQr(testHosts);
 }
 
 main()

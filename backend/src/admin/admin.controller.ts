@@ -929,17 +929,34 @@ export class AdminApiController {
   async sendQr(@Body() body: { visitId: string; method: 'whatsapp' | 'email' }) {
     const { visitId, method } = body;
 
-    const visit = await this.prisma.visit.findUnique({
-      where: { id: visitId },
-      include: { qrToken: true, host: true },
-    });
+    console.log('[send-qr] Starting for visitId:', visitId, 'method:', method);
+
+    let visit;
+    try {
+      visit = await this.prisma.visit.findUnique({
+        where: { id: visitId },
+        include: { qrToken: true, host: true },
+      });
+    } catch (e) {
+      console.error('[send-qr] Database error:', e);
+      throw new HttpException('Database error finding visit', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
 
     if (!visit) {
       throw new HttpException('Visit not found', HttpStatus.NOT_FOUND);
     }
 
+    console.log('[send-qr] Visit found:', visit.visitorName);
+
     const token = visit.qrToken?.token || visit.sessionId;
-    const qrDataUrl = await QRCode.toDataURL(token, { width: 300, margin: 2 });
+    let qrDataUrl: string;
+    try {
+      qrDataUrl = await QRCode.toDataURL(token, { width: 300, margin: 2 });
+      console.log('[send-qr] QR generated, length:', qrDataUrl.length);
+    } catch (e) {
+      console.error('[send-qr] QR generation error:', e);
+      throw new HttpException('Failed to generate QR code', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
 
     if (method === 'whatsapp') {
       if (!visit.visitorPhone) {
@@ -947,17 +964,21 @@ export class AdminApiController {
       }
 
       try {
-        // Generate QR code URL or link
         const qrLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/check-in?session=${token}`;
         const message = `Hello ${visit.visitorName}!\n\nYour QR code for visiting ${visit.host?.company || 'our office'} is ready.\n\nPlease use this link to access your QR code:\n${qrLink}\n\nOr show this QR code at reception for check-in.`;
 
+        console.log('[send-qr] Sending WhatsApp to:', visit.visitorPhone);
         const sent = await this.whatsappService.send(visit.visitorPhone, message);
+        console.log('[send-qr] WhatsApp result:', sent);
+
         if (!sent) {
-          throw new Error('WhatsApp service returned false');
+          throw new HttpException('WhatsApp service failed to send message. Check configuration.', HttpStatus.SERVICE_UNAVAILABLE);
         }
         return { success: true, message: 'QR sent via WhatsApp' };
       } catch (e) {
-        throw new HttpException('Failed to send WhatsApp message', HttpStatus.INTERNAL_SERVER_ERROR);
+        console.error('[send-qr] WhatsApp error:', e);
+        if (e instanceof HttpException) throw e;
+        throw new HttpException('Failed to send WhatsApp message: ' + (e instanceof Error ? e.message : 'Unknown error'), HttpStatus.INTERNAL_SERVER_ERROR);
       }
     }
 
@@ -967,6 +988,7 @@ export class AdminApiController {
       }
 
       try {
+        console.log('[send-qr] Sending email to:', visit.visitorEmail);
         const sent = await this.emailService.send({
           to: visit.visitorEmail,
           subject: `Your Visit QR Code - ${visit.host?.company || 'Office Visit'}`,
@@ -981,9 +1003,16 @@ export class AdminApiController {
             <p>Thank you!</p>
           `,
         });
+        console.log('[send-qr] Email result:', sent);
+
+        if (!sent) {
+          throw new HttpException('Email service failed to send. Check SMTP configuration.', HttpStatus.SERVICE_UNAVAILABLE);
+        }
         return { success: true, message: 'QR sent via Email' };
       } catch (e) {
-        throw new HttpException('Failed to send email', HttpStatus.INTERNAL_SERVER_ERROR);
+        console.error('[send-qr] Email error:', e);
+        if (e instanceof HttpException) throw e;
+        throw new HttpException('Failed to send email: ' + (e instanceof Error ? e.message : 'Unknown error'), HttpStatus.INTERNAL_SERVER_ERROR);
       }
     }
 

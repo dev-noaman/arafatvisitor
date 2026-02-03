@@ -9,17 +9,27 @@ export class EmailService {
 
   constructor(private configService: ConfigService) {
     const host = this.configService.get('SMTP_HOST');
-    const port = this.configService.get<number>('SMTP_PORT');
+    const port = this.configService.get('SMTP_PORT');
     const user = this.configService.get('SMTP_USER');
     const pass = this.configService.get('SMTP_PASS');
+
+    console.log('[EmailService] Initializing with host:', host, 'port:', port, 'user:', user ? 'set' : 'not set');
+
     if (host && port && user && pass) {
       this.transporter = nodemailer.createTransport({
         host,
         port: Number(port),
-        secure: port === 465,
+        secure: Number(port) === 465,
         auth: { user, pass },
       });
+      console.log('[EmailService] Transporter created successfully');
+    } else {
+      console.warn('[EmailService] Missing SMTP configuration, email disabled');
     }
+  }
+
+  isConfigured(): boolean {
+    return this.transporter !== null;
   }
 
   async send(options: {
@@ -28,18 +38,26 @@ export class EmailService {
     html: string;
     text?: string;
   }): Promise<boolean> {
-    if (!this.transporter) return false;
+    if (!this.transporter) {
+      console.warn('[EmailService] Cannot send email - transporter not configured');
+      return false;
+    }
+
     const from = this.configService.get('SMTP_FROM') || 'noreply@vms.local';
+
     try {
-      await this.transporter.sendMail({
+      console.log('[EmailService] Sending email to:', options.to, 'subject:', options.subject);
+      const result = await this.transporter.sendMail({
         from,
         to: options.to,
         subject: options.subject,
         html: options.html,
         text: options.text,
       });
+      console.log('[EmailService] Email sent successfully, messageId:', result.messageId);
       return true;
-    } catch {
+    } catch (e) {
+      console.error('[EmailService] Failed to send email:', e instanceof Error ? e.message : e);
       return false;
     }
   }

@@ -13,6 +13,8 @@ export class WhatsAppService {
     this.clientId = Number(this.configService.get('WHATSAPP_CLIENT_ID')) || 0;
     this.whatsappClient = Number(this.configService.get('WHATSAPP_CLIENT')) || 0;
     this.apiKey = this.configService.get('WHATSAPP_API_KEY') || '';
+
+    console.log('[WhatsAppService] Initializing with endpoint:', this.endpoint, 'clientId:', this.clientId, 'configured:', this.isConfigured());
   }
 
   isConfigured(): boolean {
@@ -20,7 +22,10 @@ export class WhatsAppService {
   }
 
   async send(phone: string, message: string): Promise<boolean> {
-    if (!this.isConfigured()) return false;
+    if (!this.isConfigured()) {
+      console.warn('[WhatsAppService] Cannot send message - not configured');
+      return false;
+    }
 
     // Normalize phone: remove non-digits, remove leading 0 or +
     let normalizedPhone = phone.replace(/\D/g, '').replace(/^0/, '');
@@ -40,6 +45,8 @@ export class WhatsAppService {
     }
 
     const url = `${this.endpoint.replace(/\/$/, '')}/send_msg/`;
+    console.log('[WhatsAppService] Sending to:', phoneNumber, 'country:', countryCode);
+
     try {
       const res = await fetch(url, {
         method: 'POST',
@@ -57,14 +64,15 @@ export class WhatsAppService {
 
       if (!res.ok) {
         const text = await res.text();
-        console.error('WhatsApp API error:', res.status, text);
+        console.error('[WhatsAppService] API error:', res.status, text);
         return false;
       }
 
       const data = await res.json();
+      console.log('[WhatsAppService] API response:', data);
       return data.status === 1;
     } catch (e) {
-      console.error('WhatsApp send error:', e);
+      console.error('[WhatsAppService] Send error:', e instanceof Error ? e.message : e);
       return false;
     }
   }
