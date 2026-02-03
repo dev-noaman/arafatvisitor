@@ -2231,7 +2231,8 @@ MAINTENANCE_MESSAGE=System under maintenance`)), /*#__PURE__*/React__default.def
 
   const BulkImportHosts = () => {
     const [selectedFileName, setSelectedFileName] = React.useState(null);
-    const [csvContent, setCsvContent] = React.useState(null);
+    const [fileContent, setFileContent] = React.useState(null);
+    const [fileType, setFileType] = React.useState(null);
     const [loading, setLoading] = React.useState(false);
     const [validating, setValidating] = React.useState(false);
     const [validation, setValidation] = React.useState(null);
@@ -2241,10 +2242,13 @@ MAINTENANCE_MESSAGE=System under maintenance`)), /*#__PURE__*/React__default.def
     const handleFileChange = event => {
       const file = event.target.files?.[0];
       if (!file) return;
-      if (!file.name.toLowerCase().endsWith('.csv')) {
+      const fileName = file.name.toLowerCase();
+      const isCSV = fileName.endsWith('.csv');
+      const isXLSX = fileName.endsWith('.xlsx') || fileName.endsWith('.xls');
+      if (!isCSV && !isXLSX) {
         setMessage({
           type: 'error',
-          text: 'Please upload a CSV file.'
+          text: 'Please upload a CSV or Excel (.xlsx) file.'
         });
         return;
       }
@@ -2255,9 +2259,17 @@ MAINTENANCE_MESSAGE=System under maintenance`)), /*#__PURE__*/React__default.def
       setEditableRejected([]);
       const reader = new FileReader();
       reader.onload = async () => {
-        const text = typeof reader.result === 'string' ? reader.result : '';
-        setCsvContent(text);
-        await validateCsv(text);
+        if (isXLSX) {
+          const base64 = reader.result.split(',')[1];
+          setFileContent(base64);
+          setFileType('xlsx');
+          await validateFile(base64, 'xlsx');
+        } else {
+          const text = typeof reader.result === 'string' ? reader.result : '';
+          setFileContent(text);
+          setFileType('csv');
+          await validateFile(text, 'csv');
+        }
       };
       reader.onerror = () => {
         setMessage({
@@ -2265,21 +2277,24 @@ MAINTENANCE_MESSAGE=System under maintenance`)), /*#__PURE__*/React__default.def
           text: 'Failed to read the file. Please try again.'
         });
       };
-      reader.readAsText(file);
+      if (isXLSX) {
+        reader.readAsDataURL(file);
+      } else {
+        reader.readAsText(file);
+      }
     };
-    const validateCsv = async content => {
+    const validateFile = async (content, type) => {
       setValidating(true);
       setValidation(null);
       try {
+        const body = type === 'xlsx' ? { xlsxContent: content } : { csvContent: content };
         const res = await fetch('/admin/api/hosts/import?validate=true', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
           credentials: 'include',
-          body: JSON.stringify({
-            csvContent: content
-          })
+          body: JSON.stringify(body)
         });
         const data = await res.json();
         if (!res.ok) {
@@ -2307,7 +2322,7 @@ MAINTENANCE_MESSAGE=System under maintenance`)), /*#__PURE__*/React__default.def
         if (rejected > 0) {
           setMessage({
             type: 'error',
-            text: `${rejected} row(s) have issues. Edit below and retry, or fix your CSV.`
+            text: `${rejected} row(s) have issues. Edit below and retry, or fix your file.`
           });
         } else {
           setMessage({
@@ -2325,10 +2340,10 @@ MAINTENANCE_MESSAGE=System under maintenance`)), /*#__PURE__*/React__default.def
       }
     };
     const handleImport = async () => {
-      if (!csvContent) {
+      if (!fileContent || !fileType) {
         setMessage({
           type: 'error',
-          text: 'Please select a CSV file first.'
+          text: 'Please select a CSV or Excel file first.'
         });
         return;
       }
@@ -2336,15 +2351,14 @@ MAINTENANCE_MESSAGE=System under maintenance`)), /*#__PURE__*/React__default.def
       setMessage(null);
       setSummary(null);
       try {
+        const body = fileType === 'xlsx' ? { xlsxContent: fileContent } : { csvContent: fileContent };
         const res = await fetch('/admin/api/hosts/import', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
           credentials: 'include',
-          body: JSON.stringify({
-            csvContent
-          })
+          body: JSON.stringify(body)
         });
         const data = await res.json();
         if (!res.ok) {
@@ -2518,9 +2532,9 @@ MAINTENANCE_MESSAGE=System under maintenance`)), /*#__PURE__*/React__default.def
       mb: "md"
     }), /*#__PURE__*/React__default.default.createElement(designSystem.Text, {
       mb: "sm"
-    }, selectedFileName ? `Selected: ${selectedFileName}` : 'Choose a CSV file to upload'), /*#__PURE__*/React__default.default.createElement("input", {
+    }, selectedFileName ? `Selected: ${selectedFileName}` : 'Choose a CSV or Excel file to upload'), /*#__PURE__*/React__default.default.createElement("input", {
       type: "file",
-      accept: ".csv,text/csv",
+      accept: ".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel",
       onChange: handleFileChange,
       style: {
         marginTop: '8px'
@@ -2616,7 +2630,7 @@ MAINTENANCE_MESSAGE=System under maintenance`)), /*#__PURE__*/React__default.def
     }, /*#__PURE__*/React__default.default.createElement(designSystem.Button, {
       variant: "primary",
       onClick: handleImport,
-      disabled: !csvContent || loading || validating || hasValidationErrors
+      disabled: !fileContent || loading || validating || hasValidationErrors
     }, loading ? /*#__PURE__*/React__default.default.createElement(designSystem.Loader, null) : /*#__PURE__*/React__default.default.createElement(React__default.default.Fragment, null, /*#__PURE__*/React__default.default.createElement(designSystem.Icon, {
       icon: "PlayCircle",
       mr: "sm"
