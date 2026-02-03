@@ -15,12 +15,11 @@ async function bootstrap() {
     bodyParser: false,
   });
 
-  // Get the underlying Express instance and add body parser with increased limit
+  // Get the underlying Express instance
+  // NOTE: Do NOT add global body-parser here - it conflicts with AdminJS
+  // Body parsing is handled per-route where needed (e.g., jsonParser for send-qr)
   const httpAdapter = app.getHttpAdapter();
   const expressApp = httpAdapter.getInstance();
-  const express = require('express');
-  expressApp.use(express.json({ limit: '50mb' }));
-  expressApp.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
   // Trust proxy for secure cookies behind nginx/reverse proxy in production
   if (process.env.NODE_ENV === 'production') {
