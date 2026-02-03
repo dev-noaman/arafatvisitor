@@ -242,23 +242,21 @@ jobs:
                   echo "NODE_ENV=production" >> .env
                   echo "Added NODE_ENV=production"
               fi
-              # Ensure SMTP config exists
-              if ! grep -q "SMTP_HOST" .env; then
-                  echo "SMTP_HOST=${{ secrets.SMTP_HOST }}" >> .env
-                  echo "SMTP_PORT=${{ secrets.SMTP_PORT }}" >> .env
-                  echo "SMTP_USER=${{ secrets.SMTP_USER }}" >> .env
-                  echo "SMTP_PASS=${{ secrets.SMTP_PASS }}" >> .env
-                  echo "SMTP_FROM=${{ secrets.SMTP_FROM }}" >> .env
-                  echo "Added SMTP configuration"
-              fi
-              # Ensure WhatsApp config exists
-              if ! grep -q "WHATSAPP_ENDPOINT" .env; then
-                  echo "WHATSAPP_ENDPOINT=${{ secrets.WHATSAPP_ENDPOINT }}" >> .env
-                  echo "WHATSAPP_CLIENT_ID=${{ secrets.WHATSAPP_CLIENT_ID }}" >> .env
-                  echo "WHATSAPP_CLIENT=${{ secrets.WHATSAPP_CLIENT }}" >> .env
-                  echo "WHATSAPP_API_KEY=${{ secrets.WHATSAPP_API_KEY }}" >> .env
-                  echo "Added WhatsApp configuration"
-              fi
+              # Always update SMTP config from secrets (remove old, add new)
+              sed -i '/^SMTP_/d' .env 2>/dev/null || true
+              echo "SMTP_HOST=${{ secrets.SMTP_HOST }}" >> .env
+              echo "SMTP_PORT=${{ secrets.SMTP_PORT }}" >> .env
+              echo "SMTP_USER=${{ secrets.SMTP_USER }}" >> .env
+              echo "SMTP_PASS=${{ secrets.SMTP_PASS }}" >> .env
+              echo "SMTP_FROM=${{ secrets.SMTP_FROM }}" >> .env
+              echo "Updated SMTP configuration"
+              # Always update WhatsApp config from secrets (remove old, add new)
+              sed -i '/^WHATSAPP_/d' .env 2>/dev/null || true
+              echo "WHATSAPP_ENDPOINT=${{ secrets.WHATSAPP_ENDPOINT }}" >> .env
+              echo "WHATSAPP_CLIENT_ID=${{ secrets.WHATSAPP_CLIENT_ID }}" >> .env
+              echo "WHATSAPP_CLIENT=${{ secrets.WHATSAPP_CLIENT }}" >> .env
+              echo "WHATSAPP_API_KEY=${{ secrets.WHATSAPP_API_KEY }}" >> .env
+              echo "Updated WhatsApp configuration"
           fi
 
           echo "=== Building backend ==="
@@ -413,24 +411,22 @@ jobs:
               echo "Added NODE_ENV=production"
           fi
 
-          # Ensure SMTP config exists
-          if ! grep -q "SMTP_HOST" .env 2>/dev/null; then
-              echo "SMTP_HOST=${{ secrets.SMTP_HOST }}" >> .env
-              echo "SMTP_PORT=${{ secrets.SMTP_PORT }}" >> .env
-              echo "SMTP_USER=${{ secrets.SMTP_USER }}" >> .env
-              echo "SMTP_PASS=${{ secrets.SMTP_PASS }}" >> .env
-              echo "SMTP_FROM=${{ secrets.SMTP_FROM }}" >> .env
-              echo "Added SMTP configuration"
-          fi
+          # Always update SMTP config from secrets (remove old, add new)
+          sed -i '/^SMTP_/d' .env 2>/dev/null || true
+          echo "SMTP_HOST=${{ secrets.SMTP_HOST }}" >> .env
+          echo "SMTP_PORT=${{ secrets.SMTP_PORT }}" >> .env
+          echo "SMTP_USER=${{ secrets.SMTP_USER }}" >> .env
+          echo "SMTP_PASS=${{ secrets.SMTP_PASS }}" >> .env
+          echo "SMTP_FROM=${{ secrets.SMTP_FROM }}" >> .env
+          echo "Updated SMTP configuration"
 
-          # Ensure WhatsApp config exists
-          if ! grep -q "WHATSAPP_ENDPOINT" .env 2>/dev/null; then
-              echo "WHATSAPP_ENDPOINT=${{ secrets.WHATSAPP_ENDPOINT }}" >> .env
-              echo "WHATSAPP_CLIENT_ID=${{ secrets.WHATSAPP_CLIENT_ID }}" >> .env
-              echo "WHATSAPP_CLIENT=${{ secrets.WHATSAPP_CLIENT }}" >> .env
-              echo "WHATSAPP_API_KEY=${{ secrets.WHATSAPP_API_KEY }}" >> .env
-              echo "Added WhatsApp configuration"
-          fi
+          # Always update WhatsApp config from secrets (remove old, add new)
+          sed -i '/^WHATSAPP_/d' .env 2>/dev/null || true
+          echo "WHATSAPP_ENDPOINT=${{ secrets.WHATSAPP_ENDPOINT }}" >> .env
+          echo "WHATSAPP_CLIENT_ID=${{ secrets.WHATSAPP_CLIENT_ID }}" >> .env
+          echo "WHATSAPP_CLIENT=${{ secrets.WHATSAPP_CLIENT }}" >> .env
+          echo "WHATSAPP_API_KEY=${{ secrets.WHATSAPP_API_KEY }}" >> .env
+          echo "Updated WhatsApp configuration"
 
           export $(grep -v '^#' .env | xargs) 2>/dev/null || true
 
