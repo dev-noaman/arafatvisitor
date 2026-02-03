@@ -12,6 +12,11 @@ on:
         required: false
         default: false
         type: boolean
+      seed:
+        description: 'Run database seed (adds test hosts, visitors, deliveries)'
+        required: false
+        default: false
+        type: boolean
 
 env:
   VPS_PATH: /var/www/arafatvisitor
@@ -352,6 +357,21 @@ jobs:
           echo "SSL auto-renewal cron job configured"
 
           echo "INITIAL_SETUP_COMPLETE"
+          ENDSSH
+
+      - name: Run Database Seed (if requested)
+        if: github.event.inputs.seed == 'true' && github.event.inputs.init != 'true'
+        run: |
+          sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh ${{ env.SSH_OPTS }} ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} << 'ENDSSH'
+          set -e
+          cd /var/www/arafatvisitor/backend
+          export $(grep -v '^#' .env | xargs) 2>/dev/null || true
+
+          echo "=== Running database seed ==="
+          npm install --include=dev
+          npx prisma generate
+          npm run prisma:seed
+          echo "SEED_COMPLETE"
           ENDSSH
 
       - name: Update Deployment (single SSH session)
