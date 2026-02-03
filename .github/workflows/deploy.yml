@@ -289,6 +289,33 @@ jobs:
           echo "INITIAL_SETUP_COMPLETE"
           ENDSSH
 
+      - name: Update environment config
+        if: github.event.inputs.init != 'true'
+        run: |
+          # Create env update script
+          cat > /tmp/env-update.sh << 'SCRIPT'
+          cd /var/www/arafatvisitor/backend
+          sed -i '/^SMTP_/d' .env 2>/dev/null || true
+          sed -i '/^WHATSAPP_/d' .env 2>/dev/null || true
+          sed -i '/^NODE_ENV=/d' .env 2>/dev/null || true
+          SCRIPT
+
+          # Add the actual values (GitHub substitutes these)
+          echo "echo 'SMTP_HOST=${{ secrets.SMTP_HOST }}' >> .env" >> /tmp/env-update.sh
+          echo "echo 'SMTP_PORT=${{ secrets.SMTP_PORT }}' >> .env" >> /tmp/env-update.sh
+          echo "echo 'SMTP_USER=${{ secrets.SMTP_USER }}' >> .env" >> /tmp/env-update.sh
+          echo "echo 'SMTP_PASS=${{ secrets.SMTP_PASS }}' >> .env" >> /tmp/env-update.sh
+          echo "echo 'SMTP_FROM=${{ secrets.SMTP_FROM }}' >> .env" >> /tmp/env-update.sh
+          echo "echo 'WHATSAPP_ENDPOINT=${{ secrets.WHATSAPP_ENDPOINT }}' >> .env" >> /tmp/env-update.sh
+          echo "echo 'WHATSAPP_CLIENT_ID=${{ secrets.WHATSAPP_CLIENT_ID }}' >> .env" >> /tmp/env-update.sh
+          echo "echo 'WHATSAPP_CLIENT=${{ secrets.WHATSAPP_CLIENT }}' >> .env" >> /tmp/env-update.sh
+          echo "echo 'WHATSAPP_API_KEY=${{ secrets.WHATSAPP_API_KEY }}' >> .env" >> /tmp/env-update.sh
+          echo "echo 'NODE_ENV=production' >> .env" >> /tmp/env-update.sh
+
+          # Upload and run
+          sshpass -p '${{ secrets.VPS_PASSWORD }}' scp ${{ env.SSH_OPTS }} /tmp/env-update.sh ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }}:/tmp/
+          sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh ${{ env.SSH_OPTS }} ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} "bash /tmp/env-update.sh && rm /tmp/env-update.sh"
+
       - name: Update Deployment (single SSH session)
         if: github.event.inputs.init != 'true'
         run: |
@@ -296,25 +323,7 @@ jobs:
           set -e
           cd /var/www/arafatvisitor/backend
 
-          # Update SMTP and WhatsApp settings in .env
-          echo "=== Updating environment configuration ==="
-          if [ -n "${{ secrets.SMTP_HOST }}" ]; then
-              grep -q "^SMTP_HOST=" .env && sed -i "s|^SMTP_HOST=.*|SMTP_HOST=${{ secrets.SMTP_HOST }}|" .env || echo "SMTP_HOST=${{ secrets.SMTP_HOST }}" >> .env
-              grep -q "^SMTP_PORT=" .env && sed -i "s|^SMTP_PORT=.*|SMTP_PORT=${{ secrets.SMTP_PORT }}|" .env || echo "SMTP_PORT=${{ secrets.SMTP_PORT }}" >> .env
-              grep -q "^SMTP_USER=" .env && sed -i "s|^SMTP_USER=.*|SMTP_USER=${{ secrets.SMTP_USER }}|" .env || echo "SMTP_USER=${{ secrets.SMTP_USER }}" >> .env
-              grep -q "^SMTP_PASS=" .env && sed -i "s|^SMTP_PASS=.*|SMTP_PASS=${{ secrets.SMTP_PASS }}|" .env || echo "SMTP_PASS=${{ secrets.SMTP_PASS }}" >> .env
-              grep -q "^SMTP_FROM=" .env && sed -i "s|^SMTP_FROM=.*|SMTP_FROM=${{ secrets.SMTP_FROM }}|" .env || echo "SMTP_FROM=${{ secrets.SMTP_FROM }}" >> .env
-              echo "SMTP settings updated"
-          fi
-          if [ -n "${{ secrets.WHATSAPP_ENDPOINT }}" ]; then
-              grep -q "^WHATSAPP_ENDPOINT=" .env && sed -i "s|^WHATSAPP_ENDPOINT=.*|WHATSAPP_ENDPOINT=${{ secrets.WHATSAPP_ENDPOINT }}|" .env || echo "WHATSAPP_ENDPOINT=${{ secrets.WHATSAPP_ENDPOINT }}" >> .env
-              grep -q "^WHATSAPP_CLIENT_ID=" .env && sed -i "s|^WHATSAPP_CLIENT_ID=.*|WHATSAPP_CLIENT_ID=${{ secrets.WHATSAPP_CLIENT_ID }}|" .env || echo "WHATSAPP_CLIENT_ID=${{ secrets.WHATSAPP_CLIENT_ID }}" >> .env
-              grep -q "^WHATSAPP_CLIENT=" .env && sed -i "s|^WHATSAPP_CLIENT=.*|WHATSAPP_CLIENT=${{ secrets.WHATSAPP_CLIENT }}|" .env || echo "WHATSAPP_CLIENT=${{ secrets.WHATSAPP_CLIENT }}" >> .env
-              grep -q "^WHATSAPP_API_KEY=" .env && sed -i "s|^WHATSAPP_API_KEY=.*|WHATSAPP_API_KEY=${{ secrets.WHATSAPP_API_KEY }}|" .env || echo "WHATSAPP_API_KEY=${{ secrets.WHATSAPP_API_KEY }}" >> .env
-              echo "WhatsApp settings updated"
-          fi
-          grep -q "^NODE_ENV=" .env || echo "NODE_ENV=production" >> .env
-
+          echo "=== Environment configuration updated ==="
           export $(grep -v '^#' .env | xargs) 2>/dev/null || true
 
           # Install any new dependencies
