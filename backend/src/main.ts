@@ -136,11 +136,19 @@ async function bootstrap() {
     componentLoader.override('SidebarResourceSection', path.join(componentsDir, 'SidebarResourceSection'));
     componentLoader.override('Login', path.join(componentsDir, 'Login'));
 
+    // Generate unique bundle hash on each server start to bust browser cache
+    const bundleHash = `v${Date.now()}`;
+
     const admin = new AdminJS({
       rootPath: '/admin',
       loginPath: '/admin/login',
       logoutPath: '/admin/logout',
       componentLoader,
+      bundler: {
+        // Force unique bundle URLs on each deployment
+        // @ts-ignore - bundleHash is supported but not in types
+        bundleHash,
+      },
       branding: {
         companyName: 'Arafat VMS',
         logo: false as const,
