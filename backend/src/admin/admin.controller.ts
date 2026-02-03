@@ -769,16 +769,13 @@ export class AdminApiController {
 
   @Get("dashboard/pending-approvals")
   async getPendingApprovals() {
+    // Dashboard only shows PENDING_APPROVAL (clean view)
+    // Rejected visits are managed in PreRegister resource page
     const visits = await this.prisma.visit.findMany({
-      where: {
-        status: { in: ["PENDING_APPROVAL", "REJECTED"] },
-      },
+      where: { status: "PENDING_APPROVAL" },
       include: { host: true },
-      orderBy: [
-        { status: "asc" }, // PENDING_APPROVAL comes before REJECTED alphabetically
-        { createdAt: "desc" },
-      ],
-      take: 20,
+      orderBy: { expectedDate: "asc" },
+      take: 10,
     });
 
     return visits.map((v) => ({
@@ -788,9 +785,6 @@ export class AdminApiController {
       hostName: v.host?.name || "Unknown",
       hostCompany: v.host?.company || "Unknown",
       expectedDate: v.expectedDate?.toISOString() || v.createdAt.toISOString(),
-      status: v.status,
-      rejectionReason: v.rejectionReason,
-      rejectedAt: v.rejectedAt?.toISOString(),
     }));
   }
 
