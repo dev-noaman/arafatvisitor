@@ -216,6 +216,7 @@ jobs:
               echo "DATABASE_URL=postgresql://${{ env.DB_USER }}:${{ secrets.DB_PASSWORD }}@localhost:5432/${{ env.DB_NAME }}" > .env
               echo "JWT_SECRET=${JWT_SECRET}" >> .env
               echo "ADMINJS_COOKIE_SECRET=arafat-vms-adminjs-cookie-secret-2026" >> .env
+              echo "NODE_ENV=production" >> .env
               echo "PORT=3000" >> .env
               echo "Created new .env file"
           else
@@ -224,6 +225,11 @@ jobs:
               if ! grep -q "ADMINJS_COOKIE_SECRET" .env; then
                   echo "ADMINJS_COOKIE_SECRET=arafat-vms-adminjs-cookie-secret-2026" >> .env
                   echo "Added missing ADMINJS_COOKIE_SECRET"
+              fi
+              # Ensure NODE_ENV is set
+              if ! grep -q "NODE_ENV" .env; then
+                  echo "NODE_ENV=production" >> .env
+                  echo "Added NODE_ENV=production"
               fi
           fi
 
