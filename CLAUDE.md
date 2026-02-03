@@ -402,6 +402,42 @@ WHATSAPP_CLIENT=5219
 WHATSAPP_API_KEY=<secret>
 ```
 
+## Production Deployment
+
+### GitHub Secrets Required
+The deployment workflow uses these GitHub secrets:
+
+| Secret | Description |
+|--------|-------------|
+| `VPS_IP` | VPS server IP address |
+| `VPS_USER` | SSH username (usually root) |
+| `VPS_PASSWORD` | SSH password |
+| `VPS_DOMAIN` | Domain name (arafatvisitor.cloud) |
+| `DB_PASSWORD` | PostgreSQL database password |
+| `SMTP_HOST` | SMTP server hostname |
+| `SMTP_PORT` | SMTP port (587) |
+| `SMTP_USER` | SMTP username |
+| `SMTP_PASS` | SMTP password |
+| `SMTP_FROM` | From email address |
+| `WHATSAPP_ENDPOINT` | wbiztool API endpoint |
+| `WHATSAPP_CLIENT_ID` | wbiztool client ID |
+| `WHATSAPP_CLIENT` | wbiztool WhatsApp client |
+| `WHATSAPP_API_KEY` | wbiztool API key |
+
+### Deployment Flow
+1. Push to `main` branch triggers deployment
+2. Frontend built with Vite, uploaded to VPS
+3. Backend uploaded, dependencies installed
+4. Prisma migrations run
+5. **Seed clears test data and creates fresh test records**
+6. PM2 restarts the backend
+7. Nginx config updated
+
+### Production URLs
+- **Frontend**: https://arafatvisitor.cloud
+- **Admin Panel**: https://arafatvisitor.cloud/admin
+- **API**: https://arafatvisitor.cloud/api
+
 ## Key API Endpoints
 
 ### Admin API (no JWT, session-based)
