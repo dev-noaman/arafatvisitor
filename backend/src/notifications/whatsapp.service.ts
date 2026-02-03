@@ -21,12 +21,7 @@ export class WhatsAppService {
     return !!(this.endpoint && this.clientId && this.whatsappClient && this.apiKey);
   }
 
-  async send(phone: string, message: string): Promise<boolean> {
-    if (!this.isConfigured()) {
-      console.warn('[WhatsAppService] Cannot send message - not configured');
-      return false;
-    }
-
+  private normalizePhone(phone: string): { countryCode: string; phoneNumber: string } {
     // Normalize phone: remove non-digits, remove leading 0 or +
     let normalizedPhone = phone.replace(/\D/g, '').replace(/^0/, '');
 
@@ -44,8 +39,18 @@ export class WhatsAppService {
       phoneNumber = normalizedPhone.slice(-8);
     }
 
+    return { countryCode, phoneNumber };
+  }
+
+  async send(phone: string, message: string): Promise<boolean> {
+    if (!this.isConfigured()) {
+      console.warn('[WhatsAppService] Cannot send message - not configured');
+      return false;
+    }
+
+    const { countryCode, phoneNumber } = this.normalizePhone(phone);
     const url = `${this.endpoint.replace(/\/$/, '')}/send_msg/`;
-    console.log('[WhatsAppService] Sending to:', phoneNumber, 'country:', countryCode);
+    console.log('[WhatsAppService] Sending text to:', phoneNumber, 'country:', countryCode);
 
     try {
       const res = await fetch(url, {
@@ -73,6 +78,47 @@ export class WhatsAppService {
       return data.status === 1;
     } catch (e) {
       console.error('[WhatsAppService] Send error:', e instanceof Error ? e.message : e);
+      return false;
+    }
+  }
+
+  async sendImage(phone: string, imageBase64: string, caption?: string): Promise<boolean> {
+    if (!this.isConfigured()) {
+      console.warn('[WhatsAppService] Cannot send image - not configured');
+      return false;
+    }
+
+    const { countryCode, phoneNumber } = this.normalizePhone(phone);
+    const url = `${this.endpoint.replace(/\/$/, '')}/send_msg/`;
+    console.log('[WhatsAppService] Sending image to:', phoneNumber, 'country:', countryCode);
+
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          client_id: this.clientId,
+          api_key: this.apiKey,
+          whatsapp_client: this.whatsappClient,
+          msg_type: 1, // Image type
+          media: imageBase64, // Base64 image data
+          msg: caption || '',
+          phone: phoneNumber,
+          country_code: countryCode,
+        }),
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        console.error('[WhatsAppService] Image API error:', res.status, text);
+        return false;
+      }
+
+      const data = await res.json();
+      console.log('[WhatsAppService] Image API response:', data);
+      return data.status === 1;
+    } catch (e) {
+      console.error('[WhatsAppService] Send image error:', e instanceof Error ? e.message : e);
       return false;
     }
   }

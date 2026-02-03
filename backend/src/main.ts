@@ -1530,19 +1530,126 @@ async function bootstrap() {
             return res.status(400).json({ message: 'No phone number available' });
           }
 
-          const qrLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/check-in?session=${token}`;
-          const message = `Hello ${visit.visitorName}!\n\nYour QR code for visiting ${visit.host?.company || 'our office'} is ready.\n\nPlease use this link to access your QR code:\n${qrLink}\n\nOr show this QR code at reception for check-in.`;
+          console.log('[send-qr] Generating visitor card image...');
 
-          console.log('[send-qr] Sending WhatsApp to:', visit.visitorPhone);
+          // Generate visitor card image with QR code
+          const { createCanvas, loadImage } = require('canvas');
+          const cardWidth = 400;
+          const cardHeight = 600;
+          const canvas = createCanvas(cardWidth, cardHeight);
+          const ctx = canvas.getContext('2d');
+
+          // Background - white with subtle gradient
+          const gradient = ctx.createLinearGradient(0, 0, 0, cardHeight);
+          gradient.addColorStop(0, '#ffffff');
+          gradient.addColorStop(1, '#f8fafc');
+          ctx.fillStyle = gradient;
+          ctx.fillRect(0, 0, cardWidth, cardHeight);
+
+          // Header bar - blue accent
+          ctx.fillStyle = '#2563eb';
+          ctx.fillRect(0, 0, cardWidth, 80);
+
+          // Header text
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 24px Arial, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('VISITOR PASS', cardWidth / 2, 50);
+
+          // Visitor name
+          ctx.fillStyle = '#1e293b';
+          ctx.font = 'bold 28px Arial, sans-serif';
+          ctx.fillText(visit.visitorName || 'Visitor', cardWidth / 2, 130);
+
+          // Company
+          ctx.fillStyle = '#64748b';
+          ctx.font = '18px Arial, sans-serif';
+          ctx.fillText(visit.visitorCompany || '', cardWidth / 2, 160);
+
+          // Divider line
+          ctx.strokeStyle = '#e2e8f0';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(40, 185);
+          ctx.lineTo(cardWidth - 40, 185);
+          ctx.stroke();
+
+          // Host section
+          ctx.fillStyle = '#475569';
+          ctx.font = '14px Arial, sans-serif';
+          ctx.fillText('VISITING', cardWidth / 2, 215);
+
+          ctx.fillStyle = '#1e293b';
+          ctx.font = 'bold 20px Arial, sans-serif';
+          ctx.fillText(visit.host?.name || 'Host', cardWidth / 2, 245);
+
+          ctx.fillStyle = '#64748b';
+          ctx.font = '16px Arial, sans-serif';
+          ctx.fillText(visit.host?.company || '', cardWidth / 2, 270);
+
+          // Purpose
+          ctx.fillStyle = '#475569';
+          ctx.font = '14px Arial, sans-serif';
+          ctx.fillText('PURPOSE', cardWidth / 2, 310);
+
+          ctx.fillStyle = '#1e293b';
+          ctx.font = '16px Arial, sans-serif';
+          const purpose = visit.purpose || 'Visit';
+          const maxPurposeWidth = cardWidth - 80;
+          if (ctx.measureText(purpose).width > maxPurposeWidth) {
+            ctx.fillText(purpose.substring(0, 30) + '...', cardWidth / 2, 335);
+          } else {
+            ctx.fillText(purpose, cardWidth / 2, 335);
+          }
+
+          // Date
+          const visitDate = visit.expectedDate || visit.createdAt || new Date();
+          const dateStr = new Date(visitDate).toLocaleDateString('en-US', {
+            weekday: 'short',
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+          });
+          ctx.fillStyle = '#475569';
+          ctx.font = '14px Arial, sans-serif';
+          ctx.fillText(dateStr, cardWidth / 2, 365);
+
+          // QR Code - load from data URL
+          const qrImage = await loadImage(qrDataUrl);
+          const qrSize = 180;
+          const qrX = (cardWidth - qrSize) / 2;
+          const qrY = 390;
+
+          // QR background
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(qrX - 10, qrY - 10, qrSize + 20, qrSize + 20);
+          ctx.strokeStyle = '#e2e8f0';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(qrX - 10, qrY - 10, qrSize + 20, qrSize + 20);
+
+          // Draw QR code
+          ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
+
+          // Footer text
+          ctx.fillStyle = '#94a3b8';
+          ctx.font = '12px Arial, sans-serif';
+          ctx.fillText('Scan at reception for check-in', cardWidth / 2, cardHeight - 15);
+
+          // Convert canvas to base64
+          const cardBase64 = canvas.toBuffer('image/png').toString('base64');
+
+          console.log('[send-qr] Sending WhatsApp image to:', visit.visitorPhone);
           const { WhatsAppService } = await import('./notifications/whatsapp.service');
           const whatsappService = app.get(WhatsAppService);
-          const sent = await whatsappService.send(visit.visitorPhone, message);
-          console.log('[send-qr] WhatsApp result:', sent);
+
+          const caption = `Hello ${visit.visitorName}!\n\nYour visitor pass for ${visit.host?.company || 'our office'} is ready.\n\nPlease show this QR code at reception for check-in.`;
+          const sent = await whatsappService.sendImage(visit.visitorPhone, cardBase64, caption);
+          console.log('[send-qr] WhatsApp image result:', sent);
 
           if (!sent) {
-            return res.status(503).json({ message: 'WhatsApp service failed to send message. Check configuration.' });
+            return res.status(503).json({ message: 'WhatsApp service failed to send image. Check configuration.' });
           }
-          return res.json({ success: true, message: 'QR sent via WhatsApp' });
+          return res.json({ success: true, message: 'QR card sent via WhatsApp' });
         }
 
         if (method === 'email') {
