@@ -72,6 +72,91 @@ async function bootstrap() {
     next();
   });
 
+  // Register auto-login route EARLY (before AdminJS setup) to ensure it's always available
+  // This route allows kiosk to redirect users to admin panel with a JWT token
+  const session = require("express-session");
+  const jwt = require("jsonwebtoken");
+
+  // Session config for auto-login (will be shared with AdminJS later)
+  const cookieSecretForAutoLogin =
+    process.env.ADMINJS_COOKIE_SECRET ||
+    process.env.COOKIE_SECRET ||
+    "arafat-vms-secret-change-in-production-2024";
+  const autoLoginSessionMiddleware = session({
+    secret: cookieSecretForAutoLogin,
+    name: "adminjs",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      sameSite: "lax" as const,
+      secure: process.env.NODE_ENV === "production",
+    },
+  });
+
+  expressAppForCache.get(
+    "/admin/auto-login",
+    autoLoginSessionMiddleware,
+    async (req: any, res: any) => {
+      console.log("[auto-login] Request received");
+      const token = req.query.token as string;
+      if (!token) {
+        console.log("[auto-login] No token provided, redirecting to login");
+        return res.redirect("/admin/login");
+      }
+
+      try {
+        const secret = process.env.JWT_SECRET || "fallback-secret-min-32-chars";
+        const payload = jwt.verify(token, secret) as {
+          sub: number;
+          email?: string;
+          role?: string;
+        };
+        console.log("[auto-login] Token verified for user ID:", payload.sub);
+
+        // Look up user by ID from token
+        const prisma = app.get(PrismaService);
+        const user = await prisma.user.findUnique({
+          where: { id: payload.sub },
+          include: { host: true },
+        });
+
+        if (!user) {
+          console.log("[auto-login] User not found:", payload.sub);
+          return res.redirect("/admin/login");
+        }
+
+        // Only allow ADMIN and RECEPTION
+        if (user.role !== "ADMIN" && user.role !== "RECEPTION") {
+          console.log("[auto-login] Invalid role:", user.role);
+          return res.redirect("/admin/login");
+        }
+
+        // Create AdminJS session
+        req.session.adminUser = {
+          email: user.email,
+          role: user.role,
+          hostId: user.hostId?.toString(),
+          hostCompany: user.host?.company,
+          name: user.name,
+        };
+
+        req.session.save((err: any) => {
+          if (err) {
+            console.error("[auto-login] Session save failed:", err);
+            return res.redirect("/admin/login");
+          }
+          console.log("[auto-login] Success, redirecting to /admin");
+          return res.redirect("/admin");
+        });
+      } catch (err) {
+        console.error("[auto-login] Failed:", err);
+        return res.redirect("/admin/login");
+      }
+    },
+  );
+  console.log("[auto-login] Route registered at /admin/auto-login");
+
   // Setup AdminJS with dynamic import (ESM modules)
   try {
     const AdminJS = (await import("adminjs")).default;
@@ -1308,73 +1393,11 @@ async function bootstrap() {
       sharedSessionConfig, // Use shared session store
     );
 
-    // Get Express app to register routes BEFORE adminRouter (which has auth middleware)
+    // Get Express app for additional routes
     const httpAdapter = app.getHttpAdapter();
     const expressApp = httpAdapter.getInstance();
 
-    // Auto-login from kiosk: /admin/auto-login?token=JWT
-    // Must be registered BEFORE adminRouter so it bypasses AdminJS auth middleware.
-    // Uses the SAME session store as AdminJS so sessions are shared.
-    const autoLoginSessionMiddleware = session(sharedSessionConfig);
-
-    expressApp.get(
-      `${rootPath}/auto-login`,
-      autoLoginSessionMiddleware,
-      async (req: any, res: any) => {
-        const token = req.query.token as string;
-        if (!token) {
-          return res.redirect(`${rootPath}/login`);
-        }
-
-        try {
-          // Verify JWT using same secret as API
-          const jwt = require("jsonwebtoken");
-          const secret =
-            process.env.JWT_SECRET || "fallback-secret-min-32-chars";
-          const payload = jwt.verify(token, secret) as {
-            sub: number;
-            email?: string;
-            role?: string;
-          };
-
-          // Look up user by ID from token
-          const user = await prisma.user.findUnique({
-            where: { id: payload.sub },
-            include: { host: true },
-          });
-
-          if (!user) {
-            return res.redirect(`${rootPath}/login`);
-          }
-
-          // Only allow ADMIN and RECEPTION (GM is also ADMIN)
-          if (user.role !== "ADMIN" && user.role !== "RECEPTION") {
-            return res.redirect(`${rootPath}/login`);
-          }
-
-          // Create AdminJS session (same shape as authenticate() result)
-          req.session.adminUser = {
-            email: user.email,
-            role: user.role,
-            hostId: user.hostId?.toString(),
-            hostCompany: user.host?.company,
-            name: user.name,
-          };
-
-          // Save session before redirect
-          req.session.save((err: any) => {
-            if (err) {
-              console.error("Session save failed:", err);
-              return res.redirect(`${rootPath}/login`);
-            }
-            return res.redirect(rootPath);
-          });
-        } catch (err) {
-          console.error("Admin auto-login failed:", err);
-          return res.redirect(`${rootPath}/login`);
-        }
-      },
-    );
+    // Note: Auto-login route is registered earlier in bootstrap() to ensure availability
 
     // Debug quick-login: standalone page + inject into login HTML (when ADMINJS_QUICK_LOGIN=true)
     const showAdminQuickLogin =
