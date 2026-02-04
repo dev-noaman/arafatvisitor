@@ -127,11 +127,13 @@ export class AdminApiController {
         courier: delivery.courier,
         recipient: delivery.recipient,
         hostId: delivery.hostId?.toString(),
-        host: (delivery as any).host ? {
-          id: (delivery as any).host.id.toString(),
-          name: (delivery as any).host.name,
-          company: (delivery as any).host.company,
-        } : null,
+        host: (delivery as any).host
+          ? {
+              id: (delivery as any).host.id.toString(),
+              name: (delivery as any).host.name,
+              company: (delivery as any).host.company,
+            }
+          : null,
         receivedAt: delivery.receivedAt,
         pickedUpAt: delivery.pickedUpAt,
       },
