@@ -6,6 +6,7 @@ import {
   Param,
   Query,
   Res,
+  Req,
   HttpException,
   HttpStatus,
 } from "@nestjs/common";
@@ -92,6 +93,50 @@ export class AdminApiController {
       data: { name: name ?? user.name },
     });
     return { name: updated.name, email: updated.email, role: updated.role };
+  }
+
+  // ============ DEBUG ENDPOINT ============
+
+  @Get("debug/delivery/:id")
+  async debugDelivery(@Param("id") id: string, @Req() req: any) {
+    console.log(`[DEBUG] Checking delivery with id: ${id}`);
+    console.log(`[DEBUG] Session data:`, req.session);
+
+    const delivery = await this.prisma.delivery.findUnique({
+      where: { id: BigInt(id) as any },
+      include: { host: true },
+    });
+
+    if (!delivery) {
+      console.log(`[DEBUG] Delivery not found with id: ${id}`);
+      return { error: "Delivery not found", id };
+    }
+
+    console.log(`[DEBUG] Delivery found:`, {
+      id: delivery.id.toString(),
+      status: delivery.status,
+      courier: delivery.courier,
+      recipient: delivery.recipient,
+      hostId: delivery.hostId?.toString(),
+    });
+
+    return {
+      delivery: {
+        id: delivery.id.toString(),
+        status: delivery.status,
+        courier: delivery.courier,
+        recipient: delivery.recipient,
+        hostId: delivery.hostId?.toString(),
+        host: (delivery as any).host ? {
+          id: (delivery as any).host.id.toString(),
+          name: (delivery as any).host.name,
+          company: (delivery as any).host.company,
+        } : null,
+        receivedAt: delivery.receivedAt,
+        pickedUpAt: delivery.pickedUpAt,
+      },
+      session: req.session,
+    };
   }
 
   // ============ HOSTS BULK IMPORT ============

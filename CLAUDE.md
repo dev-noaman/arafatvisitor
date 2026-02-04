@@ -1,6 +1,6 @@
 ﻿# Arafat Visitor Management System Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2026-02-03
+Auto-generated from all feature plans. Last updated: 2026-02-04
 
 ## Active Technologies
 - TypeScript 5.9, NestJS (Node.js backend) + NestJS, Prisma ORM, AdminJS, bcrypt (002-host-user-sync)
@@ -76,7 +76,18 @@ npm test           # Run all unit tests once (Jest)
 npm run test:watch # Run tests in watch mode
 npm run test:cov   # Run tests with coverage report
 npm run test:e2e   # Run end-to-end tests
+npm run lint       # ESLint (uses legacy config)
 ```
+
+### ESLint Configuration
+Root project uses ESLint 9 (flat config), backend uses ESLint 8 (legacy config).
+Backend lint script uses `ESLINT_USE_FLAT_CONFIG=false` to force legacy mode.
+
+**Backend ESLint** (`backend/.eslintrc.js`):
+- TypeScript parser with tsconfig.json
+- @typescript-eslint/recommended + prettier
+- Warns on `@typescript-eslint/no-explicit-any`
+- Ignores unused vars starting with `_`
 
 ## Backend Structure
 
@@ -90,8 +101,10 @@ backend/
 │   ├── app.module.ts          # NestJS root module
 │   ├── admin/
 │   │   ├── admin.config.ts    # AdminJS configuration
+│   │   ├── admin.controller.ts # Dashboard API endpoints
 │   │   └── components/        # Custom AdminJS React components
 │   │       ├── Dashboard.tsx
+│   │       ├── DeliveryShow.tsx  # E-commerce style delivery tracking
 │   │       ├── SendQrModal.tsx
 │   │       ├── SettingsPanel.tsx
 │   │       └── ...
@@ -107,6 +120,64 @@ backend/
     ├── admin-custom.css       # Custom AdminJS styles
     └── admin-scripts.js       # Custom AdminJS scripts
 ```
+
+## AdminJS Action Pattern
+
+Custom actions in AdminJS (approve, reject, checkout, markPickedUp) must follow this pattern to avoid "Resource does not have an action" errors:
+
+```typescript
+actionName: {
+  actionType: "record" as const,
+  component: false,  // No custom component
+
+  // isVisible: Controls if action button appears in UI
+  // Use for STATUS checks - hides button when not applicable
+  isVisible: ({ record }: any) => record?.params?.status === "EXPECTED_STATUS",
+
+  // isAccessible: Controls if action can be executed
+  // Use for ROLE checks only - returns true or checks user role
+  // DO NOT check status here - causes confusing "does not have action" error
+  isAccessible: true,  // or: ({ currentAdmin }) => currentAdmin?.role === 'ADMIN'
+
+  // handler: Validates status AGAIN and performs the action
+  // Always re-validate because isVisible can be bypassed via URL
+  handler: async (request: any, response: any, context: any) => {
+    const { record, resource, currentAdmin } = context;
+    const status = record?.params?.status;
+
+    if (status !== "EXPECTED_STATUS") {
+      return {
+        record: record.toJSON(),
+        notice: { type: "error", message: `Cannot perform action: status is ${status}` },
+      };
+    }
+
+    // Perform the action...
+    await resource.adapter.update(record.id(), { status: "NEW_STATUS" });
+    const updatedRecord = await resource.adapter.findOne(record.id());
+    return {
+      record: updatedRecord.toJSON(),
+      notice: { type: "success", message: "Action completed" },
+    };
+  },
+}
+```
+
+### Key Points
+- **isVisible**: For status checks (hide button when inapplicable)
+- **isAccessible**: For role checks only (true or role validation)
+- **handler**: Always re-validate status (URL bypass protection)
+
+## Delivery Tracking (DeliveryShow.tsx)
+
+E-commerce style delivery tracking page with:
+- **Header**: Gradient banner with recipient name and status badge
+- **Timeline**: Vertical timeline showing RECEIVED → PICKED_UP flow
+- **Info Cards**: Recipient, courier, location, created date
+- **Notes**: Yellow callout box for delivery notes
+- **Quick Actions**: "Mark as Picked Up" button (when status = RECEIVED)
+
+Status flow: `RECEIVED` → `PICKED_UP`
 
 ## Code Style
 
@@ -187,6 +258,7 @@ backend/
 - Each test is independently testable and executable
 
 ## Recent Changes
+- **2026-02-04**: Fixed AdminJS action pattern (isVisible/isAccessible/handler), added DeliveryShow tracking component, updated resource filters (Visitors: APPROVED+CHECKED_IN+CHECKED_OUT, PreRegister: PENDING_APPROVAL+REJECTED), fixed ESLint v8/v9 conflict
 - 004-fullstack-unit-testing: Added TypeScript 5.9 (frontend), TypeScript 5.1 (backend)
 - 002-host-user-sync: Added TypeScript 5.9, NestJS (Node.js backend) + NestJS, Prisma ORM, AdminJS, bcrypt
 - **001-visitor-kiosk-ui**: Initial kiosk UI with walk-in check-in, QR scanning, delivery management, authentication, and role-based dashboard
@@ -209,9 +281,9 @@ backend/
 
 ### Admin Panel Sections
 - **Hosts**: Manage host/employee records
-- **Deliveries**: Track package deliveries
-- **Visitors**: Currently checked-in visitors (CHECKED_IN, CHECKED_OUT)
-- **Pre Register**: Pre-registered visits awaiting approval (PRE_REGISTERED, PENDING_APPROVAL, APPROVED, REJECTED)
+- **Deliveries**: Track package deliveries with timeline tracking view
+- **Visitors**: Approved and checked-in visitors (APPROVED, CHECKED_IN, CHECKED_OUT)
+- **Pre Register**: Pre-registered visits awaiting approval (PENDING_APPROVAL, REJECTED) - includes re-approve for rejected
 - **Users**: System user management (Admin only)
 - **Reports**: Visit and delivery reports
 - **Settings**: System configuration (SMTP, WhatsApp)
@@ -307,21 +379,40 @@ assets: {
 ## Visit Workflow
 
 ```
-Pre Register Panel                    Visitors Panel
-────────────────────────────────────────────────────
-PRE_REGISTERED → PENDING_APPROVAL → APPROVED → CHECKED_IN → CHECKED_OUT
-                        ↓
-                    REJECTED
+                    Pre Register Panel              Visitors Panel
+                    ──────────────────              ──────────────
+PRE_REGISTERED → PENDING_APPROVAL ─────→ APPROVED → CHECKED_IN → CHECKED_OUT
+                        ↓                    ↑
+                    REJECTED ───────────────┘
+                    (re-approve)
 ```
 
 | Status | Panel | Description |
 |--------|-------|-------------|
-| PRE_REGISTERED | Pre Register | Visit scheduled, awaiting approval |
-| PENDING_APPROVAL | Pre Register | Visitor arrived, waiting for host |
-| APPROVED | Pre Register | Host approved, ready for check-in |
-| REJECTED | Pre Register | Host rejected the visit |
+| PRE_REGISTERED | (initial) | Visit scheduled (transitions to PENDING_APPROVAL) |
+| PENDING_APPROVAL | Pre Register | Visitor arrived, waiting for host approval |
+| REJECTED | Pre Register | Host rejected (can be re-approved) |
+| APPROVED | Visitors | Host approved, ready for check-in |
 | CHECKED_IN | Visitors | Visitor currently on-site |
 | CHECKED_OUT | Visitors | Visitor has left |
+
+### Dashboard vs Pre Register
+- **Dashboard**: Shows only PENDING_APPROVAL (clean, actionable queue)
+- **Pre Register**: Shows PENDING_APPROVAL + REJECTED (full management, including re-approve)
+
+## Delivery Workflow
+
+```
+RECEIVED → PICKED_UP
+```
+
+| Status | Description |
+|--------|-------------|
+| RECEIVED | Package received at reception, awaiting pickup |
+| PICKED_UP | Package collected by recipient |
+
+**Actions:**
+- `markPickedUp`: Sets status to PICKED_UP, records pickedUpAt timestamp
 
 ## Test Seed Data
 
@@ -358,18 +449,18 @@ Test data is identified by:
 | Lisa Brown | Hamad Medical Corp | Barwa Towers |
 
 ### Test Visitors (10)
-**Pre Register Panel (5):**
+**Pre Register Panel (PENDING_APPROVAL, REJECTED):**
 | Name | Status |
 |------|--------|
-| Michael Chen | PRE_REGISTERED |
 | Aisha Al-Mahmoud | PENDING_APPROVAL |
-| Robert Garcia | APPROVED |
 | Huda Al-Baker | REJECTED |
-| James Wilson | PRE_REGISTERED |
 
-**Visitors Panel (5):**
+**Visitors Panel (APPROVED, CHECKED_IN, CHECKED_OUT):**
 | Name | Status |
 |------|--------|
+| Michael Chen | PRE_REGISTERED → transitions |
+| Robert Garcia | APPROVED |
+| James Wilson | PRE_REGISTERED → transitions |
 | Layla Hassan | CHECKED_IN |
 | Thomas Anderson | CHECKED_IN |
 | Reem Al-Naimi | CHECKED_OUT |

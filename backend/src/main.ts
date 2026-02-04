@@ -556,15 +556,22 @@ async function bootstrap() {
                 icon: "CheckCircle",
                 guard:
                   "Are you sure you want to mark this delivery as picked up?",
-                isVisible: ({ record }: any) =>
-                  record?.params?.status === "RECEIVED",
+                isVisible: ({ record }: any) => {
+                  const status = record?.params?.status;
+                  const result = status === "RECEIVED";
+                  console.log(`[markPickedUp] isVisible check: status=${status}, result=${result}`);
+                  return result;
+                },
                 isAccessible: ({ currentAdmin }: any) => {
                   const role = currentAdmin?.role;
-                  return role === "ADMIN" || role === "HOST";
+                  const result = role === "ADMIN" || role === "HOST";
+                  console.log(`[markPickedUp] isAccessible check: role=${role}, result=${result}, currentAdmin=`, currentAdmin);
+                  return result;
                 },
                 handler: async (request: any, response: any, context: any) => {
                   const { record } = context;
                   const status = record?.params?.status;
+                  console.log(`[markPickedUp] handler called: recordId=${record?.params?.id}, status=${status}`);
                   if (status !== "RECEIVED") {
                     return {
                       record: record.toJSON(),
@@ -1265,6 +1272,13 @@ async function bootstrap() {
         secure: process.env.NODE_ENV === "production", // Required for HTTPS in production
       },
     };
+
+    // Log registered resources and actions for debugging
+    console.log("[AdminJS] Registered resources:");
+    admin.resources.forEach((resource: any) => {
+      console.log(`  - Resource: ${resource.options.id}`);
+      console.log(`    Actions: ${Object.keys(resource.options.actions || {}).join(", ")}`);
+    });
 
     const adminRouter = AdminJSExpress.buildAuthenticatedRouter(
       admin,
