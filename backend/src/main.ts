@@ -559,19 +559,26 @@ async function bootstrap() {
                 isVisible: ({ record }: any) => {
                   const status = record?.params?.status;
                   const result = status === "RECEIVED";
-                  console.log(`[markPickedUp] isVisible check: status=${status}, result=${result}`);
+                  console.log(
+                    `[markPickedUp] isVisible check: status=${status}, result=${result}`,
+                  );
                   return result;
                 },
                 isAccessible: ({ currentAdmin }: any) => {
                   const role = currentAdmin?.role;
                   const result = role === "ADMIN" || role === "HOST";
-                  console.log(`[markPickedUp] isAccessible check: role=${role}, result=${result}, currentAdmin=`, currentAdmin);
+                  console.log(
+                    `[markPickedUp] isAccessible check: role=${role}, result=${result}, currentAdmin=`,
+                    currentAdmin,
+                  );
                   return result;
                 },
                 handler: async (request: any, response: any, context: any) => {
                   const { record } = context;
                   const status = record?.params?.status;
-                  console.log(`[markPickedUp] handler called: recordId=${record?.params?.id}, status=${status}`);
+                  console.log(
+                    `[markPickedUp] handler called: recordId=${record?.params?.id}, status=${status}`,
+                  );
                   if (status !== "RECEIVED") {
                     return {
                       record: record.toJSON(),
@@ -759,17 +766,31 @@ async function bootstrap() {
               list: {
                 before: async (request: any, context: any) => {
                   const { currentAdmin } = context;
-                  // Show APPROVED (expected), CHECKED_IN (on-site), CHECKED_OUT (left)
-                  if (!request.query?.["filters.status"]) {
+                  // Apply host filter for HOST role
+                  if (currentAdmin?.role === "HOST" && currentAdmin?.hostId) {
                     request.query = {
                       ...request.query,
-                      "filters.status": ["APPROVED", "CHECKED_IN", "CHECKED_OUT"],
+                      "filters.hostId": currentAdmin.hostId,
                     };
                   }
-                  if (currentAdmin?.role === "HOST" && currentAdmin?.hostId) {
-                    request.query["filters.hostId"] = currentAdmin.hostId;
-                  }
                   return request;
+                },
+                after: async (response: any, request: any, context: any) => {
+                  // Filter records to only show Visitors statuses (APPROVED, CHECKED_IN, CHECKED_OUT)
+                  // This works around AdminJS Prisma adapter not supporting array filters
+                  const allowedStatuses = [
+                    "APPROVED",
+                    "CHECKED_IN",
+                    "CHECKED_OUT",
+                  ];
+                  const userFilter = request.query?.["filters.status"];
+
+                  if (response.records && !userFilter) {
+                    response.records = response.records.filter((record: any) =>
+                      allowedStatuses.includes(record.params?.status),
+                    );
+                  }
+                  return response;
                 },
               },
             },
@@ -1016,17 +1037,28 @@ async function bootstrap() {
               list: {
                 before: async (request: any, context: any) => {
                   const { currentAdmin } = context;
-                  // Default to showing PENDING_APPROVAL and REJECTED
-                  if (!request.query?.["filters.status"]) {
+                  // Only apply host filter if applicable
+                  // Don't set default status filter - let after hook handle it
+                  if (currentAdmin?.role === "HOST" && currentAdmin?.hostId) {
                     request.query = {
                       ...request.query,
-                      "filters.status": ["PENDING_APPROVAL", "REJECTED"],
+                      "filters.hostId": currentAdmin.hostId,
                     };
                   }
-                  if (currentAdmin?.role === "HOST" && currentAdmin?.hostId) {
-                    request.query["filters.hostId"] = currentAdmin.hostId;
-                  }
                   return request;
+                },
+                after: async (response: any, request: any, context: any) => {
+                  // Filter records to only show Pre Register statuses (PENDING_APPROVAL, REJECTED)
+                  // This works around AdminJS Prisma adapter not supporting array filters
+                  const allowedStatuses = ["PENDING_APPROVAL", "REJECTED"];
+                  const userFilter = request.query?.["filters.status"];
+
+                  if (response.records && !userFilter) {
+                    response.records = response.records.filter((record: any) =>
+                      allowedStatuses.includes(record.params?.status),
+                    );
+                  }
+                  return response;
                 },
               },
             },
@@ -1276,8 +1308,12 @@ async function bootstrap() {
     // Log registered resources and actions for debugging
     console.log("[AdminJS] Registered resources:");
     admin.resources.forEach((resource: any) => {
-      console.log(`  - Resource: ${resource?.options?.id || resource?.id?.() || "unknown"}`);
-      console.log(`    Actions: ${Object.keys(resource?.options?.actions || {}).join(", ")}`);
+      console.log(
+        `  - Resource: ${resource?.options?.id || resource?.id?.() || "unknown"}`,
+      );
+      console.log(
+        `    Actions: ${Object.keys(resource?.options?.actions || {}).join(", ")}`,
+      );
     });
 
     const adminRouter = AdminJSExpress.buildAuthenticatedRouter(
@@ -1321,7 +1357,10 @@ async function bootstrap() {
       `${rootPath}/auto-login`,
       autoLoginSessionMiddleware,
       async (req: any, res: any) => {
-        console.log("[auto-login] Request received, token present:", !!req.query.token);
+        console.log(
+          "[auto-login] Request received, token present:",
+          !!req.query.token,
+        );
         const token = req.query.token as string;
         if (!token) {
           return res.redirect(`${rootPath}/login`);
