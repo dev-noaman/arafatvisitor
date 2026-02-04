@@ -363,8 +363,31 @@ const DeliveryShow: React.FC<ShowPropertyProps> = (props) => {
                 variant="success"
                 size="lg"
                 style={{ width: "100%" }}
-                onClick={() => {
-                  window.location.href = `${window.location.pathname.replace('/show', '')}/pickUp`;
+                onClick={async () => {
+                  // Get the record ID from the current path
+                  const pathParts = window.location.pathname.split('/');
+                  const recordId = pathParts[pathParts.length - 1];
+                  
+                  try {
+                    // Call the AdminJS action API
+                    const response = await fetch(`/admin/resources/Deliveries/records/${recordId}/actions/markPickedUp`, {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                    });
+                    
+                    if (response.ok) {
+                      // Reload the page to show updated status
+                      window.location.reload();
+                    } else {
+                      const error = await response.json();
+                      alert(error.message || 'Failed to mark as picked up');
+                    }
+                  } catch (error) {
+                    console.error('Error marking as picked up:', error);
+                    alert('An error occurred while marking as picked up');
+                  }
                 }}
               >
                 <Icon icon="CheckCircle" size={18} style={{ marginRight: "8px" }} />
