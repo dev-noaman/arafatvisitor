@@ -1276,8 +1276,8 @@ async function bootstrap() {
     // Log registered resources and actions for debugging
     console.log("[AdminJS] Registered resources:");
     admin.resources.forEach((resource: any) => {
-      console.log(`  - Resource: ${resource.options.id}`);
-      console.log(`    Actions: ${Object.keys(resource.options.actions || {}).join(", ")}`);
+      console.log(`  - Resource: ${resource?.options?.id || resource?.id?.() || "unknown"}`);
+      console.log(`    Actions: ${Object.keys(resource?.options?.actions || {}).join(", ")}`);
     });
 
     const adminRouter = AdminJSExpress.buildAuthenticatedRouter(
