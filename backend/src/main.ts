@@ -179,6 +179,14 @@ async function bootstrap() {
         "DeliveryShow",
         path.join(componentsDir, "DeliveryShow"),
       ),
+      VisitorShow: componentLoader.add(
+        "VisitorShow",
+        path.join(componentsDir, "VisitorShow"),
+      ),
+      PreRegisterShow: componentLoader.add(
+        "PreRegisterShow",
+        path.join(componentsDir, "PreRegisterShow"),
+      ),
     };
     componentLoader.override("LoggedIn", path.join(componentsDir, "LoggedIn"));
     componentLoader.override(
@@ -723,6 +731,9 @@ async function bootstrap() {
                 isAccessible: ({ currentAdmin }: any) =>
                   currentAdmin?.role === "ADMIN",
               },
+              show: {
+                component: Components.VisitorShow,
+              },
               checkout: {
                 actionType: "record" as const,
                 label: "Check Out",
@@ -919,6 +930,9 @@ async function bootstrap() {
               },
               edit: {
                 isAccessible: () => false,
+              },
+              show: {
+                component: Components.PreRegisterShow,
               },
               approve: {
                 actionType: "record" as const,
