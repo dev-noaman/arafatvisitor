@@ -156,11 +156,12 @@ Send QR codes to visitors via Email or WhatsApp from the Admin Panel Dashboard.
 
 ### WhatsApp QR Code
 WhatsApp sends a **QR code image** with caption containing:
-- "VISITOR PASS" header
+- "VISITOR PASS" header (bold)
 - Visitor name and company
 - Host name and company
 - Purpose of visit
 - Check-in instructions
+- "Powered by Arafat Visitor Management System" footer (italic)
 
 Generated using `qrcode` library (toDataURL) and sent via wbiztool API using native FormData (`msg_type: 1` for images).
 
