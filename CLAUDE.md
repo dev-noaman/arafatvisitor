@@ -1,6 +1,6 @@
 # Arafat Visitor Management System Development Guidelines
 
-Last updated: 2026-02-05 (Database-driven lookups for all dropdowns)
+Last updated: 2026-02-05 (Forgot Password email template upgrade)
 
 ## Active Technologies
 
@@ -161,6 +161,7 @@ WhatsApp sends a **QR code image** with caption containing:
 - Host name and company
 - Purpose of visit
 - Check-in instructions
+- Separator line (───────────────────)
 - "Powered by Arafat Visitor Management System" footer (italic)
 
 Generated using `qrcode` library (toDataURL) and sent via wbiztool API using native FormData (`msg_type: 1` for images).
@@ -178,6 +179,36 @@ GET  /admin/api/qr/:visitId     # Get QR code data URL
 POST /admin/api/send-qr         # Send QR via email/whatsapp
      Body: { visitId: string, method: 'email' | 'whatsapp' }
 ```
+
+## Forgot Password Feature
+
+### How it Works
+1. User clicks "Forgot password?" link on login page
+2. Enter email address and click "Send Reset Link"
+3. System sends password reset email with secure token (expires in 1 hour)
+4. User clicks link in email to access reset password page
+5. User enters new password and submits
+
+### Password Reset Email Template
+Professional HTML email matching QR email design:
+- Gradient header (blue) with "PASSWORD RESET" branding
+- Styled "Reset Password" button
+- Fallback URL for copy/paste
+- Expiry notice (1 hour)
+- Security message for unexpected requests
+- "Powered by Arafat Visitor Management System" footer
+
+### API Endpoints
+```
+POST /api/auth/forgot-password    # Request password reset email
+     Body: { email: string }
+POST /api/auth/reset-password     # Reset password with token
+     Body: { token: string, newPassword: string }
+```
+
+### Pages
+- `/admin/forgot-password` - Request reset link
+- `/admin/reset-password?token=xxx` - Set new password
 
 ## Notification Services
 
@@ -263,9 +294,16 @@ Test data is identified by:
 
 ## Key API Endpoints
 
+### Auth API (Public)
+```
+POST /api/auth/login                      # Login, get JWT token
+POST /api/auth/forgot-password            # Request password reset email
+POST /api/auth/reset-password             # Reset password with token
+```
+
 ### Admin API (JWT token-based)
 ```
-POST /admin/api/login                     # Login, get JWT token
+POST /admin/api/login                     # Login, get JWT token (alternative)
 GET  /admin/api/dashboard/kpis            # Dashboard statistics
 GET  /admin/api/dashboard/pending-approvals # Pending visits
 GET  /admin/api/dashboard/received-deliveries # Pending deliveries
