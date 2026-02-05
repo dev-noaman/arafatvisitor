@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { UsersList, UserModal, DeleteConfirmationDialog } from '@/components/users'
+import ErrorState from '@/components/common/ErrorState'
 import { usersService } from '@/services/users'
 import { useToast } from '@/hooks'
 import type { User, UserFormData, UserRole, UserStatus, PaginatedResponse } from '@/types'
@@ -8,6 +9,7 @@ export default function Users() {
   const { success, error } = useToast()
   const [users, setUsers] = useState<User[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedUser, setSelectedUser] = useState<User | undefined>()
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -33,6 +35,7 @@ export default function Users() {
     status: UserStatus | '' = ''
   ) => {
     setIsLoading(true)
+    setLoadError(null)
     try {
       const params: any = {
         page,
@@ -51,6 +54,7 @@ export default function Users() {
         totalPages: response.totalPages || 1,
       })
     } catch (err) {
+      setLoadError('Failed to load users. Please check your connection and try again.')
       error('Failed to load users')
     } finally {
       setIsLoading(false)
@@ -183,19 +187,30 @@ export default function Users() {
         </button>
       </div>
 
+      {/* Error State */}
+      {loadError && !isLoading && (
+        <ErrorState
+          title="Failed to load users"
+          message={loadError}
+          onRetry={() => fetchUsers(pagination.page, searchQuery, roleFilter, statusFilter)}
+        />
+      )}
+
       {/* Users List */}
-      <UsersList
-        users={users}
-        isLoading={isLoading}
-        pagination={pagination}
-        onSearch={handleSearch}
-        onRoleFilter={handleRoleFilter}
-        onStatusFilter={handleStatusFilter}
-        onPageChange={handlePageChange}
-        onEdit={handleEdit}
-        onDelete={handleDeleteClick}
-        onToggleStatus={handleToggleStatus}
-      />
+      {!loadError && (
+        <UsersList
+          users={users}
+          isLoading={isLoading}
+          pagination={pagination}
+          onSearch={handleSearch}
+          onRoleFilter={handleRoleFilter}
+          onStatusFilter={handleStatusFilter}
+          onPageChange={handlePageChange}
+          onEdit={handleEdit}
+          onDelete={handleDeleteClick}
+          onToggleStatus={handleToggleStatus}
+        />
+      )}
 
       {/* User Modal */}
       <UserModal

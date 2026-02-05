@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { DeliveriesList, DeliveryModal, DeleteConfirmationDialog } from '@/components/deliveries'
+import ErrorState from '@/components/common/ErrorState'
 import { deliveriesService } from '@/services/deliveries'
 import { useToast } from '@/hooks'
 import type { Delivery, DeliveryFormData, PaginatedResponse, DeliveryStatus } from '@/types'
@@ -8,6 +9,7 @@ export default function Deliveries() {
   const { success, error } = useToast()
   const [deliveries, setDeliveries] = useState<Delivery[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedDelivery, setSelectedDelivery] = useState<Delivery | undefined>()
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -31,6 +33,7 @@ export default function Deliveries() {
     status: DeliveryStatus | '' = ''
   ) => {
     setIsLoading(true)
+    setLoadError(null)
     try {
       const params: any = {
         page,
@@ -48,6 +51,7 @@ export default function Deliveries() {
         totalPages: response.totalPages || 1,
       })
     } catch (err) {
+      setLoadError('Failed to load deliveries. Please check your connection and try again.')
       error('Failed to load deliveries')
     } finally {
       setIsLoading(false)
@@ -169,18 +173,29 @@ export default function Deliveries() {
         </button>
       </div>
 
+      {/* Error State */}
+      {loadError && !isLoading && (
+        <ErrorState
+          title="Failed to load deliveries"
+          message={loadError}
+          onRetry={() => fetchDeliveries(pagination.page, searchQuery, statusFilter)}
+        />
+      )}
+
       {/* Deliveries List */}
-      <DeliveriesList
-        deliveries={deliveries}
-        isLoading={isLoading}
-        pagination={pagination}
-        onSearch={handleSearch}
-        onStatusFilter={handleStatusFilter}
-        onPageChange={handlePageChange}
-        onEdit={handleEdit}
-        onDelete={handleDeleteClick}
-        onMarkPickedUp={handleMarkPickedUp}
-      />
+      {!loadError && (
+        <DeliveriesList
+          deliveries={deliveries}
+          isLoading={isLoading}
+          pagination={pagination}
+          onSearch={handleSearch}
+          onStatusFilter={handleStatusFilter}
+          onPageChange={handlePageChange}
+          onEdit={handleEdit}
+          onDelete={handleDeleteClick}
+          onMarkPickedUp={handleMarkPickedUp}
+        />
+      )}
 
       {/* Delivery Modal */}
       <DeliveryModal

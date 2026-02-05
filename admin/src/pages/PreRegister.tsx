@@ -4,6 +4,7 @@ import {
   PreRegistrationModal,
   DeleteConfirmationDialog,
 } from '@/components/preregistrations'
+import ErrorState from '@/components/common/ErrorState'
 import { preRegistrationsService } from '@/services/preregistrations'
 import { hostsService } from '@/services/hosts'
 import { useToast } from '@/hooks'
@@ -19,6 +20,7 @@ export default function PreRegister() {
   const [preRegistrations, setPreRegistrations] = useState<PreRegistration[]>([])
   const [hosts, setHosts] = useState<Host[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [isLoadingHosts, setIsLoadingHosts] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedPreReg, setSelectedPreReg] = useState<PreRegistration | undefined>()
@@ -58,6 +60,7 @@ export default function PreRegister() {
     status: 'PENDING_APPROVAL' | 'REJECTED' | 'APPROVED' | '' = ''
   ) => {
     setIsLoading(true)
+    setLoadError(null)
     try {
       const params: any = {
         page,
@@ -75,6 +78,7 @@ export default function PreRegister() {
         totalPages: response.totalPages || 1,
       })
     } catch (err) {
+      setLoadError('Failed to load pre-registrations. Please check your connection and try again.')
       error('Failed to load pre-registrations')
     } finally {
       setIsLoading(false)
@@ -225,20 +229,31 @@ export default function PreRegister() {
         </button>
       </div>
 
+      {/* Error State */}
+      {loadError && !isLoading && (
+        <ErrorState
+          title="Failed to load pre-registrations"
+          message={loadError}
+          onRetry={() => fetchPreRegistrations(pagination.page, searchQuery, statusFilter)}
+        />
+      )}
+
       {/* Pre-Registrations List */}
-      <PreRegistrationsList
-        preRegistrations={preRegistrations}
-        isLoading={isLoading}
-        pagination={pagination}
-        onSearch={handleSearch}
-        onStatusFilter={handleStatusFilter}
-        onPageChange={handlePageChange}
-        onEdit={handleEdit}
-        onDelete={handleDeleteClick}
-        onApprove={handleApprove}
-        onReject={handleReject}
-        onReApprove={handleReApprove}
-      />
+      {!loadError && (
+        <PreRegistrationsList
+          preRegistrations={preRegistrations}
+          isLoading={isLoading}
+          pagination={pagination}
+          onSearch={handleSearch}
+          onStatusFilter={handleStatusFilter}
+          onPageChange={handlePageChange}
+          onEdit={handleEdit}
+          onDelete={handleDeleteClick}
+          onApprove={handleApprove}
+          onReject={handleReject}
+          onReApprove={handleReApprove}
+        />
+      )}
 
       {/* Pre-Registration Modal */}
       <PreRegistrationModal

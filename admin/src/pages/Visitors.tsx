@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { VisitorsList, VisitModal, DeleteConfirmationDialog } from '@/components/visitors'
+import ErrorState from '@/components/common/ErrorState'
 import { visitorsService } from '@/services/visitors'
 import { hostsService } from '@/services/hosts'
 import { useToast } from '@/hooks'
@@ -10,6 +11,7 @@ export default function Visitors() {
   const [visitors, setVisitors] = useState<Visit[]>([])
   const [hosts, setHosts] = useState<Host[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [isLoadingHosts, setIsLoadingHosts] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedVisitor, setSelectedVisitor] = useState<Visit | undefined>()
@@ -43,6 +45,7 @@ export default function Visitors() {
   // Fetch visitors
   const fetchVisitors = async (page = 1, search = '', status: VisitStatus | '' = '') => {
     setIsLoading(true)
+    setLoadError(null)
     try {
       const params: any = {
         page,
@@ -60,6 +63,7 @@ export default function Visitors() {
         totalPages: response.totalPages || 1,
       })
     } catch (err) {
+      setLoadError('Failed to load visitors. Please check your connection and try again.')
       error('Failed to load visitors')
     } finally {
       setIsLoading(false)
@@ -210,20 +214,31 @@ export default function Visitors() {
         </button>
       </div>
 
+      {/* Error State */}
+      {loadError && !isLoading && (
+        <ErrorState
+          title="Failed to load visitors"
+          message={loadError}
+          onRetry={() => fetchVisitors(pagination.page, searchQuery, statusFilter)}
+        />
+      )}
+
       {/* Visitors List */}
-      <VisitorsList
-        visitors={visitors}
-        isLoading={isLoading}
-        pagination={pagination}
-        onSearch={handleSearch}
-        onStatusFilter={handleStatusFilter}
-        onPageChange={handlePageChange}
-        onEdit={handleEdit}
-        onDelete={handleDeleteClick}
-        onApprove={handleApprove}
-        onReject={handleReject}
-        onCheckout={handleCheckout}
-      />
+      {!loadError && (
+        <VisitorsList
+          visitors={visitors}
+          isLoading={isLoading}
+          pagination={pagination}
+          onSearch={handleSearch}
+          onStatusFilter={handleStatusFilter}
+          onPageChange={handlePageChange}
+          onEdit={handleEdit}
+          onDelete={handleDeleteClick}
+          onApprove={handleApprove}
+          onReject={handleReject}
+          onCheckout={handleCheckout}
+        />
+      )}
 
       {/* Visit Modal */}
       <VisitModal

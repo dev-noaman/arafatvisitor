@@ -5,6 +5,7 @@ import {
   ReportTable,
   BarChart,
 } from '@/components/reports'
+import ErrorState from '@/components/common/ErrorState'
 import { reportsService } from '@/services/reports'
 import { useToast } from '@/hooks'
 import type { VisitReport, DeliveryReport, HostReport } from '@/types'
@@ -26,6 +27,7 @@ interface ReportsData {
 export default function Reports() {
   const { success, error } = useToast()
   const [isLoading, setIsLoading] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [isExporting, setIsExporting] = useState(false)
   const [data, setData] = useState<ReportsData>({
     summary: {
@@ -59,6 +61,7 @@ export default function Reports() {
   // Fetch reports
   const fetchReports = async (startDate: string, endDate: string) => {
     setIsLoading(true)
+    setLoadError(null)
     try {
       const result = await reportsService.getReports({
         startDate,
@@ -66,6 +69,7 @@ export default function Reports() {
       })
       setData(result)
     } catch (err) {
+      setLoadError('Failed to load reports. Please check your connection and try again.')
       error('Failed to load reports')
     } finally {
       setIsLoading(false)
@@ -174,6 +178,15 @@ export default function Reports() {
 
       {/* Date Range Picker */}
       <DateRangePicker onDateRangeChange={handleDateRangeChange} isLoading={isLoading} />
+
+      {/* Error State */}
+      {loadError && !isLoading && (
+        <ErrorState
+          title="Failed to load reports"
+          message={loadError}
+          onRetry={() => fetchReports(dateRange.startDate, dateRange.endDate)}
+        />
+      )}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

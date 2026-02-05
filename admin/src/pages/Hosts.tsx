@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { HostsList, HostModal, DeleteConfirmationDialog } from '@/components/hosts'
+import ErrorState from '@/components/common/ErrorState'
 import { hostsService } from '@/services'
 import { useToast } from '@/hooks'
 import type { Host, HostFormData, PaginatedResponse } from '@/types'
@@ -8,6 +9,7 @@ export default function Hosts() {
   const { success, error } = useToast()
   const [hosts, setHosts] = useState<Host[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedHost, setSelectedHost] = useState<Host | undefined>()
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -25,6 +27,7 @@ export default function Hosts() {
   // Fetch hosts
   const fetchHosts = async (page = 1, search = '') => {
     setIsLoading(true)
+    setLoadError(null)
     try {
       const response = await hostsService.getHosts({
         page,
@@ -39,6 +42,7 @@ export default function Hosts() {
         totalPages: response.totalPages || 1,
       })
     } catch (err) {
+      setLoadError('Failed to load hosts. Please check your connection and try again.')
       error('Failed to load hosts')
     } finally {
       setIsLoading(false)
@@ -140,16 +144,27 @@ export default function Hosts() {
         </button>
       </div>
 
+      {/* Error State */}
+      {loadError && !isLoading && (
+        <ErrorState
+          title="Failed to load hosts"
+          message={loadError}
+          onRetry={() => fetchHosts(pagination.page, searchQuery)}
+        />
+      )}
+
       {/* Hosts List */}
-      <HostsList
-        hosts={hosts}
-        isLoading={isLoading}
-        pagination={pagination}
-        onSearch={handleSearch}
-        onPageChange={handlePageChange}
-        onEdit={handleEdit}
-        onDelete={handleDeleteClick}
-      />
+      {!loadError && (
+        <HostsList
+          hosts={hosts}
+          isLoading={isLoading}
+          pagination={pagination}
+          onSearch={handleSearch}
+          onPageChange={handlePageChange}
+          onEdit={handleEdit}
+          onDelete={handleDeleteClick}
+        />
+      )}
 
       {/* Host Modal */}
       <HostModal
