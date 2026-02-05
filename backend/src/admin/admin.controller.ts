@@ -1194,39 +1194,61 @@ export class AdminApiController {
       }
 
       try {
-        console.log("[send-qr] Generating visitor badge image...");
+        // Try to generate and send badge image
+        let sent = false;
+        let usedImage = false;
 
-        // Generate visitor badge image
-        const badgeBase64 = await this.badgeGeneratorService.generateVisitorBadge({
-          visitorName: visit.visitorName,
-          visitorCompany: visit.visitorCompany || undefined,
-          hostName: visit.host?.name || "N/A",
-          hostCompany: visit.host?.company || "Arafat Group",
-          location: visit.location || "BARWA_TOWERS",
-          purpose: visit.purpose || "Visit",
-          sessionId: token,
-          visitDate: visit.expectedDate || new Date(),
-        });
+        // Check if badge generator is available (canvas native deps)
+        const badgeAvailable = await this.badgeGeneratorService.isAvailable();
 
-        console.log("[send-qr] Badge generated, sending via WhatsApp to:", visit.visitorPhone);
+        if (badgeAvailable) {
+          try {
+            console.log("[send-qr] Generating visitor badge image...");
+            const badgeBase64 = await this.badgeGeneratorService.generateVisitorBadge({
+              visitorName: visit.visitorName,
+              visitorCompany: visit.visitorCompany || undefined,
+              hostName: visit.host?.name || "N/A",
+              hostCompany: visit.host?.company || "Arafat Group",
+              location: visit.location || "BARWA_TOWERS",
+              purpose: visit.purpose || "Visit",
+              sessionId: token,
+              visitDate: visit.expectedDate || new Date(),
+            });
 
-        // Send image via WhatsApp (msg_type: 1 for image)
-        const sent = await this.whatsappService.sendImage(
-          visit.visitorPhone,
-          badgeBase64,
-          `Visitor Pass for ${visit.visitorName}`
-        );
-        console.log("[send-qr] WhatsApp image result:", sent);
+            console.log("[send-qr] Badge generated, sending via WhatsApp to:", visit.visitorPhone);
+            sent = await this.whatsappService.sendImage(
+              visit.visitorPhone,
+              badgeBase64,
+              `Visitor Pass for ${visit.visitorName}`
+            );
+            usedImage = true;
+            console.log("[send-qr] WhatsApp image result:", sent);
+          } catch (badgeError) {
+            console.warn("[send-qr] Badge generation failed, falling back to text:", badgeError);
+          }
+        } else {
+          console.log("[send-qr] Badge generator not available, using text message");
+        }
+
+        // Fallback to text message if image failed or not available
+        if (!sent) {
+          console.log("[send-qr] Sending text message fallback...");
+          const qrLink = `${process.env.FRONTEND_URL || "https://arafatvisitor.cloud"}/check-in?session=${token}`;
+          const message = `Hello ${visit.visitorName}!\n\nYour visitor pass for ${visit.host?.company || "our office"} is ready.\n\nPlease use this link to access your QR code:\n${qrLink}\n\nOr show this message at reception for check-in.\n\nHost: ${visit.host?.name || "N/A"}\nPurpose: ${visit.purpose || "Visit"}`;
+
+          sent = await this.whatsappService.send(visit.visitorPhone, message);
+          console.log("[send-qr] WhatsApp text result:", sent);
+        }
 
         if (!sent) {
           throw new HttpException(
-            "WhatsApp service failed to send image. Check configuration.",
+            "WhatsApp service failed to send message. Check configuration.",
             HttpStatus.SERVICE_UNAVAILABLE,
           );
         }
         return {
           success: true,
-          message: "Visitor pass sent via WhatsApp",
+          message: usedImage ? "Visitor pass image sent via WhatsApp" : "QR link sent via WhatsApp",
         };
       } catch (e) {
         console.error("[send-qr] WhatsApp error:", e);

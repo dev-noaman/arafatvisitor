@@ -1,8 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { createCanvas, loadImage, registerFont } from "canvas";
 import * as QRCode from "qrcode";
-import * as path from "path";
-import * as fs from "fs";
 
 interface VisitorBadgeData {
   visitorName: string;
@@ -16,12 +13,43 @@ interface VisitorBadgeData {
   badgeId?: string;
 }
 
+// Canvas types (loaded dynamically)
+type Canvas = import("canvas").Canvas;
+type CanvasRenderingContext2D = import("canvas").CanvasRenderingContext2D;
+
 @Injectable()
 export class BadgeGeneratorService {
   private readonly WIDTH = 1080;
   private readonly HEIGHT = 1920;
+  private canvasModule: typeof import("canvas") | null = null;
+
+  private async getCanvasModule(): Promise<typeof import("canvas")> {
+    if (!this.canvasModule) {
+      try {
+        // Dynamic import to avoid crashing server if canvas native deps aren't available
+        this.canvasModule = await import("canvas");
+        console.log("[BadgeGenerator] Canvas module loaded successfully");
+      } catch (e) {
+        console.error("[BadgeGenerator] Failed to load canvas module:", e);
+        throw new Error("Canvas module not available - native dependencies may be missing");
+      }
+    }
+    return this.canvasModule;
+  }
+
+  async isAvailable(): Promise<boolean> {
+    try {
+      await this.getCanvasModule();
+      return true;
+    } catch {
+      return false;
+    }
+  }
 
   async generateVisitorBadge(data: VisitorBadgeData): Promise<string> {
+    const canvasModule = await this.getCanvasModule();
+    const { createCanvas, loadImage } = canvasModule;
+
     const canvas = createCanvas(this.WIDTH, this.HEIGHT);
     const ctx = canvas.getContext("2d");
 
@@ -168,7 +196,7 @@ export class BadgeGeneratorService {
   }
 
   private drawDetailRow(
-    ctx: ReturnType<typeof createCanvas.prototype.getContext>,
+    ctx: CanvasRenderingContext2D,
     x: number,
     y: number,
     label: string,
@@ -187,7 +215,7 @@ export class BadgeGeneratorService {
   }
 
   private truncateText(
-    ctx: ReturnType<typeof createCanvas.prototype.getContext>,
+    ctx: CanvasRenderingContext2D,
     text: string,
     maxWidth: number,
   ): string {
@@ -202,7 +230,7 @@ export class BadgeGeneratorService {
   }
 
   private roundRect(
-    ctx: ReturnType<typeof createCanvas.prototype.getContext>,
+    ctx: CanvasRenderingContext2D,
     x: number,
     y: number,
     width: number,
