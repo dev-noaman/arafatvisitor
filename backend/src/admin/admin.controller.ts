@@ -1194,9 +1194,8 @@ export class AdminApiController {
       try {
         console.log("[send-qr] Generating QR code image for WhatsApp...");
 
-        // Generate QR code as base64 PNG
-        const qrBuffer = await QRCode.toBuffer(token, {
-          type: "png",
+        // Generate QR code as data URL and extract base64
+        const qrDataUrl = await QRCode.toDataURL(token, {
           width: 400,
           margin: 2,
           color: {
@@ -1204,7 +1203,8 @@ export class AdminApiController {
             light: "#FFFFFF",
           },
         });
-        const qrBase64 = qrBuffer.toString("base64");
+        // Remove the data URL prefix to get pure base64
+        const qrBase64 = qrDataUrl.replace(/^data:image\/png;base64,/, "");
 
         // Caption with visitor info
         const caption = `*VISITOR PASS*\n\n*${visit.visitorName}*${visit.visitorCompany ? `\n${visit.visitorCompany}` : ""}\n\n*Host:* ${visit.host?.name || "N/A"}\n*Company:* ${visit.host?.company || "N/A"}\n*Purpose:* ${visit.purpose || "Visit"}\n\nShow this QR code at reception for check-in.`;
