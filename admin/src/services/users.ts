@@ -85,7 +85,8 @@ export const getRoleLabel = (role: UserRole): string => {
   return labels[role] || role
 }
 
-export const getStatusBadgeColor = (status: UserStatus): string => {
+export const getStatusBadgeColor = (status?: UserStatus): string => {
+  if (!status) return 'bg-green-100 text-green-800' // Default to active styling
   const colors: Record<UserStatus, string> = {
     ACTIVE: 'bg-green-100 text-green-800',
     INACTIVE: 'bg-gray-100 text-gray-800',
@@ -93,7 +94,8 @@ export const getStatusBadgeColor = (status: UserStatus): string => {
   return colors[status] || 'bg-gray-100 text-gray-800'
 }
 
-export const getStatusLabel = (status: UserStatus): string => {
+export const getStatusLabel = (status?: UserStatus): string => {
+  if (!status) return 'Active' // Default to active
   const labels: Record<UserStatus, string> = {
     ACTIVE: 'Active',
     INACTIVE: 'Inactive',

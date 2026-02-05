@@ -8,7 +8,7 @@ export type UserStatus = 'ACTIVE' | 'INACTIVE';
 export type VisitStatus = 'PENDING' | 'PENDING_APPROVAL' | 'APPROVED' | 'CHECKED_IN' | 'CHECKED_OUT' | 'REJECTED';
 
 // Delivery Status
-export type DeliveryStatus = 'PENDING' | 'PICKED_UP';
+export type DeliveryStatus = 'RECEIVED' | 'PENDING' | 'PICKED_UP';
 
 // User Entity
 export interface User {
@@ -16,7 +16,7 @@ export interface User {
   email: string;
   name?: string;
   role: UserRole;
-  status: UserStatus;
+  status?: UserStatus;
   createdAt: string;
   updatedAt: string;
 }
@@ -27,7 +27,9 @@ export interface Host {
   name: string;
   email: string;
   phone?: string;
+  company?: string;
   department?: string;
+  location?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -57,9 +59,11 @@ export interface PreRegistration {
   visitorName: string;
   visitorEmail?: string;
   visitorPhone?: string;
+  visitorCompany?: string;
   hostId: string;
   host?: Host;
-  scheduledDate: string;
+  expectedDate?: string;
+  scheduledDate?: string; // alias for expectedDate
   status: VisitStatus;
   purpose?: string;
   notes?: string;
@@ -70,17 +74,21 @@ export interface PreRegistration {
 // Delivery Entity
 export interface Delivery {
   id: string;
-  recipientName: string;
-  recipientEmail?: string;
-  recipientPhone?: string;
+  recipient: string;
+  hostId?: string;
+  host?: Host;
+  courier: string;
+  location?: string;
+  status: DeliveryStatus;
+  notes?: string;
+  receivedAt?: string;
+  pickedUpAt?: string;
+  createdAt: string;
+  // Aliases for frontend compatibility
+  recipientName?: string;
   deliveryCompany?: string;
   description?: string;
-  status: DeliveryStatus;
   receivedDate?: string;
-  pickedUpDate?: string;
-  notes?: string;
-  createdAt: string;
-  updatedAt: string;
 }
 
 // Settings Entity

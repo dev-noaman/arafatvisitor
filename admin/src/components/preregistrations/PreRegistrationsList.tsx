@@ -161,11 +161,17 @@ export default function PreRegistrationsList({
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600">{preReg.host?.name || '—'}</td>
                   <td className="px-6 py-4 text-sm text-gray-600">
-                    {new Date(preReg.scheduledDate).toLocaleDateString()} at{' '}
-                    {new Date(preReg.scheduledDate).toLocaleTimeString([], {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
+                    {preReg.expectedDate ? (
+                      <>
+                        {new Date(preReg.expectedDate).toLocaleDateString()} at{' '}
+                        {new Date(preReg.expectedDate).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </>
+                    ) : (
+                      '—'
+                    )}
                   </td>
                   <td className="px-6 py-4 text-sm">
                     <span

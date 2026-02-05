@@ -19,7 +19,7 @@ interface DeliveriesListProps {
   onMarkPickedUp?: (delivery: Delivery) => void
 }
 
-const DELIVERY_STATUSES: DeliveryStatus[] = ['PENDING', 'PICKED_UP']
+const DELIVERY_STATUSES: DeliveryStatus[] = ['RECEIVED', 'PICKED_UP']
 
 export default function DeliveriesList({
   deliveries,
@@ -58,7 +58,7 @@ export default function DeliveriesList({
     }
   }
 
-  const canMarkPickedUp = (delivery: Delivery) => delivery.status === 'PENDING'
+  const canMarkPickedUp = (delivery: Delivery) => delivery.status === 'RECEIVED' || delivery.status === 'PENDING'
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200">
@@ -111,9 +111,9 @@ export default function DeliveriesList({
               <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
                 Recipient
               </th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Company</th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Host Company</th>
               <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
-                Description
+                Courier
               </th>
               <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
                 Received Date
@@ -141,14 +141,14 @@ export default function DeliveriesList({
               deliveries.map((delivery) => (
                 <tr key={delivery.id} className="border-b border-gray-200 hover:bg-gray-50 transition">
                   <td className="px-6 py-4 text-sm">
-                    <div className="text-gray-900 font-medium">{delivery.recipientName}</div>
-                    <div className="text-xs text-gray-500">{delivery.recipientPhone || delivery.recipientEmail || '—'}</div>
+                    <div className="text-gray-900 font-medium">{delivery.recipient || '—'}</div>
+                    <div className="text-xs text-gray-500">{delivery.host?.name || '—'}</div>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{delivery.deliveryCompany || '—'}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{delivery.description || '—'}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600">{delivery.host?.company || '—'}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600">{delivery.courier || '—'}</td>
                   <td className="px-6 py-4 text-sm text-gray-600">
-                    {delivery.receivedDate
-                      ? new Date(delivery.receivedDate).toLocaleDateString()
+                    {delivery.receivedAt
+                      ? new Date(delivery.receivedAt).toLocaleDateString()
                       : '—'}
                   </td>
                   <td className="px-6 py-4 text-sm">

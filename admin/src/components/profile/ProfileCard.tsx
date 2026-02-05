@@ -23,8 +23,8 @@ const getRoleBadgeColor = (role: UserRole): string => {
   return colors[role] || 'bg-gray-100 text-gray-800'
 }
 
-const getStatusBadgeColor = (status: string): string => {
-  if (status === 'ACTIVE') return 'bg-green-100 text-green-800'
+const getStatusBadgeColor = (status?: string): string => {
+  if (!status || status === 'ACTIVE') return 'bg-green-100 text-green-800'
   return 'bg-gray-100 text-gray-800'
 }
 
@@ -67,7 +67,7 @@ export default function ProfileCard({ user, isLoading }: ProfileCardProps) {
                 {getRoleLabel(user.role)}
               </span>
               <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusBadgeColor(user.status)}`}>
-                {user.status === 'ACTIVE' ? 'Active' : 'Inactive'}
+                {!user.status || user.status === 'ACTIVE' ? 'Active' : 'Inactive'}
               </span>
             </div>
           </div>

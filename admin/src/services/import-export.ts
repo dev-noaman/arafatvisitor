@@ -242,14 +242,13 @@ export const formatHostsForExport = (hosts: Host[]): any[] => {
  */
 export const formatDeliveriesForExport = (deliveries: Delivery[]): any[] => {
   return deliveries.map((d) => ({
-    'Recipient Name': d.recipientName,
-    'Recipient Email': d.recipientEmail || '',
-    'Recipient Phone': d.recipientPhone || '',
-    'Delivery Company': d.deliveryCompany || '',
-    Description: d.description || '',
+    'Recipient': d.recipient || '',
+    'Host Name': d.host?.name || '',
+    'Host Company': d.host?.company || '',
+    'Courier': d.courier || '',
     Status: d.status,
-    'Received Date': d.receivedDate ? new Date(d.receivedDate).toLocaleString() : '',
-    'Picked Up Date': d.pickedUpDate ? new Date(d.pickedUpDate).toLocaleString() : '',
+    'Received Date': d.receivedAt ? new Date(d.receivedAt).toLocaleString() : '',
+    'Picked Up Date': d.pickedUpAt ? new Date(d.pickedUpAt).toLocaleString() : '',
     Notes: d.notes || '',
     'Created At': new Date(d.createdAt).toLocaleString(),
   }))

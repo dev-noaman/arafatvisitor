@@ -54,6 +54,7 @@ export const markAsPickedUp = async (id: string) => {
 
 export const getStatusBadgeColor = (status: DeliveryStatus): string => {
   const colors: Record<DeliveryStatus, string> = {
+    RECEIVED: 'bg-yellow-100 text-yellow-800',
     PENDING: 'bg-yellow-100 text-yellow-800',
     PICKED_UP: 'bg-green-100 text-green-800',
   }
@@ -62,6 +63,7 @@ export const getStatusBadgeColor = (status: DeliveryStatus): string => {
 
 export const getStatusLabel = (status: DeliveryStatus): string => {
   const labels: Record<DeliveryStatus, string> = {
+    RECEIVED: 'Awaiting Pickup',
     PENDING: 'Awaiting Pickup',
     PICKED_UP: 'Picked Up',
   }
