@@ -19,7 +19,6 @@ import { Response } from "express";
 import { PrismaService } from "../prisma/prisma.service";
 import { EmailService } from "../notifications/email.service";
 import { WhatsAppService } from "../notifications/whatsapp.service";
-import { BadgeGeneratorService } from "../notifications/badge-generator.service";
 import { Public } from "../common/decorators/public.decorator";
 import * as bcrypt from "bcrypt";
 import * as QRCode from "qrcode";
@@ -48,7 +47,6 @@ export class AdminApiController {
     private readonly prisma: PrismaService,
     private readonly emailService: EmailService,
     private readonly whatsappService: WhatsAppService,
-    private readonly badgeGeneratorService: BadgeGeneratorService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
   ) {}
