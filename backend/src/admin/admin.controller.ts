@@ -1298,7 +1298,7 @@ export class AdminApiController {
         const qrBase64 = qrDataUrl.replace(/^data:image\/png;base64,/, "");
 
         // Caption with visitor info
-        const caption = `*VISITOR PASS*\n\n*${visit.visitorName}*${visit.visitorCompany ? `\n${visit.visitorCompany}` : ""}\n\n*Host:* ${visit.host?.name || "N/A"}\n*Company:* ${visit.host?.company || "N/A"}\n*Purpose:* ${visit.purpose || "Visit"}\n\nShow this QR code at reception for check-in.\n\n_Powered by Arafat Visitor Management System_`;
+        const caption = `*VISITOR PASS*\n\n*${visit.visitorName}*${visit.visitorCompany ? `\n${visit.visitorCompany}` : ""}\n\n*Host:* ${visit.host?.name || "N/A"}\n*Company:* ${visit.host?.company || "N/A"}\n*Purpose:* ${visit.purpose || "Visit"}\n\nShow this QR code at reception for check-in.\n\n───────────────────\n_Powered by Arafat Visitor Management System_`;
 
         console.log("[send-qr] Sending QR image to:", visit.visitorPhone);
         const sent = await this.whatsappService.sendImage(
