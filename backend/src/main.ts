@@ -12,7 +12,13 @@ import * as path from "path";
 import * as express from "express";
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    bodyParser: true,
+  });
+
+  // Increase body size limit for file uploads (CSV/XLSX imports)
+  app.use(express.json({ limit: "50mb" }));
+  app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
   // Get the underlying Express instance
   const httpAdapter = app.getHttpAdapter();
@@ -42,6 +48,7 @@ async function bootstrap() {
       "http://127.0.0.1:5175",
       "http://localhost:5176",
       "http://127.0.0.1:5176",
+      "https://arafatvisitor.cloud",
     ],
     credentials: true,
   });
@@ -54,13 +61,31 @@ async function bootstrap() {
   const adminPath = path.join(publicPath, "admin");
   app.use("/admin", express.static(adminPath));
 
+  // DEBUG LOGGING: Log all incoming requests to /admin/*
+  expressApp.use("/admin/*", (req: any, res: any, next: any) => {
+    console.log('[DEBUG MAIN] Request to /admin/*:', {
+      method: req.method,
+      path: req.path,
+      url: req.url,
+      headers: {
+        authorization: req.headers?.authorization ? 'Bearer [REDACTED]' : 'MISSING',
+        origin: req.headers?.origin,
+        referer: req.headers?.referer,
+        contentType: req.headers?.['content-type'],
+      }
+    });
+    next();
+  });
+
   // SPA fallback for admin routes - serve index.html for client-side routing
   expressApp.get("/admin/*", (req: any, res: any, next: any) => {
     // Don't handle API routes
     if (req.path.startsWith("/admin/api")) {
+      console.log('[DEBUG MAIN] API route detected, passing to NestJS:', req.path);
       return next();
     }
     // Serve the SPA index.html for all other admin routes
+    console.log('[DEBUG MAIN] Serving index.html for route:', req.path);
     res.sendFile(path.join(adminPath, "index.html"), (err: any) => {
       if (err) {
         // If index.html doesn't exist yet (during development), continue to 404
