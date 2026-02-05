@@ -120,15 +120,74 @@ export class AdminApiController {
   }
 
   @Get("profile")
-  async getProfile(@Query("email") email?: string) {
-    if (!email) {
-      throw new HttpException("Email is required", HttpStatus.BAD_REQUEST);
+  async getProfile(@Query("email") email?: string, @Req() req: any) {
+    // Try to get email from query param, JWT token, or session
+    let userEmail = email;
+
+    if (!userEmail) {
+      // Try to get from Authorization header (JWT)
+      const authHeader = req.headers?.authorization;
+      if (authHeader?.startsWith("Bearer ")) {
+        try {
+          const token = authHeader.substring(7);
+          const decoded = this.jwtService.verify(token) as { email: string };
+          userEmail = decoded.email;
+        } catch {
+          // Token invalid or expired
+        }
+      }
     }
-    const user = await this.prisma.user.findUnique({ where: { email } });
+
+    if (!userEmail) {
+      throw new HttpException("Authentication required", HttpStatus.UNAUTHORIZED);
+    }
+
+    const user = await this.prisma.user.findUnique({ where: { email: userEmail } });
     if (!user) {
       throw new HttpException("User not found", HttpStatus.NOT_FOUND);
     }
-    return { name: user.name, email: user.email, role: user.role };
+    return { id: user.id, name: user.name, email: user.email, role: user.role };
+  }
+
+  @Get("profile/preferences")
+  async getPreferences(@Req() req: any) {
+    // Get user from JWT token
+    const authHeader = req.headers?.authorization;
+    if (!authHeader?.startsWith("Bearer ")) {
+      throw new HttpException("Authentication required", HttpStatus.UNAUTHORIZED);
+    }
+
+    try {
+      const token = authHeader.substring(7);
+      const decoded = this.jwtService.verify(token) as { email: string };
+
+      // Return default preferences (can be extended to store in DB)
+      return {
+        notifications: true,
+        emailAlerts: true,
+        theme: "light",
+        language: "en",
+      };
+    } catch {
+      throw new HttpException("Invalid or expired token", HttpStatus.UNAUTHORIZED);
+    }
+  }
+
+  @Put("profile/preferences")
+  async updatePreferences(@Req() req: any, @Body() body: any) {
+    // Get user from JWT token
+    const authHeader = req.headers?.authorization;
+    if (!authHeader?.startsWith("Bearer ")) {
+      throw new HttpException("Authentication required", HttpStatus.UNAUTHORIZED);
+    }
+
+    try {
+      this.jwtService.verify(authHeader.substring(7));
+      // For now, just return the submitted preferences (can be stored in DB later)
+      return body;
+    } catch {
+      throw new HttpException("Invalid or expired token", HttpStatus.UNAUTHORIZED);
+    }
   }
 
   @Post("profile/update")
