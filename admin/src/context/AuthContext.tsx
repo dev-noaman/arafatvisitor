@@ -41,7 +41,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const login = useCallback(async (credentials: LoginCredentials) => {
     setIsLoading(true)
     try {
-      const response = await post<LoginResponse>('/auth/login', credentials)
+      const response = await post<LoginResponse>('/admin/api/login', credentials)
 
       // Handle both response formats
       const loginData = (response as any).data || response

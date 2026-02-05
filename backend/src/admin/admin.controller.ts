@@ -13,6 +13,8 @@ import {
   HttpStatus,
 } from "@nestjs/common";
 import { SkipThrottle } from "@nestjs/throttler";
+import { JwtService } from "@nestjs/jwt";
+import { ConfigService } from "@nestjs/config";
 import { Response } from "express";
 import { PrismaService } from "../prisma/prisma.service";
 import { EmailService } from "../notifications/email.service";
@@ -45,7 +47,53 @@ export class AdminApiController {
     private readonly prisma: PrismaService,
     private readonly emailService: EmailService,
     private readonly whatsappService: WhatsAppService,
+    private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
   ) {}
+
+  // ============ AUTHENTICATION ============
+
+  @Post("login")
+  async login(@Body() body: { email: string; password: string }) {
+    const { email, password } = body;
+
+    if (!email || !password) {
+      throw new HttpException(
+        "Email and password are required",
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { email: email.toLowerCase() },
+      include: { host: true },
+    });
+
+    if (!user) {
+      throw new HttpException("Invalid credentials", HttpStatus.UNAUTHORIZED);
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      throw new HttpException("Invalid credentials", HttpStatus.UNAUTHORIZED);
+    }
+
+    const payload = { sub: user.id, email: user.email, role: user.role, name: user.name };
+    const token = this.jwtService.sign(payload, {
+      expiresIn: this.configService.get("JWT_EXPIRES_IN") || "24h",
+    });
+
+    return {
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        hostId: user.hostId,
+      },
+    };
+  }
 
   // ============ DASHBOARD KPIs ============
 
@@ -1268,6 +1316,139 @@ export class AdminApiController {
   }
 
   // ============ REPORTS ============
+
+  @Get("reports")
+  async getReportsSummary(
+    @Query("startDate") startDate?: string,
+    @Query("endDate") endDate?: string,
+  ) {
+    const start = startDate ? new Date(startDate) : new Date();
+    start.setHours(0, 0, 0, 0);
+
+    const end = endDate ? new Date(endDate) : new Date();
+    end.setHours(23, 59, 59, 999);
+
+    // Get summary statistics
+    const [
+      totalVisits,
+      approvedVisits,
+      checkedInVisits,
+      totalDeliveries,
+      deliveriesPickedUp,
+      activeHosts,
+    ] = await Promise.all([
+      this.prisma.visit.count({
+        where: { createdAt: { gte: start, lte: end } },
+      }),
+      this.prisma.visit.count({
+        where: { status: "APPROVED", createdAt: { gte: start, lte: end } },
+      }),
+      this.prisma.visit.count({
+        where: { status: "CHECKED_IN", createdAt: { gte: start, lte: end } },
+      }),
+      this.prisma.delivery.count({
+        where: { createdAt: { gte: start, lte: end } },
+      }),
+      this.prisma.delivery.count({
+        where: { status: "PICKED_UP", createdAt: { gte: start, lte: end } },
+      }),
+      this.prisma.host.count({ where: { status: 1 } }),
+    ]);
+
+    // Get visit reports grouped by date
+    const visits = await this.prisma.visit.findMany({
+      where: { createdAt: { gte: start, lte: end } },
+      select: { createdAt: true, status: true },
+    });
+
+    const visitsByDate = new Map<string, { total: number; approved: number; checkedIn: number; checkedOut: number; pending: number; rejected: number }>();
+    visits.forEach((v) => {
+      const dateKey = v.createdAt.toISOString().split("T")[0];
+      if (!visitsByDate.has(dateKey)) {
+        visitsByDate.set(dateKey, { total: 0, approved: 0, checkedIn: 0, checkedOut: 0, pending: 0, rejected: 0 });
+      }
+      const entry = visitsByDate.get(dateKey)!;
+      entry.total++;
+      if (v.status === "APPROVED") entry.approved++;
+      else if (v.status === "CHECKED_IN") entry.checkedIn++;
+      else if (v.status === "CHECKED_OUT") entry.checkedOut++;
+      else if (v.status === "PENDING" || v.status === "PENDING_APPROVAL") entry.pending++;
+      else if (v.status === "REJECTED") entry.rejected++;
+    });
+
+    const visitReports = Array.from(visitsByDate.entries()).map(([date, data]) => ({
+      date,
+      totalVisits: data.total,
+      checkedIn: data.checkedIn,
+      checkedOut: data.checkedOut,
+      pending: data.pending,
+      approved: data.approved,
+      rejected: data.rejected,
+    }));
+
+    // Get delivery reports grouped by date
+    const deliveries = await this.prisma.delivery.findMany({
+      where: { createdAt: { gte: start, lte: end } },
+      select: { createdAt: true, status: true },
+    });
+
+    const deliveriesByDate = new Map<string, { total: number; pickedUp: number; pending: number }>();
+    deliveries.forEach((d) => {
+      const dateKey = d.createdAt.toISOString().split("T")[0];
+      if (!deliveriesByDate.has(dateKey)) {
+        deliveriesByDate.set(dateKey, { total: 0, pickedUp: 0, pending: 0 });
+      }
+      const entry = deliveriesByDate.get(dateKey)!;
+      entry.total++;
+      if (d.status === "PICKED_UP") entry.pickedUp++;
+      else entry.pending++;
+    });
+
+    const deliveryReports = Array.from(deliveriesByDate.entries()).map(([date, data]) => ({
+      date,
+      totalDeliveries: data.total,
+      pickedUp: data.pickedUp,
+      pending: data.pending,
+    }));
+
+    // Get host reports
+    const hostsWithVisits = await this.prisma.host.findMany({
+      where: { status: 1 },
+      select: {
+        id: true,
+        name: true,
+        _count: {
+          select: {
+            visits: {
+              where: { createdAt: { gte: start, lte: end } },
+            },
+          },
+        },
+      },
+      take: 10,
+      orderBy: { visits: { _count: "desc" } },
+    });
+
+    const hostReports = hostsWithVisits.map((h) => ({
+      hostId: String(h.id),
+      hostName: h.name,
+      totalVisits: h._count.visits,
+    }));
+
+    return {
+      summary: {
+        totalVisits,
+        approvedVisits,
+        checkedInVisits,
+        totalDeliveries,
+        deliveriesPickedUp,
+        activeHosts,
+      },
+      visitReports,
+      deliveryReports,
+      hostReports,
+    };
+  }
 
   @Get("reports/visitors")
   async getVisitorsReport(
