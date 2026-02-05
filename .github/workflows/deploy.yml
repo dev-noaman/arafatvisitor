@@ -436,6 +436,9 @@ jobs:
           # Install any new dependencies (including devDependencies for ts-node if needed)
           npm install --include=dev
 
+          # Rebuild canvas to link against native libraries
+          npm rebuild canvas 2>/dev/null || echo "Canvas rebuild skipped"
+
           # Generate Prisma client
           npx prisma generate
 

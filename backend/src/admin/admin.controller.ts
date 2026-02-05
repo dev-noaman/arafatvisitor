@@ -19,6 +19,7 @@ import { Response } from "express";
 import { PrismaService } from "../prisma/prisma.service";
 import { EmailService } from "../notifications/email.service";
 import { WhatsAppService } from "../notifications/whatsapp.service";
+import { BadgeGeneratorService } from "../notifications/badge-generator.service";
 import { Public } from "../common/decorators/public.decorator";
 import * as bcrypt from "bcrypt";
 import * as QRCode from "qrcode";
@@ -47,6 +48,7 @@ export class AdminApiController {
     private readonly prisma: PrismaService,
     private readonly emailService: EmailService,
     private readonly whatsappService: WhatsAppService,
+    private readonly badgeGeneratorService: BadgeGeneratorService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
   ) {}
@@ -1192,26 +1194,39 @@ export class AdminApiController {
       }
 
       try {
-        console.log("[send-qr] Sending WhatsApp message...");
+        console.log("[send-qr] Generating visitor badge image...");
 
-        // Send text message with QR link
-        // TODO: Enable badge image generation once canvas native deps are confirmed working
-        const qrLink = `${process.env.FRONTEND_URL || "https://arafatvisitor.cloud"}/check-in?session=${token}`;
-        const message = `Hello ${visit.visitorName}!\n\nYour visitor pass for ${visit.host?.company || "our office"} is ready.\n\nPlease use this link to access your QR code:\n${qrLink}\n\nOr show this message at reception for check-in.\n\nHost: ${visit.host?.name || "N/A"}\nPurpose: ${visit.purpose || "Visit"}`;
+        // Generate visitor badge image
+        const badgeBase64 = await this.badgeGeneratorService.generateVisitorBadge({
+          visitorName: visit.visitorName,
+          visitorCompany: visit.visitorCompany || undefined,
+          hostName: visit.host?.name || "N/A",
+          hostCompany: visit.host?.company || "Arafat Group",
+          location: visit.location || "BARWA_TOWERS",
+          purpose: visit.purpose || "Visit",
+          sessionId: token,
+          visitDate: visit.expectedDate || new Date(),
+        });
 
-        console.log("[send-qr] Sending WhatsApp text to:", visit.visitorPhone);
-        const sent = await this.whatsappService.send(visit.visitorPhone, message);
-        console.log("[send-qr] WhatsApp text result:", sent);
+        console.log("[send-qr] Badge generated, sending via WhatsApp to:", visit.visitorPhone);
+
+        // Send image via WhatsApp (msg_type: 1 for image)
+        const sent = await this.whatsappService.sendImage(
+          visit.visitorPhone,
+          badgeBase64,
+          `Visitor Pass for ${visit.visitorName}`
+        );
+        console.log("[send-qr] WhatsApp image result:", sent);
 
         if (!sent) {
           throw new HttpException(
-            "WhatsApp service failed to send message. Check configuration.",
+            "WhatsApp service failed to send image. Check configuration.",
             HttpStatus.SERVICE_UNAVAILABLE,
           );
         }
         return {
           success: true,
-          message: "QR link sent via WhatsApp",
+          message: "Visitor pass sent via WhatsApp",
         };
       } catch (e) {
         console.error("[send-qr] WhatsApp error:", e);
