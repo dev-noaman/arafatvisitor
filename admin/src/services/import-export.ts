@@ -230,9 +230,10 @@ export const formatVisitorsForExport = (visitors: Visit[]): any[] => {
 export const formatHostsForExport = (hosts: Host[]): any[] => {
   return hosts.map((h) => ({
     Name: h.name,
+    Company: h.company,
     Email: h.email,
     Phone: h.phone || '',
-    Department: h.department || '',
+    Location: h.location ? h.location.replace(/_/g, ' ') : '',
     'Created At': new Date(h.createdAt).toLocaleString(),
   }))
 }

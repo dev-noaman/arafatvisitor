@@ -7,7 +7,8 @@ const hostSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Invalid email address'),
   phone: z.string().optional(),
-  department: z.string().optional(),
+  company: z.string().min(1, 'Company is required'),
+  location: z.enum(['BARWA_TOWERS', 'MARINA_50', 'ELEMENT_MARIOTT']).optional(),
 })
 
 interface HostFormProps {
@@ -28,7 +29,8 @@ export default function HostForm({ onSubmit, initialData, isLoading }: HostFormP
       name: '',
       email: '',
       phone: '',
-      department: '',
+      company: '',
+      location: undefined,
     },
   })
 
@@ -53,6 +55,22 @@ export default function HostForm({ onSubmit, initialData, isLoading }: HostFormP
           disabled={isLoading}
         />
         {errors.name && <p className="text-sm text-red-600 mt-1">{errors.name.message}</p>}
+      </div>
+
+      {/* Company Field */}
+      <div>
+        <label htmlFor="company" className="block text-sm font-medium text-gray-700 mb-1">
+          Company *
+        </label>
+        <input
+          {...register('company')}
+          type="text"
+          id="company"
+          placeholder="Enter company name"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          disabled={isLoading}
+        />
+        {errors.company && <p className="text-sm text-red-600 mt-1">{errors.company.message}</p>}
       </div>
 
       {/* Email Field */}
@@ -87,21 +105,24 @@ export default function HostForm({ onSubmit, initialData, isLoading }: HostFormP
         {errors.phone && <p className="text-sm text-red-600 mt-1">{errors.phone.message}</p>}
       </div>
 
-      {/* Department Field */}
+      {/* Location Field */}
       <div>
-        <label htmlFor="department" className="block text-sm font-medium text-gray-700 mb-1">
-          Department
+        <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-1">
+          Location
         </label>
-        <input
-          {...register('department')}
-          type="text"
-          id="department"
-          placeholder="Enter department"
+        <select
+          {...register('location')}
+          id="location"
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           disabled={isLoading}
-        />
-        {errors.department && (
-          <p className="text-sm text-red-600 mt-1">{errors.department.message}</p>
+        >
+          <option value="">Select location</option>
+          <option value="BARWA_TOWERS">Barwa Towers</option>
+          <option value="MARINA_50">Marina 50</option>
+          <option value="ELEMENT_MARIOTT">Element Mariott</option>
+        </select>
+        {errors.location && (
+          <p className="text-sm text-red-600 mt-1">{errors.location.message}</p>
         )}
       </div>
 

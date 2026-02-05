@@ -21,15 +21,15 @@ export interface User {
   updatedAt: string;
 }
 
-// Host Entity
+// Host Entity (contact person at a company, NOT internal employee)
 export interface Host {
   id: string;
   name: string;
   email: string;
   phone?: string;
-  company?: string;
-  department?: string;
-  location?: string;
+  company: string;
+  location?: 'BARWA_TOWERS' | 'MARINA_50' | 'ELEMENT_MARIOTT';
+  status?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -183,7 +183,8 @@ export interface HostFormData {
   name: string;
   email: string;
   phone?: string;
-  department?: string;
+  company: string;
+  location?: 'BARWA_TOWERS' | 'MARINA_50' | 'ELEMENT_MARIOTT';
 }
 
 export interface UserFormData {

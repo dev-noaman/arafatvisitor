@@ -51,7 +51,7 @@ export default function HostsList({
       <div className="p-6 border-b border-gray-200">
         <input
           type="text"
-          placeholder="Search by name, email, or department..."
+          placeholder="Search by name, email, or company..."
           value={searchQuery}
           onChange={handleSearch}
           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -64,18 +64,17 @@ export default function HostsList({
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
               <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Name</th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Company</th>
               <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Email</th>
               <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Phone</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
-                Department
-              </th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Location</th>
               <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
                   <div className="flex items-center justify-center">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
                   </div>
@@ -83,7 +82,7 @@ export default function HostsList({
               </tr>
             ) : hosts.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
                   No hosts found. Create your first host to get started.
                 </td>
               </tr>
@@ -91,9 +90,12 @@ export default function HostsList({
               hosts.map((host) => (
                 <tr key={host.id} className="border-b border-gray-200 hover:bg-gray-50 transition">
                   <td className="px-6 py-4 text-sm text-gray-900 font-medium">{host.name}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600">{host.company}</td>
                   <td className="px-6 py-4 text-sm text-gray-600">{host.email}</td>
                   <td className="px-6 py-4 text-sm text-gray-600">{host.phone || '—'}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{host.department || '—'}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600">
+                    {host.location ? host.location.replace(/_/g, ' ') : '—'}
+                  </td>
                   <td className="px-6 py-4 text-sm space-x-2">
                     <button
                       onClick={() => onEdit(host)}
