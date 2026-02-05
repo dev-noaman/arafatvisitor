@@ -1,7 +1,9 @@
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import type { Visit, VisitFormData, Host } from '@/types'
+import { getPurposeLookups, type LookupItem } from '@/services/lookups'
 
 const visitSchema = z.object({
   visitorName: z.string().min(2, 'Visitor name must be at least 2 characters'),
@@ -28,6 +30,17 @@ export default function VisitForm({
   isLoading,
   isLoadingHosts,
 }: VisitFormProps) {
+  const [purposes, setPurposes] = useState<LookupItem[]>([])
+  const [isLoadingPurposes, setIsLoadingPurposes] = useState(false)
+
+  useEffect(() => {
+    setIsLoadingPurposes(true)
+    getPurposeLookups()
+      .then(setPurposes)
+      .catch(() => setPurposes([]))
+      .finally(() => setIsLoadingPurposes(false))
+  }, [])
+
   const {
     register,
     handleSubmit,
@@ -152,14 +165,21 @@ export default function VisitForm({
         <label htmlFor="purpose" className="block text-sm font-medium text-gray-700 mb-1">
           Purpose of Visit
         </label>
-        <input
+        <select
           {...register('purpose')}
-          type="text"
           id="purpose"
-          placeholder="E.g., Business Meeting, Training, etc."
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          disabled={isLoading}
-        />
+          disabled={isLoading || isLoadingPurposes}
+        >
+          <option value="">
+            {isLoadingPurposes ? 'Loading purposes...' : 'Select purpose of visit'}
+          </option>
+          {purposes.map((purpose) => (
+            <option key={purpose.id} value={purpose.label}>
+              {purpose.label}
+            </option>
+          ))}
+        </select>
         {errors.purpose && <p className="text-sm text-red-600 mt-1">{errors.purpose.message}</p>}
       </div>
 

@@ -161,3 +161,24 @@ model AuditLog {
   userAgent String?
   createdAt DateTime @default(now())
 }
+
+// ============ LOOKUP TABLES ============
+model LookupPurpose {
+  id        Int      @id @default(autoincrement())
+  code      String   @unique
+  label     String
+  active    Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model LookupDeliveryType {
+  id        Int      @id @default(autoincrement())
+  code      String   @unique
+  label     String
+  active    Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

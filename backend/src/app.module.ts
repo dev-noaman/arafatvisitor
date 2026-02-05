@@ -12,6 +12,7 @@ import { NotificationsModule } from "./notifications/notifications.module";
 import { ReportsModule } from "./reports/reports.module";
 import { AuditModule } from "./audit/audit.module";
 import { AdminModule } from "./admin/admin.module";
+import { LookupsModule } from "./lookups/lookups.module";
 import { JwtAuthGuard } from "./common/guards/jwt-auth.guard";
 
 @Module({
@@ -33,6 +34,7 @@ import { JwtAuthGuard } from "./common/guards/jwt-auth.guard";
     ReportsModule,
     AuditModule,
     AdminModule,
+    LookupsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

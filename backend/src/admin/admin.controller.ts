@@ -3184,6 +3184,26 @@ export class AdminApiController {
     return { success: true, message: "Password changed" };
   }
 
+  // ============ LOOKUP TABLES ============
+
+  @Get("lookups/purposes")
+  async getPurposeLookups() {
+    const purposes = await this.prisma.lookupPurpose.findMany({
+      where: { active: true },
+      orderBy: { sortOrder: "asc" },
+    });
+    return purposes;
+  }
+
+  @Get("lookups/delivery-types")
+  async getDeliveryTypeLookups() {
+    const deliveryTypes = await this.prisma.lookupDeliveryType.findMany({
+      where: { active: true },
+      orderBy: { sortOrder: "asc" },
+    });
+    return deliveryTypes;
+  }
+
   // ============ HELPER METHODS ============
 
   private generateCsv<T extends Record<string, unknown>>(

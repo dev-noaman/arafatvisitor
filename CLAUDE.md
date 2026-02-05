@@ -285,6 +285,14 @@ GET  /admin/api/pre-register              # List pre-registered visits
 GET  /admin/api/deliveries                # List deliveries
 GET  /admin/api/hosts                     # List hosts
 GET  /admin/api/users                     # List users (Admin only)
+GET  /admin/api/lookups/purposes          # Purpose of visit dropdown values
+GET  /admin/api/lookups/delivery-types    # Delivery type dropdown values
+```
+
+### Public API (for Reception Kiosk)
+```
+GET  /lookups/purposes                    # Purpose of visit dropdown values
+GET  /lookups/delivery-types              # Delivery type dropdown values
 ```
 
 ## Database Schema (Key Models)
@@ -312,3 +320,18 @@ A **contact person at a company** who can receive visitors or deliveries (NOT in
 
 ### Location Enum
 - BARWA_TOWERS, MARINA_50, ELEMENT_MARIOTT
+
+### Lookup Tables (Configurable Dropdowns)
+Lookup tables store values for dropdown menus, fetched from the database.
+
+**LookupPurpose** - Purpose of Visit options:
+- MEETING (Meeting)
+- INTERVIEW (Interview)
+- DELIVERY (Delivery)
+- MAINTENANCE (Maintenance)
+- OTHER (Other)
+
+**LookupDeliveryType** - Type of Delivery options:
+- DOCUMENT (Document)
+- FOOD (Food)
+- GIFT (Gift)

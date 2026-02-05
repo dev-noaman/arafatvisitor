@@ -3,14 +3,14 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { SearchableSelect } from "@/components/ui/searchable-select"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "sonner"
 import { Truck, Package } from "lucide-react"
-import { fetchHosts, createDelivery, getAuthToken } from "@/lib/api"
-import type { Host } from "@/lib/api"
+import { fetchHosts, createDelivery, getAuthToken, fetchDeliveryTypeLookups } from "@/lib/api"
+import type { Host, LookupItem } from "@/lib/api"
 
 const schema = z.object({
   typeOfDelivery: z.string().min(1, "Type of delivery is required"),
@@ -21,19 +21,27 @@ type FormValues = z.infer<typeof schema>
 
 export function DeliveryForm() {
   const [hosts, setHosts] = useState<Host[]>([])
+  const [deliveryTypes, setDeliveryTypes] = useState<LookupItem[]>([])
+  const [isLoadingTypes, setIsLoadingTypes] = useState(false)
   const configRaw = typeof sessionStorage !== "undefined" ? sessionStorage.getItem("vms_config") : null
   const config = configRaw ? JSON.parse(configRaw) : {}
   const useApi = !!(config.apiBase && getAuthToken())
 
   useEffect(() => {
     fetchHosts().then(setHosts).catch(() => setHosts([]))
+
+    // Fetch delivery types from API
+    setIsLoadingTypes(true)
+    fetchDeliveryTypeLookups()
+      .then(setDeliveryTypes)
+      .catch(() => setDeliveryTypes([]))
+      .finally(() => setIsLoadingTypes(false))
   }, [])
 
   const companies = Array.from(new Set(hosts.map((h) => h.company))).filter(Boolean).sort()
   const companyOptions = companies.map(c => ({ value: c, label: c }))
 
   const {
-    register,
     handleSubmit,
     setValue,
     watch,
@@ -83,15 +91,23 @@ export function DeliveryForm() {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <div className="space-y-2">
             <Label htmlFor="typeOfDelivery">Type of Delivery</Label>
-            <div className="relative">
-              <Package className="absolute left-3 top-3.5 h-5 w-5 text-muted-foreground" />
-              <Input
-                id="typeOfDelivery"
-                placeholder="e.g. Package, Document"
-                className="pl-10 h-12 touch-manipulation"
-                {...register("typeOfDelivery")}
-              />
-            </div>
+            <Select
+              value={watch("typeOfDelivery")}
+              onValueChange={(value) => setValue("typeOfDelivery", value)}
+              disabled={isLoadingTypes}
+            >
+              <SelectTrigger className="h-12 touch-manipulation">
+                <Package className="mr-2 h-5 w-5 text-muted-foreground" />
+                <SelectValue placeholder={isLoadingTypes ? "Loading..." : "Select type of delivery"} />
+              </SelectTrigger>
+              <SelectContent>
+                {deliveryTypes.map((type) => (
+                  <SelectItem key={type.id} value={type.label}>
+                    {type.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             {errors.typeOfDelivery && (
               <p className="text-sm text-destructive">{errors.typeOfDelivery.message}</p>
             )}

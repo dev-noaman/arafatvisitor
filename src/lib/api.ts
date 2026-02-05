@@ -219,3 +219,20 @@ export async function createDelivery(data: {
 export async function receiveDelivery(id: string): Promise<void> {
   await apiFetch(`/deliveries/${id}/receive`, { method: 'POST' })
 }
+
+// Lookup types
+export type LookupItem = {
+  id: number
+  code: string
+  label: string
+  active: boolean
+  sortOrder: number
+}
+
+export async function fetchPurposeLookups(): Promise<LookupItem[]> {
+  return apiFetch('/lookups/purposes')
+}
+
+export async function fetchDeliveryTypeLookups(): Promise<LookupItem[]> {
+  return apiFetch('/lookups/delivery-types')
+}
