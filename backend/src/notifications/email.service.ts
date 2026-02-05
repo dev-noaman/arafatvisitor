@@ -70,12 +70,13 @@ export class EmailService {
         options.attachments?.length || 0,
       );
 
-      // Convert attachments to nodemailer format
+      // Convert attachments to nodemailer format with inline disposition for CID images
       const nodemailerAttachments = options.attachments?.map((att) => ({
         filename: att.filename,
         content: att.content,
         contentType: att.contentType,
         cid: att.cid, // For inline images: <img src="cid:xxx">
+        contentDisposition: att.cid ? "inline" as const : "attachment" as const,
       }));
 
       const result = await this.transporter.sendMail({
