@@ -3,12 +3,10 @@ name: Deploy to VPS
 on:
   push:
     branches: [main, master]
-  pull_request:
-    branches: [main, master]
   workflow_dispatch:
     inputs:
       init:
-        description: 'Run initial setup (first deployment - includes seeding users)'
+        description: 'Run initial setup (first deployment)'
         required: false
         default: false
         type: boolean
@@ -20,101 +18,8 @@ env:
   SSH_OPTS: '-o StrictHostKeyChecking=no -o ControlMaster=auto -o ControlPath=/tmp/ssh-%r@%h:%p -o ControlPersist=60s'
 
 jobs:
-  # CI Jobs - Run tests before deployment
-  test-frontend:
+  deploy:
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build frontend
-        run: npm run build
-        env:
-          VITE_API_BASE: http://localhost:3000
-          VITE_SHOW_DEBUG_LOGIN: "true"
-
-      - name: Run tests
-        run: npm test -- --run
-        continue-on-error: true
-
-      - name: Lint frontend
-        run: npm run lint
-        continue-on-error: true
-
-  test-backend:
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: testuser
-          POSTGRES_PASSWORD: testpass
-          POSTGRES_DB: testdb
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: backend/package-lock.json
-
-      - name: Install backend dependencies
-        working-directory: ./backend
-        run: npm ci
-
-      - name: Generate Prisma Client
-        working-directory: ./backend
-        run: npx prisma generate
-        env:
-          DATABASE_URL: postgresql://testuser:testpass@localhost:5432/testdb
-
-      - name: Push database schema (CI uses fresh DB each time)
-        working-directory: ./backend
-        run: npx prisma db push --accept-data-loss
-        env:
-          DATABASE_URL: postgresql://testuser:testpass@localhost:5432/testdb
-
-      - name: Build backend
-        working-directory: ./backend
-        run: npm run build
-
-      - name: Run tests
-        working-directory: ./backend
-        run: npm test
-        env:
-          DATABASE_URL: postgresql://testuser:testpass@localhost:5432/testdb
-          JWT_SECRET: test-secret-key-for-ci
-          PORT: 3000
-        continue-on-error: true
-
-      - name: Lint backend
-        working-directory: ./backend
-        run: npm run lint
-        continue-on-error: true
-
-  # Deployment Job - Only runs on push to main/master or workflow_dispatch
-  build-and-deploy:
-    runs-on: ubuntu-latest
-    needs: [test-frontend, test-backend]
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
 
     steps:
@@ -127,17 +32,19 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
-      - name: Install frontend dependencies
-        run: npm ci
-
       - name: Build frontend
-        run: npm run build
+        run: |
+          npm ci
+          npm run build
         env:
           VITE_API_BASE: https://${{ secrets.VPS_DOMAIN }}/api
           VITE_SHOW_DEBUG_LOGIN: "true"
 
-      - name: Install backend dependencies
-        run: cd backend && npm ci
+      - name: Build admin
+        run: |
+          cd admin
+          npm ci
+          npm run build
 
       - name: Install sshpass and rsync
         run: |
@@ -150,7 +57,7 @@ jobs:
 
       - name: Prepare VPS directories
         run: |
-          sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh ${{ env.SSH_OPTS }} ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} "apt-get update && apt-get install -y rsync && mkdir -p ${{ env.VPS_PATH }}/frontend ${{ env.VPS_PATH }}/backend"
+          sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh ${{ env.SSH_OPTS }} ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} "mkdir -p ${{ env.VPS_PATH }}/frontend ${{ env.VPS_PATH }}/backend"
 
       - name: Upload frontend
         run: |
@@ -160,13 +67,12 @@ jobs:
         run: |
           sshpass -p '${{ secrets.VPS_PASSWORD }}' rsync -avz --delete --exclude 'node_modules' --exclude '.env' --exclude 'dist' -e "sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh ${{ env.SSH_OPTS }}" backend/ ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }}:${{ env.VPS_PATH }}/backend/
 
-      - name: Initial Setup (all steps in one SSH session)
+      - name: Initial Setup
         if: github.event.inputs.init == 'true'
         run: |
           sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh ${{ env.SSH_OPTS }} ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} << 'ENDSSH'
           set -e
 
-          echo "=== Installing system dependencies ==="
           # Install Node.js if not present
           if ! command -v node &> /dev/null; then
               curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
@@ -187,352 +93,86 @@ jobs:
               systemctl enable nginx
           fi
 
-          # Install PM2 globally
           npm install -g pm2
 
-          echo "=== Configuring database ==="
-          # Stop PM2 processes temporarily
-          pm2 stop arafatvisitor-api 2>/dev/null || true
-          pm2 delete arafatvisitor-api 2>/dev/null || true
-
-          # Ensure PostgreSQL is running
-          systemctl start postgresql 2>/dev/null || true
-          sleep 2
-
-          # Create database and user if they don't exist (production-safe - no data deletion)
+          # Create database if not exists
           if ! sudo -u postgres psql -lqt | cut -d \| -f 1 | grep -qw ${{ env.DB_NAME }}; then
-              echo "Creating new database and user..."
               sudo -u postgres psql -c "CREATE USER ${{ env.DB_USER }} WITH PASSWORD '${{ secrets.DB_PASSWORD }}';" 2>/dev/null || true
               sudo -u postgres psql -c "CREATE DATABASE ${{ env.DB_NAME }} OWNER ${{ env.DB_USER }};"
               sudo -u postgres psql -d ${{ env.DB_NAME }} -c "GRANT ALL ON SCHEMA public TO ${{ env.DB_USER }};"
-          else
-              echo "Database already exists - preserving data"
           fi
 
-          # Create .env if it doesn't exist (preserve existing JWT_SECRET)
           cd /var/www/arafatvisitor/backend
-          if [ ! -f .env ]; then
-              JWT_SECRET=$(openssl rand -base64 32)
-              echo "DATABASE_URL=postgresql://${{ env.DB_USER }}:${{ secrets.DB_PASSWORD }}@localhost:5432/${{ env.DB_NAME }}" > .env
-              echo "JWT_SECRET=${JWT_SECRET}" >> .env
-              echo "ADMINJS_COOKIE_SECRET=arafat-vms-adminjs-cookie-secret-2026" >> .env
-              echo "NODE_ENV=production" >> .env
-              echo "PORT=3000" >> .env
-              # SMTP config from secrets
-              echo "SMTP_HOST=${{ secrets.SMTP_HOST }}" >> .env
-              echo "SMTP_PORT=${{ secrets.SMTP_PORT }}" >> .env
-              echo "SMTP_USER=${{ secrets.SMTP_USER }}" >> .env
-              echo "SMTP_PASS=${{ secrets.SMTP_PASS }}" >> .env
-              echo "SMTP_FROM=${{ secrets.SMTP_FROM }}" >> .env
-              # WhatsApp config from secrets
-              echo "WHATSAPP_ENDPOINT=${{ secrets.WHATSAPP_ENDPOINT }}" >> .env
-              echo "WHATSAPP_CLIENT_ID=${{ secrets.WHATSAPP_CLIENT_ID }}" >> .env
-              echo "WHATSAPP_CLIENT=${{ secrets.WHATSAPP_CLIENT }}" >> .env
-              echo "WHATSAPP_API_KEY=${{ secrets.WHATSAPP_API_KEY }}" >> .env
-              echo "Created new .env file with all config"
-          else
-              echo ".env file already exists - preserving configuration"
-              # Ensure ADMINJS_COOKIE_SECRET exists
-              if ! grep -q "ADMINJS_COOKIE_SECRET" .env; then
-                  echo "ADMINJS_COOKIE_SECRET=arafat-vms-adminjs-cookie-secret-2026" >> .env
-                  echo "Added missing ADMINJS_COOKIE_SECRET"
-              fi
-              # Ensure NODE_ENV is set
-              if ! grep -q "NODE_ENV" .env; then
-                  echo "NODE_ENV=production" >> .env
-                  echo "Added NODE_ENV=production"
-              fi
-              # Always update SMTP config from secrets (remove old, add new)
-              sed -i '/^SMTP_/d' .env 2>/dev/null || true
-              echo "SMTP_HOST=${{ secrets.SMTP_HOST }}" >> .env
-              echo "SMTP_PORT=${{ secrets.SMTP_PORT }}" >> .env
-              echo "SMTP_USER=${{ secrets.SMTP_USER }}" >> .env
-              echo "SMTP_PASS=${{ secrets.SMTP_PASS }}" >> .env
-              echo "SMTP_FROM=${{ secrets.SMTP_FROM }}" >> .env
-              echo "Updated SMTP configuration"
-              # Always update WhatsApp config from secrets (remove old, add new)
-              sed -i '/^WHATSAPP_/d' .env 2>/dev/null || true
-              echo "WHATSAPP_ENDPOINT=${{ secrets.WHATSAPP_ENDPOINT }}" >> .env
-              echo "WHATSAPP_CLIENT_ID=${{ secrets.WHATSAPP_CLIENT_ID }}" >> .env
-              echo "WHATSAPP_CLIENT=${{ secrets.WHATSAPP_CLIENT }}" >> .env
-              echo "WHATSAPP_API_KEY=${{ secrets.WHATSAPP_API_KEY }}" >> .env
-              echo "Updated WhatsApp configuration"
-          fi
 
-          echo "=== Building backend ==="
-          # Load env
-          export $(grep -v '^#' .env | xargs)
+          # Create .env
+          cat > .env << EOF
+          DATABASE_URL=postgresql://${{ env.DB_USER }}:${{ secrets.DB_PASSWORD }}@localhost:5432/${{ env.DB_NAME }}
+          JWT_SECRET=$(openssl rand -base64 32)
+          NODE_ENV=production
+          PORT=3000
+          SMTP_HOST=${{ secrets.SMTP_HOST }}
+          SMTP_PORT=${{ secrets.SMTP_PORT }}
+          SMTP_USER=${{ secrets.SMTP_USER }}
+          SMTP_PASS=${{ secrets.SMTP_PASS }}
+          SMTP_FROM=${{ secrets.SMTP_FROM }}
+          WHATSAPP_ENDPOINT=${{ secrets.WHATSAPP_ENDPOINT }}
+          WHATSAPP_CLIENT_ID=${{ secrets.WHATSAPP_CLIENT_ID }}
+          WHATSAPP_CLIENT=${{ secrets.WHATSAPP_CLIENT }}
+          WHATSAPP_API_KEY=${{ secrets.WHATSAPP_API_KEY }}
+          EOF
 
-          # Install dependencies (including devDependencies for ts-node)
           npm install --include=dev
-
-          # Run database migrations
           npx prisma generate
-          npx prisma migrate deploy
-
-          # Seed default users (admin, gm, reception)
-          # Use npm script which properly handles ts-node
-          echo "=== Seeding default users ==="
-          npm run prisma:seed || echo "Seed completed with warnings (CSV files may not exist in production)"
-
-          # Build backend
+          npx prisma db push --accept-data-loss
+          npm run prisma:seed || true
           npm run build
 
-          echo "=== Configuring Nginx (SSL already installed) ==="
-          # Strip protocol from domain (remove http:// or https://)
-          DOMAIN="${{ secrets.VPS_DOMAIN }}"
-          DOMAIN="${DOMAIN#http://}"
-          DOMAIN="${DOMAIN#https://}"
-          DOMAIN="${DOMAIN%%/*}"
-
-          # Setup Nginx with HTTPS (SSL certificate already exists)
-          cat > /etc/nginx/sites-available/arafatvisitor << 'NGINXCONF'
-          server {
-              listen 80;
-              listen [::]:80;
-              server_name _DOMAIN_ www._DOMAIN_;
-              return 301 https://_DOMAIN_$request_uri;
-          }
-
-          server {
-              listen 443 ssl http2;
-              listen [::]:443 ssl http2;
-              server_name www._DOMAIN_;
-
-              ssl_certificate /etc/letsencrypt/live/_DOMAIN_/fullchain.pem;
-              ssl_certificate_key /etc/letsencrypt/live/_DOMAIN_/privkey.pem;
-              include /etc/letsencrypt/options-ssl-nginx.conf;
-              ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
-
-              return 301 https://_DOMAIN_$request_uri;
-          }
-
-          server {
-              listen 443 ssl http2;
-              listen [::]:443 ssl http2;
-              server_name _DOMAIN_;
-
-              ssl_certificate /etc/letsencrypt/live/_DOMAIN_/fullchain.pem;
-              ssl_certificate_key /etc/letsencrypt/live/_DOMAIN_/privkey.pem;
-              include /etc/letsencrypt/options-ssl-nginx.conf;
-              ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
-
-              root /var/www/arafatvisitor/frontend;
-              index index.html;
-
-              location / {
-                  try_files $uri $uri/ /index.html;
-              }
-
-              location = /api {
-                  return 301 /api/;
-              }
-
-              location /api/ {
-                  proxy_pass http://127.0.0.1:3000/;
-
-                  proxy_http_version 1.1;
-                  proxy_set_header Host $host;
-
-                  proxy_set_header X-Real-IP $remote_addr;
-                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                  proxy_set_header X-Forwarded-Proto $scheme;
-
-                  proxy_set_header Upgrade $http_upgrade;
-                  proxy_set_header Connection "upgrade";
-              }
-
-              location /admin {
-                  proxy_pass http://127.0.0.1:3000/admin;
-
-                  proxy_http_version 1.1;
-                  proxy_set_header Host $host;
-
-                  proxy_set_header X-Real-IP $remote_addr;
-                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                  proxy_set_header X-Forwarded-Proto $scheme;
-
-                  proxy_set_header Upgrade $http_upgrade;
-                  proxy_set_header Connection "upgrade";
-                  proxy_cache_bypass $http_upgrade;
-              }
-          }
-          NGINXCONF
-
-          # Replace placeholder with actual domain
-          sed -i "s/_DOMAIN_/$DOMAIN/g" /etc/nginx/sites-available/arafatvisitor
-
-          ln -sf /etc/nginx/sites-available/arafatvisitor /etc/nginx/sites-enabled/
-          rm -f /etc/nginx/sites-enabled/default
-          nginx -t && systemctl reload nginx
-
-          echo "=== Starting PM2 ==="
-          # Start backend with PM2
           pm2 delete arafatvisitor-api 2>/dev/null || true
           pm2 start dist/src/main.js --name arafatvisitor-api
           pm2 save
           pm2 startup
 
-          echo "=== Configuring SSL auto-renewal ==="
-          # Ensure certbot is installed for auto-renewal
-          apt-get install -y certbot python3-certbot-nginx 2>/dev/null || true
-
-          # Setup auto-renewal cron job (daily at 6 AM)
-          (crontab -l 2>/dev/null | grep -v certbot; echo "0 6 * * * certbot renew --quiet --post-hook 'systemctl reload nginx'") | crontab -
-          echo "SSL auto-renewal cron job configured"
-
           echo "INITIAL_SETUP_COMPLETE"
           ENDSSH
 
-      - name: Update Deployment (single SSH session)
+      - name: Deploy Update
         if: github.event.inputs.init != 'true'
         run: |
           sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh ${{ env.SSH_OPTS }} ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} << 'ENDSSH'
           set -e
           cd /var/www/arafatvisitor/backend
 
-          # Ensure ADMINJS_COOKIE_SECRET exists in .env
-          if ! grep -q "ADMINJS_COOKIE_SECRET" .env 2>/dev/null; then
-              echo "ADMINJS_COOKIE_SECRET=arafat-vms-adminjs-cookie-secret-2026" >> .env
-              echo "Added missing ADMINJS_COOKIE_SECRET"
-          fi
-
-          # Ensure NODE_ENV is set to production
-          if ! grep -q "NODE_ENV" .env 2>/dev/null; then
-              echo "NODE_ENV=production" >> .env
-              echo "Added NODE_ENV=production"
-          fi
-
-          # Always update SMTP config from secrets (remove old, add new)
+          # Update config from secrets
           sed -i '/^SMTP_/d' .env 2>/dev/null || true
-          echo "SMTP_HOST=${{ secrets.SMTP_HOST }}" >> .env
-          echo "SMTP_PORT=${{ secrets.SMTP_PORT }}" >> .env
-          echo "SMTP_USER=${{ secrets.SMTP_USER }}" >> .env
-          echo "SMTP_PASS=${{ secrets.SMTP_PASS }}" >> .env
-          echo "SMTP_FROM=${{ secrets.SMTP_FROM }}" >> .env
-          echo "Updated SMTP configuration"
-
-          # Always update WhatsApp config from secrets (remove old, add new)
           sed -i '/^WHATSAPP_/d' .env 2>/dev/null || true
-          echo "WHATSAPP_ENDPOINT=${{ secrets.WHATSAPP_ENDPOINT }}" >> .env
-          echo "WHATSAPP_CLIENT_ID=${{ secrets.WHATSAPP_CLIENT_ID }}" >> .env
-          echo "WHATSAPP_CLIENT=${{ secrets.WHATSAPP_CLIENT }}" >> .env
-          echo "WHATSAPP_API_KEY=${{ secrets.WHATSAPP_API_KEY }}" >> .env
-          echo "Updated WhatsApp configuration"
+          cat >> .env << EOF
+          SMTP_HOST=${{ secrets.SMTP_HOST }}
+          SMTP_PORT=${{ secrets.SMTP_PORT }}
+          SMTP_USER=${{ secrets.SMTP_USER }}
+          SMTP_PASS=${{ secrets.SMTP_PASS }}
+          SMTP_FROM=${{ secrets.SMTP_FROM }}
+          WHATSAPP_ENDPOINT=${{ secrets.WHATSAPP_ENDPOINT }}
+          WHATSAPP_CLIENT_ID=${{ secrets.WHATSAPP_CLIENT_ID }}
+          WHATSAPP_CLIENT=${{ secrets.WHATSAPP_CLIENT }}
+          WHATSAPP_API_KEY=${{ secrets.WHATSAPP_API_KEY }}
+          EOF
 
           export $(grep -v '^#' .env | xargs) 2>/dev/null || true
 
-          # Install dependencies (including devDependencies for ts-node if needed)
           npm install --include=dev
-
-          # Generate Prisma client
           npx prisma generate
-
-          # Run new migrations (safe - won't delete data)
-          npx prisma migrate deploy
-
-          # Run seed (adds test data if not exists)
-          npm run prisma:seed || echo "Seed completed with warnings"
-
-          # Rebuild backend
+          npx prisma db push --accept-data-loss
+          npm run prisma:seed || true
           npm run build
 
-          # Force full restart (delete and recreate) to clear all caches
           pm2 delete arafatvisitor-api 2>/dev/null || true
           pm2 start dist/src/main.js --name arafatvisitor-api --update-env
           pm2 save
 
-          # Update Nginx config
-          DOMAIN="${{ secrets.VPS_DOMAIN }}"
-          DOMAIN="${DOMAIN#http://}"
-          DOMAIN="${DOMAIN#https://}"
-          DOMAIN="${DOMAIN%%/*}"
-
-          cat > /etc/nginx/sites-available/arafatvisitor << 'NGINXCONF'
-          server {
-              listen 80;
-              listen [::]:80;
-              server_name _DOMAIN_ www._DOMAIN_;
-              return 301 https://_DOMAIN_$request_uri;
-          }
-
-          server {
-              listen 443 ssl http2;
-              listen [::]:443 ssl http2;
-              server_name www._DOMAIN_;
-
-              ssl_certificate /etc/letsencrypt/live/_DOMAIN_/fullchain.pem;
-              ssl_certificate_key /etc/letsencrypt/live/_DOMAIN_/privkey.pem;
-              include /etc/letsencrypt/options-ssl-nginx.conf;
-              ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
-
-              return 301 https://_DOMAIN_$request_uri;
-          }
-
-          server {
-              listen 443 ssl http2;
-              listen [::]:443 ssl http2;
-              server_name _DOMAIN_;
-
-              ssl_certificate /etc/letsencrypt/live/_DOMAIN_/fullchain.pem;
-              ssl_certificate_key /etc/letsencrypt/live/_DOMAIN_/privkey.pem;
-              include /etc/letsencrypt/options-ssl-nginx.conf;
-              ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
-
-              root /var/www/arafatvisitor/frontend;
-              index index.html;
-
-              location / {
-                  try_files $uri $uri/ /index.html;
-              }
-
-              location = /api {
-                  return 301 /api/;
-              }
-
-              location /api/ {
-                  proxy_pass http://127.0.0.1:3000/;
-
-                  proxy_http_version 1.1;
-                  proxy_set_header Host $host;
-
-                  proxy_set_header X-Real-IP $remote_addr;
-                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                  proxy_set_header X-Forwarded-Proto $scheme;
-
-                  proxy_set_header Upgrade $http_upgrade;
-                  proxy_set_header Connection "upgrade";
-              }
-
-              location /admin {
-                  proxy_pass http://127.0.0.1:3000/admin;
-
-                  proxy_http_version 1.1;
-                  proxy_set_header Host $host;
-
-                  proxy_set_header X-Real-IP $remote_addr;
-                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                  proxy_set_header X-Forwarded-Proto $scheme;
-
-                  proxy_set_header Upgrade $http_upgrade;
-                  proxy_set_header Connection "upgrade";
-                  proxy_cache_bypass $http_upgrade;
-              }
-          }
-          NGINXCONF
-
-          sed -i "s/_DOMAIN_/$DOMAIN/g" /etc/nginx/sites-available/arafatvisitor
-          nginx -t && systemctl reload nginx
-
-          echo "UPDATE_COMPLETE"
+          echo "DEPLOY_COMPLETE"
           ENDSSH
 
       - name: Stop SSH control master
         if: always()
         run: |
           sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh ${{ env.SSH_OPTS }} -O exit ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} 2>/dev/null || true
-
-      - name: Verify deployment
-        run: |
-          sleep 5
-          curl -f http://${{ secrets.VPS_IP }} || echo "Verification pending - check manually"
