@@ -9,17 +9,17 @@ const API_BASE_URL = '';
 
 // Get auth token from localStorage
 const getAuthToken = (): string | null => {
-  return localStorage.getItem('auth_token');
+  return localStorage.getItem('admin_token');
 };
 
 // Set auth token in localStorage
 const setAuthToken = (token: string): void => {
-  localStorage.setItem('auth_token', token);
+  localStorage.setItem('admin_token', token);
 };
 
 // Remove auth token from localStorage
 const removeAuthToken = (): void => {
-  localStorage.removeItem('auth_token');
+  localStorage.removeItem('admin_token');
 };
 
 // Generic API request function - returns T directly (backend returns data unwrapped)

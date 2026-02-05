@@ -2,6 +2,27 @@ import { Link, useLocation } from 'react-router'
 import { useAuth } from '@/hooks/useAuth'
 import { useSidebar } from '@/context/SidebarContext'
 import { getVisibleNavItems } from '@/config/navigation'
+import {
+  GridIcon,
+  GroupIcon,
+  UserCircleIcon,
+  CalendarIcon,
+  TruckDeliveryIcon,
+  PieChartIcon,
+  BoltIcon,
+  UserIcon,
+} from '@/icons'
+
+const ICON_MAP: Record<string, React.FunctionComponent<React.SVGProps<SVGSVGElement>>> = {
+  'Grid': GridIcon,
+  'Users': GroupIcon,
+  'UserCheck': UserCircleIcon,
+  'Calendar': CalendarIcon,
+  'Package': TruckDeliveryIcon,
+  'BarChart': PieChartIcon,
+  'Settings': BoltIcon,
+  'UserCog': UserIcon,
+}
 
 export default function AppSidebar() {
   const { user } = useAuth()
@@ -22,19 +43,23 @@ export default function AppSidebar() {
           <p className="text-xs text-gray-500 mt-1">Admin Panel</p>
         </div>
         <nav className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
-          {visibleItems.map(item => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={`flex items-center px-4 py-2.5 rounded-lg transition ${
-                isActive(item.path)
-                  ? 'bg-blue-50 text-blue-600 font-semibold'
-                  : 'text-gray-700 hover:bg-gray-100'
-              }`}
-            >
-              {item.label}
-            </Link>
-          ))}
+          {visibleItems.map(item => {
+            const Icon = ICON_MAP[item.icon]
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={`flex items-center px-4 py-2.5 rounded-lg transition ${
+                  isActive(item.path)
+                    ? 'bg-blue-50 text-blue-600 font-semibold'
+                    : 'text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                {Icon && <Icon className="w-5 h-5 mr-3" />}
+                {item.label}
+              </Link>
+            )
+          })}
         </nav>
       </aside>
 
@@ -68,20 +93,24 @@ export default function AppSidebar() {
           </button>
         </div>
         <nav className="overflow-y-auto px-4 py-4 space-y-1">
-          {visibleItems.map(item => (
-            <Link
-              key={item.path}
-              to={item.path}
-              onClick={toggle}
-              className={`flex items-center px-4 py-2.5 rounded-lg transition ${
-                isActive(item.path)
-                  ? 'bg-blue-50 text-blue-600 font-semibold'
-                  : 'text-gray-700 hover:bg-gray-100'
-              }`}
-            >
-              {item.label}
-            </Link>
-          ))}
+          {visibleItems.map(item => {
+            const Icon = ICON_MAP[item.icon]
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                onClick={toggle}
+                className={`flex items-center px-4 py-2.5 rounded-lg transition ${
+                  isActive(item.path)
+                    ? 'bg-blue-50 text-blue-600 font-semibold'
+                    : 'text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                {Icon && <Icon className="w-5 h-5 mr-3" />}
+                {item.label}
+              </Link>
+            )
+          })}
         </nav>
       </aside>
     </>

@@ -10,7 +10,7 @@ import { DeliveryForm } from "@/features/deliveries/DeliveryForm"
 import { ReportsPanel } from "@/features/reports/ReportsPanel"
 import { VisitorPass } from "@/features/visitors/VisitorPass"
 import { Toaster } from "sonner"
-import { ShieldCheck, Truck, LogOut, ArrowLeft, User, ArrowRight } from "lucide-react"
+import { Truck, LogOut, ArrowLeft, User, ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { setAuthToken, getAdminUrl } from "@/lib/api"
 import QRCode from "react-qr-code"
@@ -74,8 +74,8 @@ function App() {
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900">
       <header className="bg-white border-b px-6 py-4 flex items-center justify-between shadow-sm sticky top-0 z-10">
         <div className="flex items-center gap-2 text-primary">
-          <ShieldCheck className="h-8 w-8" />
-          <h1 className="text-2xl font-bold tracking-tight">Arafat Visitor</h1>
+          <img src="/logo.svg" className="h-8 w-auto" alt="Logo" />
+          <h1 className="text-2xl font-bold tracking-tight text-black">Arafat Visitor</h1>
         </div>
         <div className="flex items-center gap-4">
           <div className="text-right hidden md:block">
