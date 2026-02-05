@@ -129,9 +129,9 @@ export class WhatsAppService {
       // Convert base64 to Buffer
       const imageBuffer = Buffer.from(imageBase64, "base64");
 
-      // Create FormData for multipart upload
-      const FormData = (await import("form-data")).default;
-      const formData = new FormData();
+      // Create FormData for multipart upload using form-data package
+      const FormDataLib = (await import("form-data")).default;
+      const formData = new FormDataLib();
 
       formData.append("client_id", this.clientId.toString());
       formData.append("api_key", this.apiKey);
@@ -145,25 +145,36 @@ export class WhatsAppService {
         contentType: "image/png",
       });
 
+      // Use node-fetch style request with form-data
+      const headers = formData.getHeaders();
+      console.log("[WhatsAppService] Sending with headers:", Object.keys(headers));
+
       const res = await fetch(url, {
         method: "POST",
         body: formData as unknown as BodyInit,
-        headers: formData.getHeaders(),
+        headers: headers,
       });
 
+      const responseText = await res.text();
+      console.log("[WhatsAppService] Response status:", res.status, "body:", responseText);
+
       if (!res.ok) {
-        const text = await res.text();
-        console.error("[WhatsAppService] Image API error:", res.status, text);
+        console.error("[WhatsAppService] Image API error:", res.status, responseText);
         return false;
       }
 
-      const data = await res.json();
-      console.log("[WhatsAppService] Image API response:", data);
-      return data.status === 1;
+      try {
+        const data = JSON.parse(responseText);
+        console.log("[WhatsAppService] Image API response parsed:", data);
+        return data.status === 1;
+      } catch {
+        console.error("[WhatsAppService] Failed to parse response as JSON");
+        return false;
+      }
     } catch (e) {
       console.error(
         "[WhatsAppService] Send image error:",
-        e instanceof Error ? e.message : e,
+        e instanceof Error ? `${e.message}\n${e.stack}` : e,
       );
       return false;
     }

@@ -95,7 +95,7 @@ export class EmailService {
     } catch (e) {
       console.error(
         "[EmailService] Failed to send email:",
-        e instanceof Error ? e.message : e,
+        e instanceof Error ? `${e.message}\nStack: ${e.stack}` : e,
       );
       return false;
     }
