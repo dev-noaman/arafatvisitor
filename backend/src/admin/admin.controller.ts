@@ -12,6 +12,7 @@ import {
   HttpException,
   HttpStatus,
 } from "@nestjs/common";
+import { SkipThrottle } from "@nestjs/throttler";
 import { Response } from "express";
 import { PrismaService } from "../prisma/prisma.service";
 import { EmailService } from "../notifications/email.service";
@@ -34,8 +35,10 @@ type DeliveryWithHost = Prisma.DeliveryGetPayload<{ include: { host: true } }>;
 
 // Note: These endpoints are meant to be accessed through the AdminJS session
 // They use @Public() to bypass JWT auth - they rely on AdminJS cookie authentication
+// @SkipThrottle() bypasses rate limiting for admin panel which makes many concurrent requests
 
 @Controller("admin/api")
+@SkipThrottle() // Bypass rate limiting - admin panel makes many concurrent API calls
 @Public() // Bypass JWT auth - AdminJS uses cookie-based session auth
 export class AdminApiController {
   constructor(
