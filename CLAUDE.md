@@ -251,9 +251,9 @@ Test data is identified by:
 1. Push to `main` branch triggers deployment
 2. Admin SPA built and uploaded to VPS
 3. Backend uploaded, dependencies installed
-4. Prisma migrations run
-5. PM2 restarts the backend
-6. Nginx config updated
+4. Prisma schema sync (`prisma db push`)
+5. Lookup data populated (idempotent INSERT statements)
+6. Backend built and PM2 restarts
 
 ### Production URLs
 - **Frontend**: https://arafatvisitor.cloud
@@ -327,15 +327,15 @@ A **contact person at a company** who can receive visitors or deliveries (NOT in
 
 ### Lookup Tables (Configurable Dropdowns)
 Lookup tables store values for dropdown menus, fetched from the database.
-**Note**: Lookup values are NOT seeded - they must be inserted directly into the database.
+**LookupPurpose** - Purpose of Visit options: Meeting, Interview, Delivery, Maintenance, Other
 
-**LookupPurpose** - Purpose of Visit options (e.g., Meeting, Interview, Delivery, Maintenance, Other)
+**LookupDeliveryType** - Type of Delivery options: Document, Food, Gift
 
-**LookupDeliveryType** - Type of Delivery options (e.g., Document, Food, Gift)
+**LookupCourier** - Courier options: DHL, FedEx, Aramex, Qatar Post, UPS, TNT Express
 
-**LookupCourier** - Courier options (e.g., DHL, FedEx, Aramex, Qatar Post, UPS, TNT Express)
+**LookupLocation** - Location options: Barwa Towers, Marina 50, Element Mariott
 
-**LookupLocation** - Location options (e.g., Barwa Towers, Marina 50, Element Mariott)
+**Note**: Lookup data is auto-populated during deployment via the GitHub Actions workflow.
 
 ## Database Migrations
 
@@ -344,9 +344,9 @@ All migrations are consolidated into a single clean init file:
 backend/prisma/migrations/20260205000000_init/migration.sql
 ```
 
-This includes all enums, tables, indexes, and foreign keys.
+This includes all enums, tables, indexes, foreign keys, and lookup data INSERT statements.
 
-**Important**: The seed script (`backend/prisma/seed.ts`) only contains mock/test data. Lookup table values (Purpose, DeliveryType, Courier, Location) must be inserted directly into the database - they are NOT seeded.
+**Important**: The seed script (`backend/prisma/seed.ts`) only contains mock/test data for development/testing.
 
 ## Dropdown Implementation
 
