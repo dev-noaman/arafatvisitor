@@ -215,3 +215,38 @@ ALTER TABLE "Delivery" ADD CONSTRAINT "Delivery_hostId_fkey"
 
 ALTER TABLE "AuditLog" ADD CONSTRAINT "AuditLog_userId_fkey"
     FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- ============ LOOKUP DATA ============
+
+-- Purpose of Visit
+INSERT INTO "LookupPurpose" (code, label, active, "sortOrder", "updatedAt") VALUES
+('MEETING', 'Meeting', true, 1, NOW()),
+('INTERVIEW', 'Interview', true, 2, NOW()),
+('DELIVERY', 'Delivery', true, 3, NOW()),
+('MAINTENANCE', 'Maintenance', true, 4, NOW()),
+('OTHER', 'Other', true, 5, NOW())
+ON CONFLICT (code) DO NOTHING;
+
+-- Delivery Types
+INSERT INTO "LookupDeliveryType" (code, label, active, "sortOrder", "updatedAt") VALUES
+('DOCUMENT', 'Document', true, 1, NOW()),
+('FOOD', 'Food', true, 2, NOW()),
+('GIFT', 'Gift', true, 3, NOW())
+ON CONFLICT (code) DO NOTHING;
+
+-- Couriers
+INSERT INTO "LookupCourier" (code, label, active, "sortOrder", "updatedAt") VALUES
+('DHL', 'DHL', true, 1, NOW()),
+('FEDEX', 'FedEx', true, 2, NOW()),
+('ARAMEX', 'Aramex', true, 3, NOW()),
+('QATAR_POST', 'Qatar Post', true, 4, NOW()),
+('UPS', 'UPS', true, 5, NOW()),
+('TNT', 'TNT Express', true, 6, NOW())
+ON CONFLICT (code) DO NOTHING;
+
+-- Locations
+INSERT INTO "LookupLocation" (code, label, active, "sortOrder", "updatedAt") VALUES
+('BARWA_TOWERS', 'Barwa Towers', true, 1, NOW()),
+('MARINA_50', 'Marina 50', true, 2, NOW()),
+('ELEMENT_MARIOTT', 'Element Mariott', true, 3, NOW())
+ON CONFLICT (code) DO NOTHING;
