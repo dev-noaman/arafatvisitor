@@ -126,19 +126,29 @@ export class WhatsAppService {
     );
 
     try {
+      // Convert base64 to Buffer
+      const imageBuffer = Buffer.from(imageBase64, "base64");
+
+      // Create FormData for multipart upload
+      const FormData = (await import("form-data")).default;
+      const formData = new FormData();
+
+      formData.append("client_id", this.clientId.toString());
+      formData.append("api_key", this.apiKey);
+      formData.append("whatsapp_client", this.whatsappClient.toString());
+      formData.append("msg_type", "1"); // Image type
+      formData.append("msg", caption || "");
+      formData.append("phone", phoneNumber);
+      formData.append("country_code", countryCode);
+      formData.append("file", imageBuffer, {
+        filename: "qrcode.png",
+        contentType: "image/png",
+      });
+
       const res = await fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          client_id: this.clientId,
-          api_key: this.apiKey,
-          whatsapp_client: this.whatsappClient,
-          msg_type: 1, // Image type
-          media: imageBase64, // Base64 image data
-          msg: caption || "",
-          phone: phoneNumber,
-          country_code: countryCode,
-        }),
+        body: formData as unknown as BodyInit,
+        headers: formData.getHeaders(),
       });
 
       if (!res.ok) {
