@@ -120,7 +120,19 @@ export class AdminApiController {
   }
 
   @Get("profile")
-  async getProfile(@Query("email") email?: string, @Req() req: any) {
+  async getProfile(@Req() req: any, @Query("email") email?: string) {
+    // DEBUG LOGGING
+    console.log('[DEBUG] /admin/api/profile called');
+    console.log('[DEBUG] Query params:', { email });
+    console.log('[DEBUG] Headers:', {
+      authorization: req.headers?.authorization ? 'Bearer [REDACTED]' : 'MISSING',
+      contentType: req.headers?.['content-type'],
+      origin: req.headers?.origin,
+      referer: req.headers?.referer,
+    });
+    console.log('[DEBUG] Request URL:', req.url);
+    console.log('[DEBUG] Request method:', req.method);
+    
     // Try to get email from query param, JWT token, or session
     let userEmail = email;
 
@@ -132,34 +144,53 @@ export class AdminApiController {
           const token = authHeader.substring(7);
           const decoded = this.jwtService.verify(token) as { email: string };
           userEmail = decoded.email;
-        } catch {
+          console.log('[DEBUG] Successfully decoded JWT token for email:', userEmail);
+        } catch (err) {
+          console.log('[DEBUG] Failed to decode JWT token:', err);
           // Token invalid or expired
         }
       }
     }
 
     if (!userEmail) {
+      console.log('[DEBUG] No user email found - throwing UNAUTHORIZED');
       throw new HttpException("Authentication required", HttpStatus.UNAUTHORIZED);
     }
 
+    console.log('[DEBUG] Looking up user with email:', userEmail);
     const user = await this.prisma.user.findUnique({ where: { email: userEmail } });
     if (!user) {
+      console.log('[DEBUG] User not found - throwing NOT_FOUND');
       throw new HttpException("User not found", HttpStatus.NOT_FOUND);
     }
+    console.log('[DEBUG] User found:', { id: user.id, name: user.name, email: user.email, role: user.role });
     return { id: user.id, name: user.name, email: user.email, role: user.role };
   }
 
   @Get("profile/preferences")
   async getPreferences(@Req() req: any) {
+    // DEBUG LOGGING
+    console.log('[DEBUG] /admin/api/profile/preferences called');
+    console.log('[DEBUG] Headers:', {
+      authorization: req.headers?.authorization ? 'Bearer [REDACTED]' : 'MISSING',
+      contentType: req.headers?.['content-type'],
+      origin: req.headers?.origin,
+      referer: req.headers?.referer,
+    });
+    console.log('[DEBUG] Request URL:', req.url);
+    console.log('[DEBUG] Request method:', req.method);
+    
     // Get user from JWT token
     const authHeader = req.headers?.authorization;
     if (!authHeader?.startsWith("Bearer ")) {
+      console.log('[DEBUG] No Authorization header found - throwing UNAUTHORIZED');
       throw new HttpException("Authentication required", HttpStatus.UNAUTHORIZED);
     }
 
     try {
       const token = authHeader.substring(7);
       const decoded = this.jwtService.verify(token) as { email: string };
+      console.log('[DEBUG] Successfully decoded JWT token for email:', decoded.email);
 
       // Return default preferences (can be extended to store in DB)
       return {
@@ -168,7 +199,8 @@ export class AdminApiController {
         theme: "light",
         language: "en",
       };
-    } catch {
+    } catch (err) {
+      console.log('[DEBUG] Failed to decode JWT token:', err);
       throw new HttpException("Invalid or expired token", HttpStatus.UNAUTHORIZED);
     }
   }
