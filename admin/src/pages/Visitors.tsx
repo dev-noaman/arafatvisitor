@@ -4,7 +4,7 @@ import ErrorState from '@/components/common/ErrorState'
 import { getVisitors, createVisit, updateVisit, deleteVisit, approveVisit, rejectVisit, checkoutVisit } from '@/services/visitors'
 import { getHosts } from '@/services/hosts'
 import { useToast } from '@/hooks'
-import type { Visit, VisitFormData, Host, VisitStatus, PaginatedResponse } from '@/types'
+import type { Visit, VisitFormData, Host, VisitStatus } from '@/types'
 
 export default function Visitors() {
   const { success, error } = useToast()
@@ -19,7 +19,7 @@ export default function Visitors() {
   const [visitorToDelete, setVisitorToDelete] = useState<Visit | undefined>()
   const [isDeleting, setIsDeleting] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isActioning, setIsActioning] = useState(false)
+  const [, setIsActioning] = useState(false)
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 10,

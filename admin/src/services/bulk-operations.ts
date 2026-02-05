@@ -1,5 +1,4 @@
 import { api } from './api'
-import type { Visit, Host } from '@/types'
 
 /**
  * Bulk approve visitors

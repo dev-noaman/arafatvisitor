@@ -12,7 +12,6 @@ import type {
   PreRegistration,
   PreRegistrationFormData,
   Host,
-  PaginatedResponse,
 } from '@/types'
 
 export default function PreRegister() {
@@ -28,7 +27,7 @@ export default function PreRegister() {
   const [preRegToDelete, setPreRegToDelete] = useState<PreRegistration | undefined>()
   const [isDeleting, setIsDeleting] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isActioning, setIsActioning] = useState(false)
+  const [, setIsActioning] = useState(false)
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 10,

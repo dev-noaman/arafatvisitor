@@ -1,5 +1,4 @@
 import { useCallback, useState, useEffect } from 'react'
-import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
 import {
   ProfileCard,
@@ -26,7 +25,7 @@ export default function Profile() {
     setIsProfileLoading(true)
     try {
       const response = await getProfile()
-      setUser(response.data || (response as User))
+      setUser(response)
     } catch (err: unknown) {
       error(err instanceof Error ? err.message : 'Failed to load profile')
     } finally {
@@ -37,7 +36,7 @@ export default function Profile() {
   const fetchPreferences = useCallback(async () => {
     try {
       const response = await getPreferences()
-      setPreferences(response.data || (response as PreferencesFormData))
+      setPreferences(response)
     } catch {
       // Preferences might not exist, that's okay
       setPreferences({
@@ -58,7 +57,7 @@ export default function Profile() {
     setIsProfileLoading(true)
     try {
       const response = await updateProfile(data)
-      setUser(response.data || (response as User))
+      setUser(response)
       success('Profile updated successfully')
     } catch (err: unknown) {
       error(err instanceof Error ? err.message : 'Failed to update profile')
@@ -85,7 +84,7 @@ export default function Profile() {
     setIsPreferencesLoading(true)
     try {
       const response = await updatePreferences(data)
-      setPreferences(response.data || (response as PreferencesFormData))
+      setPreferences(response)
       success('Preferences saved successfully')
     } catch (err: unknown) {
       error(err instanceof Error ? err.message : 'Failed to save preferences')

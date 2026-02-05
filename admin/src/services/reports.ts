@@ -68,30 +68,48 @@ export const getHostReports = async (params: DateRangeParams) => {
   return response
 }
 
-export const exportVisitReport = async (params: DateRangeParams, format: 'csv' | 'pdf' = 'csv') => {
+export const exportVisitReport = async (params: DateRangeParams, format: 'csv' | 'pdf' = 'csv'): Promise<Blob> => {
   const queryString = new URLSearchParams({
     startDate: params.startDate,
     endDate: params.endDate,
     format,
   })
 
-  const response = await api.get<Blob>(
-    `/admin/api/reports/visits/export?${queryString.toString()}`
-  )
-  return response
+  const token = localStorage.getItem('auth_token')
+  const response = await fetch(`/admin/api/reports/visits/export?${queryString.toString()}`, {
+    method: 'GET',
+    headers: {
+      ...(token && { Authorization: `Bearer ${token}` }),
+    },
+  })
+
+  if (!response.ok) {
+    throw new Error('Failed to export report')
+  }
+
+  return response.blob()
 }
 
-export const exportDeliveryReport = async (params: DateRangeParams, format: 'csv' | 'pdf' = 'csv') => {
+export const exportDeliveryReport = async (params: DateRangeParams, format: 'csv' | 'pdf' = 'csv'): Promise<Blob> => {
   const queryString = new URLSearchParams({
     startDate: params.startDate,
     endDate: params.endDate,
     format,
   })
 
-  const response = await api.get<Blob>(
-    `/admin/api/reports/deliveries/export?${queryString.toString()}`
-  )
-  return response
+  const token = localStorage.getItem('auth_token')
+  const response = await fetch(`/admin/api/reports/deliveries/export?${queryString.toString()}`, {
+    method: 'GET',
+    headers: {
+      ...(token && { Authorization: `Bearer ${token}` }),
+    },
+  })
+
+  if (!response.ok) {
+    throw new Error('Failed to export report')
+  }
+
+  return response.blob()
 }
 
 export const downloadReport = (blob: Blob, filename: string) => {

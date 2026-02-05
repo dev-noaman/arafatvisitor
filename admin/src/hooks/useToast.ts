@@ -53,7 +53,10 @@ export function useToast() {
     },
     options?: ToastOptions
   ) => {
-    return sonnerToast.promise(promise, messages, { duration: options?.duration })
+    return sonnerToast.promise(promise, {
+      ...messages,
+      duration: options?.duration,
+    })
   }
 
   return {

@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import type { Visit, Host, PreRegistration, Delivery } from '@/types'
+import type { Visit, Host, Delivery } from '@/types'
 
 /**
  * Export data to CSV format
@@ -150,7 +150,7 @@ export const validateImportData = <T extends z.ZodSchema>(
       if (error instanceof z.ZodError) {
         invalid.push({
           row: index + 1,
-          error: error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join('; '),
+          error: error.issues.map((e: z.ZodIssue) => `${e.path.join('.')}: ${e.message}`).join('; '),
         })
       }
     }

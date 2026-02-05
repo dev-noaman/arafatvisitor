@@ -3,7 +3,7 @@ import { UsersList, UserModal, DeleteConfirmationDialog } from '@/components/use
 import ErrorState from '@/components/common/ErrorState'
 import { getUsers, createUser, updateUser, deleteUser, deactivateUser, activateUser } from '@/services/users'
 import { useToast } from '@/hooks'
-import type { User, UserFormData, UserRole, UserStatus, PaginatedResponse } from '@/types'
+import type { User, UserFormData, UserRole, UserStatus } from '@/types'
 
 export default function Users() {
   const { success, error } = useToast()
@@ -16,7 +16,7 @@ export default function Users() {
   const [userToDelete, setUserToDelete] = useState<User | undefined>()
   const [isDeleting, setIsDeleting] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isActioning, setIsActioning] = useState(false)
+  const [, setIsActioning] = useState(false)
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 10,

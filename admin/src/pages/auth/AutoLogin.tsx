@@ -5,9 +5,8 @@ import { useAuthContext } from '@/context/AuthContext'
 export default function AutoLogin() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
-  const { autoLogin, isAuthenticated } = useAuthContext()
+  const { autoLogin } = useAuthContext()
   const [error, setError] = useState<string | null>(null)
-  const [isProcessing, setIsProcessing] = useState(true)
   const hasAttempted = useRef(false)
 
   useEffect(() => {
@@ -19,19 +18,16 @@ export default function AutoLogin() {
 
     if (!token) {
       setError('No token provided')
-      setIsProcessing(false)
       return
     }
 
     const performAutoLogin = async () => {
       try {
         await autoLogin(token)
-        setIsProcessing(false)
         // Redirect to dashboard after successful login
         navigate('/admin', { replace: true })
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Auto-login failed')
-        setIsProcessing(false)
       }
     }
 

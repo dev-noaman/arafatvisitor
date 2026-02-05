@@ -60,9 +60,9 @@ export const getAuditTrail = async (
     const response = await api.get<AuditLogEntry[]>(
       `/admin/api/audit/trail/${entityType}/${entityId}?limit=${limit}`
     )
-    return response.data || []
+    return response || []
   } catch (error) {
-    throw new Error(`Failed to fetch audit trail: ${(error as any).message}`)
+    throw new Error(`Failed to fetch audit trail: ${(error as Error).message}`)
   }
 }
 
@@ -74,9 +74,9 @@ export const getRecentActivities = async (limit = 10): Promise<AuditLogEntry[]> 
     const response = await api.get<AuditLogEntry[]>(
       `/admin/api/audit/activity/recent?limit=${limit}`
     )
-    return response.data || []
+    return response || []
   } catch (error) {
-    throw new Error(`Failed to fetch recent activities: ${(error as any).message}`)
+    throw new Error(`Failed to fetch recent activities: ${(error as Error).message}`)
   }
 }
 

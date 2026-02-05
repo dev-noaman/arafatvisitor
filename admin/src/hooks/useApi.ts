@@ -26,10 +26,10 @@ export function useApi<T>() {
       setState({ data: null, loading: true, error: null })
       try {
         const response = await api.get<T>(endpoint)
-        setState({ data: response.data || response, loading: false, error: null })
+        setState({ data: response, loading: false, error: null })
         return response
-      } catch (err: any) {
-        const errorMessage = err.message || 'An error occurred'
+      } catch (err: unknown) {
+        const errorMessage = (err as Error).message || 'An error occurred'
         setState({ data: null, loading: false, error: errorMessage })
         if (options?.showErrorToast !== false) {
           toast.error(errorMessage)
@@ -45,13 +45,13 @@ export function useApi<T>() {
       setState({ data: null, loading: true, error: null })
       try {
         const response = await api.post<T>(endpoint, data)
-        setState({ data: response.data || response, loading: false, error: null })
+        setState({ data: response, loading: false, error: null })
         if (options?.showSuccessToast) {
           toast.success(options.successMessage || 'Operation successful')
         }
         return response
-      } catch (err: any) {
-        const errorMessage = err.message || 'An error occurred'
+      } catch (err: unknown) {
+        const errorMessage = (err as Error).message || 'An error occurred'
         setState({ data: null, loading: false, error: errorMessage })
         if (options?.showErrorToast !== false) {
           toast.error(errorMessage)
@@ -67,13 +67,13 @@ export function useApi<T>() {
       setState({ data: null, loading: true, error: null })
       try {
         const response = await api.put<T>(endpoint, data)
-        setState({ data: response.data || response, loading: false, error: null })
+        setState({ data: response, loading: false, error: null })
         if (options?.showSuccessToast) {
           toast.success(options.successMessage || 'Operation successful')
         }
         return response
-      } catch (err: any) {
-        const errorMessage = err.message || 'An error occurred'
+      } catch (err: unknown) {
+        const errorMessage = (err as Error).message || 'An error occurred'
         setState({ data: null, loading: false, error: errorMessage })
         if (options?.showErrorToast !== false) {
           toast.error(errorMessage)
@@ -89,13 +89,13 @@ export function useApi<T>() {
       setState({ data: null, loading: true, error: null })
       try {
         const response = await api.del<T>(endpoint)
-        setState({ data: response.data || response, loading: false, error: null })
+        setState({ data: response, loading: false, error: null })
         if (options?.showSuccessToast) {
           toast.success(options.successMessage || 'Operation successful')
         }
         return response
-      } catch (err: any) {
-        const errorMessage = err.message || 'An error occurred'
+      } catch (err: unknown) {
+        const errorMessage = (err as Error).message || 'An error occurred'
         setState({ data: null, loading: false, error: errorMessage })
         if (options?.showErrorToast !== false) {
           toast.error(errorMessage)

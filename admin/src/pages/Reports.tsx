@@ -28,7 +28,6 @@ export default function Reports() {
   const { success, error } = useToast()
   const [isLoading, setIsLoading] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [isExporting, setIsExporting] = useState(false)
   const [data, setData] = useState<ReportsData>({
     summary: {
       totalVisits: 0,
@@ -88,7 +87,6 @@ export default function Reports() {
 
   // Handle export
   const handleExportVisits = async () => {
-    setIsExporting(true)
     try {
       const blob = await exportVisitReport(dateRange, 'csv')
       downloadReport(
@@ -96,15 +94,12 @@ export default function Reports() {
         `visit-report-${dateRange.startDate}-${dateRange.endDate}.csv`
       )
       success('Visit report exported successfully')
-    } catch (err) {
+    } catch {
       error('Failed to export visit report')
-    } finally {
-      setIsExporting(false)
     }
   }
 
   const handleExportDeliveries = async () => {
-    setIsExporting(true)
     try {
       const blob = await exportDeliveryReport(dateRange, 'csv')
       downloadReport(
@@ -112,10 +107,8 @@ export default function Reports() {
         `delivery-report-${dateRange.startDate}-${dateRange.endDate}.csv`
       )
       success('Delivery report exported successfully')
-    } catch (err) {
+    } catch {
       error('Failed to export delivery report')
-    } finally {
-      setIsExporting(false)
     }
   }
 

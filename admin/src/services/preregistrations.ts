@@ -74,22 +74,26 @@ export const reApproveRejected = async (id: string) => {
   return response
 }
 
-export const getStatusBadgeColor = (
-  status: 'PENDING_APPROVAL' | 'REJECTED' | 'APPROVED'
-): string => {
+export const getStatusBadgeColor = (status: string): string => {
   const colors: Record<string, string> = {
+    PENDING: 'bg-yellow-100 text-yellow-800',
     PENDING_APPROVAL: 'bg-yellow-100 text-yellow-800',
     REJECTED: 'bg-red-100 text-red-800',
     APPROVED: 'bg-green-100 text-green-800',
+    CHECKED_IN: 'bg-blue-100 text-blue-800',
+    CHECKED_OUT: 'bg-gray-100 text-gray-800',
   }
   return colors[status] || 'bg-gray-100 text-gray-800'
 }
 
-export const getStatusLabel = (status: 'PENDING_APPROVAL' | 'REJECTED' | 'APPROVED'): string => {
+export const getStatusLabel = (status: string): string => {
   const labels: Record<string, string> = {
+    PENDING: 'Pending',
     PENDING_APPROVAL: 'Pending Approval',
     REJECTED: 'Rejected',
     APPROVED: 'Approved',
+    CHECKED_IN: 'Checked In',
+    CHECKED_OUT: 'Checked Out',
   }
   return labels[status] || status
 }

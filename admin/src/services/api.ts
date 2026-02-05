@@ -1,4 +1,4 @@
-import { ApiResponse, ApiError } from '../types';
+import { ApiError } from '../types';
 
 // API Base URL - empty since Vite proxy handles requests
 // The proxy is configured in vite.config.ts to route:
@@ -22,11 +22,11 @@ const removeAuthToken = (): void => {
   localStorage.removeItem('auth_token');
 };
 
-// Generic API request function
+// Generic API request function - returns T directly (backend returns data unwrapped)
 async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {}
-): Promise<ApiResponse<T>> {
+): Promise<T> {
   const token = getAuthToken();
   const url = `${API_BASE_URL}${endpoint}`;
 
@@ -63,33 +63,33 @@ async function apiRequest<T>(
 }
 
 // GET request
-export async function get<T>(endpoint: string): Promise<ApiResponse<T>> {
+export async function get<T>(endpoint: string): Promise<T> {
   return apiRequest<T>(endpoint, { method: 'GET' });
 }
 
 // POST request
-export async function post<T>(endpoint: string, data: any): Promise<ApiResponse<T>> {
+export async function post<T>(endpoint: string, data?: unknown): Promise<T> {
   return apiRequest<T>(endpoint, {
     method: 'POST',
-    body: JSON.stringify(data),
+    body: data ? JSON.stringify(data) : undefined,
   });
 }
 
 // PUT request
-export async function put<T>(endpoint: string, data: any): Promise<ApiResponse<T>> {
+export async function put<T>(endpoint: string, data?: unknown): Promise<T> {
   return apiRequest<T>(endpoint, {
     method: 'PUT',
-    body: JSON.stringify(data),
+    body: data ? JSON.stringify(data) : undefined,
   });
 }
 
 // DELETE request
-export async function del<T>(endpoint: string): Promise<ApiResponse<T>> {
+export async function del<T>(endpoint: string): Promise<T> {
   return apiRequest<T>(endpoint, { method: 'DELETE' });
 }
 
 // Upload file (multipart/form-data)
-export async function upload<T>(endpoint: string, formData: FormData): Promise<ApiResponse<T>> {
+export async function upload<T>(endpoint: string, formData: FormData): Promise<T> {
   const token = getAuthToken();
   const url = `${API_BASE_URL}${endpoint}`;
 

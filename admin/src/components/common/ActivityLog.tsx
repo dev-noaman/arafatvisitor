@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { getRecentActivities, getActionColor, type AuditLogEntry } from '@/services/audit'
 import { useToast } from '@/hooks'
 

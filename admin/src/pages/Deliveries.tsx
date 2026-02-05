@@ -3,7 +3,7 @@ import { DeliveriesList, DeliveryModal, DeleteConfirmationDialog } from '@/compo
 import ErrorState from '@/components/common/ErrorState'
 import { getDeliveries, createDelivery, updateDelivery, deleteDelivery, markAsPickedUp } from '@/services/deliveries'
 import { useToast } from '@/hooks'
-import type { Delivery, DeliveryFormData, PaginatedResponse, DeliveryStatus } from '@/types'
+import type { Delivery, DeliveryFormData, DeliveryStatus } from '@/types'
 
 export default function Deliveries() {
   const { success, error } = useToast()
@@ -16,7 +16,7 @@ export default function Deliveries() {
   const [deliveryToDelete, setDeliveryToDelete] = useState<Delivery | undefined>()
   const [isDeleting, setIsDeleting] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isActioning, setIsActioning] = useState(false)
+  const [, setIsActioning] = useState(false)
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 10,

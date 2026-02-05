@@ -1,4 +1,3 @@
-import React from 'react'
 
 interface TableRowSkeletonProps {
   columns?: number
@@ -103,7 +102,7 @@ interface GridSkeletonProps {
 
 export function GridSkeleton({ columns = 3, items = 6 }: GridSkeletonProps) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fill, minmax(300px, 1fr))`, gap: '1.5rem' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${columns}, 1fr)`, gap: '1.5rem' }}>
       {Array.from({ length: items }).map((_, idx) => (
         <div key={idx} className="bg-white rounded-lg shadow p-6">
           <div className="h-6 bg-gray-200 rounded animate-pulse mb-4"></div>

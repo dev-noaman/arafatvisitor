@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import type { Host, PaginatedResponse } from '@/types'
+import { useState } from 'react'
+import type { Host } from '@/types'
 
 interface HostsListProps {
   hosts: Host[]

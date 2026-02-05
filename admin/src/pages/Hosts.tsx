@@ -3,7 +3,7 @@ import { HostsList, HostModal, DeleteConfirmationDialog } from '@/components/hos
 import ErrorState from '@/components/common/ErrorState'
 import { getHosts, createHost, updateHost, deleteHost } from '@/services/hosts'
 import { useToast } from '@/hooks'
-import type { Host, HostFormData, PaginatedResponse } from '@/types'
+import type { Host, HostFormData } from '@/types'
 
 export default function Hosts() {
   const { success, error } = useToast()

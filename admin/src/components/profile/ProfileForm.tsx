@@ -43,7 +43,7 @@ export default function ProfileForm({ user, onSubmit, isLoading }: ProfileFormPr
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             disabled={isLoading}
           />
-          {errors.name && <p className="text-sm text-red-600 mt-1">{errors.name?.message}</p>}
+          {errors.name && <p className="text-sm text-red-600 mt-1">{String(errors.name?.message)}</p>}
         </div>
 
         {/* Email Field (Read-only) */}
@@ -75,7 +75,7 @@ export default function ProfileForm({ user, onSubmit, isLoading }: ProfileFormPr
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           disabled={isLoading}
         />
-        {errors.phone && <p className="text-sm text-red-600 mt-1">{errors.phone?.message}</p>}
+        {errors.phone && <p className="text-sm text-red-600 mt-1">{String(errors.phone?.message)}</p>}
       </div>
 
       {/* Submit Button */}

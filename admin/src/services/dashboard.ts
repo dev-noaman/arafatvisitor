@@ -1,5 +1,4 @@
 import { get, post } from './api'
-import { Visit, Delivery } from '@/types'
 
 /**
  * Dashboard KPI metrics

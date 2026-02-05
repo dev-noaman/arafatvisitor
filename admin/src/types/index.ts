@@ -5,7 +5,7 @@ export type UserRole = 'ADMIN' | 'RECEPTION' | 'HOST';
 export type UserStatus = 'ACTIVE' | 'INACTIVE';
 
 // Visit Status
-export type VisitStatus = 'PENDING' | 'APPROVED' | 'CHECKED_IN' | 'CHECKED_OUT' | 'REJECTED';
+export type VisitStatus = 'PENDING' | 'PENDING_APPROVAL' | 'APPROVED' | 'CHECKED_IN' | 'CHECKED_OUT' | 'REJECTED';
 
 // Delivery Status
 export type DeliveryStatus = 'PENDING' | 'PICKED_UP';
@@ -211,6 +211,7 @@ export interface DeliveryFormData {
   recipientPhone?: string;
   deliveryCompany?: string;
   description?: string;
+  notes?: string;
 }
 
 export interface SmtpSettingsFormData {

@@ -1,4 +1,3 @@
-import React from 'react'
 import { getActionColor } from '@/services/audit'
 import type { AuditLogEntry } from '@/services/audit'
 
