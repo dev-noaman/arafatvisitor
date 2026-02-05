@@ -5,7 +5,7 @@ import { User, LoginCredentials, LoginResponse } from '@/types'
  * Login with email and password
  */
 export async function login(credentials: LoginCredentials): Promise<LoginResponse> {
-  const response = await post<LoginResponse>('/auth/login', credentials)
+  const response = await post<LoginResponse>('/api/auth/login', credentials)
   return (response as any).data || response
 }
 
@@ -13,7 +13,7 @@ export async function login(credentials: LoginCredentials): Promise<LoginRespons
  * Request password reset email
  */
 export async function forgotPassword(email: string): Promise<{ message: string }> {
-  const response = await post<{ message: string }>('/auth/forgot-password', { email })
+  const response = await post<{ message: string }>('/api/auth/forgot-password', { email })
   return (response as any).data || response
 }
 
@@ -21,7 +21,7 @@ export async function forgotPassword(email: string): Promise<{ message: string }
  * Reset password with token
  */
 export async function resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
-  const response = await post<{ message: string }>('/auth/reset-password', {
+  const response = await post<{ message: string }>('/api/auth/reset-password', {
     token,
     newPassword,
   })
