@@ -126,12 +126,12 @@ export class WhatsAppService {
     );
 
     try {
-      // Convert base64 to Buffer
+      // Convert base64 to Buffer and create Blob
       const imageBuffer = Buffer.from(imageBase64, "base64");
+      const imageBlob = new Blob([imageBuffer], { type: "image/png" });
 
-      // Create FormData for multipart upload using form-data package
-      const FormDataLib = (await import("form-data")).default;
-      const formData = new FormDataLib();
+      // Create FormData using native Node.js FormData (available in Node 18+)
+      const formData = new FormData();
 
       formData.append("client_id", this.clientId.toString());
       formData.append("api_key", this.apiKey);
@@ -140,19 +140,13 @@ export class WhatsAppService {
       formData.append("msg", caption || "");
       formData.append("phone", phoneNumber);
       formData.append("country_code", countryCode);
-      formData.append("file", imageBuffer, {
-        filename: "qrcode.png",
-        contentType: "image/png",
-      });
+      formData.append("file", imageBlob, "qrcode.png");
 
-      // Use node-fetch style request with form-data
-      const headers = formData.getHeaders();
-      console.log("[WhatsAppService] Sending with headers:", Object.keys(headers));
+      console.log("[WhatsAppService] Sending image via native FormData...");
 
       const res = await fetch(url, {
         method: "POST",
-        body: formData as unknown as BodyInit,
-        headers: headers,
+        body: formData,
       });
 
       const responseText = await res.text();
