@@ -1,3 +1,4 @@
+import { useCallback, useMemo } from 'react'
 import { toast as sonnerToast } from 'sonner'
 
 export type ToastType = 'success' | 'error' | 'info' | 'warning' | 'loading'
@@ -8,44 +9,44 @@ export interface ToastOptions {
 }
 
 export function useToast() {
-  const success = (message: string, options?: ToastOptions) => {
+  const success = useCallback((message: string, options?: ToastOptions) => {
     return sonnerToast.success(message, {
       duration: options?.duration,
       description: options?.description,
     })
-  }
+  }, [])
 
-  const error = (message: string, options?: ToastOptions) => {
+  const error = useCallback((message: string, options?: ToastOptions) => {
     return sonnerToast.error(message, {
       duration: options?.duration,
       description: options?.description,
     })
-  }
+  }, [])
 
-  const info = (message: string, options?: ToastOptions) => {
+  const info = useCallback((message: string, options?: ToastOptions) => {
     return sonnerToast.info(message, {
       duration: options?.duration,
       description: options?.description,
     })
-  }
+  }, [])
 
-  const warning = (message: string, options?: ToastOptions) => {
+  const warning = useCallback((message: string, options?: ToastOptions) => {
     return sonnerToast.warning(message, {
       duration: options?.duration,
       description: options?.description,
     })
-  }
+  }, [])
 
-  const loading = (message: string) => {
+  const loading = useCallback((message: string) => {
     return sonnerToast.loading(message)
-  }
+  }, [])
 
-  const dismiss = (id?: string | number) => {
+  const dismiss = useCallback((id?: string | number) => {
     sonnerToast.dismiss(id)
-  }
+  }, [])
 
-  const promise = <T,>(
-    promise: Promise<T>,
+  const promise = useCallback(<T,>(
+    promiseArg: Promise<T>,
     messages: {
       loading: string
       success: string
@@ -53,13 +54,13 @@ export function useToast() {
     },
     options?: ToastOptions
   ) => {
-    return sonnerToast.promise(promise, {
+    return sonnerToast.promise(promiseArg, {
       ...messages,
       duration: options?.duration,
     })
-  }
+  }, [])
 
-  return {
+  return useMemo(() => ({
     success,
     error,
     info,
@@ -67,5 +68,5 @@ export function useToast() {
     loading,
     dismiss,
     promise,
-  }
+  }), [success, error, info, warning, loading, dismiss, promise])
 }
