@@ -100,6 +100,7 @@ CREATE TABLE "CheckEvent" (
 -- Deliveries (package tracking)
 CREATE TABLE "Delivery" (
     "id" TEXT NOT NULL,
+    "deliveryType" TEXT,
     "recipient" TEXT NOT NULL,
     "hostId" BIGINT,
     "courier" TEXT NOT NULL,
@@ -156,6 +157,30 @@ CREATE TABLE "LookupDeliveryType" (
     CONSTRAINT "LookupDeliveryType_pkey" PRIMARY KEY ("id")
 );
 
+CREATE TABLE "LookupCourier" (
+    "id" SERIAL NOT NULL,
+    "code" TEXT NOT NULL,
+    "label" TEXT NOT NULL,
+    "active" BOOLEAN NOT NULL DEFAULT true,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "LookupCourier_pkey" PRIMARY KEY ("id")
+);
+
+CREATE TABLE "LookupLocation" (
+    "id" SERIAL NOT NULL,
+    "code" TEXT NOT NULL,
+    "label" TEXT NOT NULL,
+    "active" BOOLEAN NOT NULL DEFAULT true,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "LookupLocation_pkey" PRIMARY KEY ("id")
+);
+
 -- ============ INDEXES ============
 
 CREATE UNIQUE INDEX "Host_externalId_key" ON "Host"("externalId");
@@ -165,6 +190,8 @@ CREATE UNIQUE INDEX "QrToken_visitId_key" ON "QrToken"("visitId");
 CREATE UNIQUE INDEX "QrToken_token_key" ON "QrToken"("token");
 CREATE UNIQUE INDEX "LookupPurpose_code_key" ON "LookupPurpose"("code");
 CREATE UNIQUE INDEX "LookupDeliveryType_code_key" ON "LookupDeliveryType"("code");
+CREATE UNIQUE INDEX "LookupCourier_code_key" ON "LookupCourier"("code");
+CREATE UNIQUE INDEX "LookupLocation_code_key" ON "LookupLocation"("code");
 
 -- ============ FOREIGN KEYS ============
 

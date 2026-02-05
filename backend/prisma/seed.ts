@@ -449,48 +449,7 @@ async function seedTestVisitorsWithQr(hosts: { id: bigint; name: string; locatio
   return createdVisits;
 }
 
-async function seedLookupTables() {
-  console.log('Seeding lookup tables...');
-
-  // Purpose of Visit lookups
-  const purposes = [
-    { code: 'MEETING', label: 'Meeting', sortOrder: 1 },
-    { code: 'INTERVIEW', label: 'Interview', sortOrder: 2 },
-    { code: 'DELIVERY', label: 'Delivery', sortOrder: 3 },
-    { code: 'MAINTENANCE', label: 'Maintenance', sortOrder: 4 },
-    { code: 'OTHER', label: 'Other', sortOrder: 5 },
-  ];
-
-  for (const purpose of purposes) {
-    await prisma.lookupPurpose.upsert({
-      where: { code: purpose.code },
-      update: { label: purpose.label, sortOrder: purpose.sortOrder },
-      create: purpose,
-    });
-  }
-  console.log(`Seeded ${purposes.length} purpose lookups`);
-
-  // Delivery Type lookups
-  const deliveryTypes = [
-    { code: 'DOCUMENT', label: 'Document', sortOrder: 1 },
-    { code: 'FOOD', label: 'Food', sortOrder: 2 },
-    { code: 'GIFT', label: 'Gift', sortOrder: 3 },
-  ];
-
-  for (const deliveryType of deliveryTypes) {
-    await prisma.lookupDeliveryType.upsert({
-      where: { code: deliveryType.code },
-      update: { label: deliveryType.label, sortOrder: deliveryType.sortOrder },
-      create: deliveryType,
-    });
-  }
-  console.log(`Seeded ${deliveryTypes.length} delivery type lookups`);
-}
-
 async function main() {
-  // Seed lookup tables first (these are required for dropdowns)
-  await seedLookupTables();
-
   // Clear existing test data first to avoid duplicates
   await clearTestData();
 

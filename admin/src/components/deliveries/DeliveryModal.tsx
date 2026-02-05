@@ -1,12 +1,11 @@
 import { useEffect } from 'react'
 import DeliveryForm from './DeliveryForm'
-import type { Delivery, DeliveryFormData } from '@/types'
+import type { DeliveryFormData } from '@/types'
 
 interface DeliveryModalProps {
   isOpen: boolean
   onClose: () => void
   onSubmit: (data: DeliveryFormData) => Promise<void>
-  deliveryData?: Delivery
   isLoading?: boolean
 }
 
@@ -14,7 +13,6 @@ export default function DeliveryModal({
   isOpen,
   onClose,
   onSubmit,
-  deliveryData,
   isLoading,
 }: DeliveryModalProps) {
   useEffect(() => {
@@ -42,7 +40,7 @@ export default function DeliveryModal({
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
             <h2 className="text-xl font-semibold text-gray-900">
-              {deliveryData ? 'Edit Delivery' : 'Record New Delivery'}
+              Record New Delivery
             </h2>
             <button
               onClick={onClose}
@@ -69,7 +67,6 @@ export default function DeliveryModal({
           <div className="px-6 py-4">
             <DeliveryForm
               onSubmit={onSubmit}
-              initialData={deliveryData}
               isLoading={isLoading}
             />
           </div>

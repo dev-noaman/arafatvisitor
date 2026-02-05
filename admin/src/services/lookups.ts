@@ -21,3 +21,17 @@ export async function getPurposeLookups(): Promise<LookupItem[]> {
 export async function getDeliveryTypeLookups(): Promise<LookupItem[]> {
   return get<LookupItem[]>('/admin/api/lookups/delivery-types')
 }
+
+/**
+ * Fetch courier lookups from the API
+ */
+export async function getCourierLookups(): Promise<LookupItem[]> {
+  return get<LookupItem[]>('/admin/api/lookups/couriers')
+}
+
+/**
+ * Fetch location lookups from the API
+ */
+export async function getLocationLookups(): Promise<LookupItem[]> {
+  return get<LookupItem[]>('/admin/api/lookups/locations')
+}

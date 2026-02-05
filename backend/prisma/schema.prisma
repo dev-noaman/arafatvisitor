@@ -129,6 +129,7 @@ enum CheckType {
 // ============ DELIVERIES ============
 model Delivery {
   id           String         @id @default(cuid())
+  deliveryType String?
   recipient    String
   hostId       BigInt?
   host         Host?          @relation(fields: [hostId], references: [id])
@@ -174,6 +175,26 @@ model LookupPurpose {
 }
 
 model LookupDeliveryType {
+  id        Int      @id @default(autoincrement())
+  code      String   @unique
+  label     String
+  active    Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model LookupCourier {
+  id        Int      @id @default(autoincrement())
+  code      String   @unique
+  label     String
+  active    Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model LookupLocation {
   id        Int      @id @default(autoincrement())
   code      String   @unique
   label     String

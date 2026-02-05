@@ -2639,20 +2639,27 @@ export class AdminApiController {
   async createDelivery(
     @Body()
     body: {
-      recipient: string;
-      hostId?: string;
+      deliveryType: string;
+      hostId: string;
       courier: string;
-      location: string;
-      notes?: string;
     },
   ) {
+    // Fetch the host to get recipient name and location
+    const host = await this.prisma.host.findUnique({
+      where: { id: BigInt(body.hostId) },
+    });
+
+    if (!host) {
+      throw new HttpException("Host not found", HttpStatus.NOT_FOUND);
+    }
+
     const delivery = await this.prisma.delivery.create({
       data: {
-        recipient: body.recipient,
-        hostId: body.hostId ? BigInt(body.hostId) : null,
+        deliveryType: body.deliveryType,
+        recipient: host.name,
+        hostId: BigInt(body.hostId),
         courier: body.courier,
-        location: body.location as "BARWA_TOWERS" | "MARINA_50" | "ELEMENT_MARIOTT",
-        notes: body.notes,
+        location: host.location || "BARWA_TOWERS",
         status: "RECEIVED",
         receivedAt: new Date(),
       },
@@ -3202,6 +3209,24 @@ export class AdminApiController {
       orderBy: { sortOrder: "asc" },
     });
     return deliveryTypes;
+  }
+
+  @Get("lookups/couriers")
+  async getCourierLookups() {
+    const couriers = await this.prisma.lookupCourier.findMany({
+      where: { active: true },
+      orderBy: { sortOrder: "asc" },
+    });
+    return couriers;
+  }
+
+  @Get("lookups/locations")
+  async getLocationLookups() {
+    const locations = await this.prisma.lookupLocation.findMany({
+      where: { active: true },
+      orderBy: { sortOrder: "asc" },
+    });
+    return locations;
   }
 
   // ============ HELPER METHODS ============

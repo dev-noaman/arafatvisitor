@@ -1,24 +1,49 @@
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import type { Delivery, DeliveryFormData } from '@/types'
+import type { Host } from '@/types'
+import { getDeliveryTypeLookups, getCourierLookups, type LookupItem } from '@/services/lookups'
+import { getHosts } from '@/services/hosts'
 
 const deliverySchema = z.object({
-  recipientName: z.string().min(2, 'Recipient name must be at least 2 characters'),
-  recipientEmail: z.string().email('Invalid email address').optional().or(z.literal('')),
-  recipientPhone: z.string().optional(),
-  deliveryCompany: z.string().optional(),
-  description: z.string().optional(),
-  notes: z.string().optional(),
+  deliveryType: z.string().min(1, 'Please select delivery type'),
+  hostId: z.string().min(1, 'Please select a host'),
+  courier: z.string().min(1, 'Please select a courier'),
 })
+
+type DeliveryFormData = z.infer<typeof deliverySchema>
 
 interface DeliveryFormProps {
   onSubmit: (data: DeliveryFormData) => Promise<void>
-  initialData?: Delivery
   isLoading?: boolean
 }
 
-export default function DeliveryForm({ onSubmit, initialData, isLoading }: DeliveryFormProps) {
+export default function DeliveryForm({ onSubmit, isLoading }: DeliveryFormProps) {
+  const [deliveryTypes, setDeliveryTypes] = useState<LookupItem[]>([])
+  const [couriers, setCouriers] = useState<LookupItem[]>([])
+  const [hosts, setHosts] = useState<Host[]>([])
+  const [isLoadingLookups, setIsLoadingLookups] = useState(true)
+
+  useEffect(() => {
+    Promise.all([
+      getDeliveryTypeLookups(),
+      getCourierLookups(),
+      getHosts({ page: 1, limit: 1000 }),
+    ])
+      .then(([types, courierList, hostsResponse]) => {
+        setDeliveryTypes(types)
+        setCouriers(courierList)
+        setHosts(hostsResponse.data || [])
+      })
+      .catch(() => {
+        setDeliveryTypes([])
+        setCouriers([])
+        setHosts([])
+      })
+      .finally(() => setIsLoadingLookups(false))
+  }, [])
+
   const {
     register,
     handleSubmit,
@@ -26,13 +51,10 @@ export default function DeliveryForm({ onSubmit, initialData, isLoading }: Deliv
     reset,
   } = useForm<DeliveryFormData>({
     resolver: zodResolver(deliverySchema),
-    defaultValues: initialData || {
-      recipientName: '',
-      recipientEmail: '',
-      recipientPhone: '',
-      deliveryCompany: '',
-      description: '',
-      notes: '',
+    defaultValues: {
+      deliveryType: '',
+      hostId: '',
+      courier: '',
     },
   })
 
@@ -43,119 +65,88 @@ export default function DeliveryForm({ onSubmit, initialData, isLoading }: Deliv
 
   return (
     <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
-      {/* Recipient Name */}
+      {/* Type of Delivery */}
       <div>
-        <label htmlFor="recipientName" className="block text-sm font-medium text-gray-700 mb-1">
-          Recipient Name *
+        <label htmlFor="deliveryType" className="block text-sm font-medium text-gray-700 mb-1">
+          Type of Delivery *
         </label>
-        <input
-          {...register('recipientName')}
-          type="text"
-          id="recipientName"
-          placeholder="Enter recipient name"
+        <select
+          {...register('deliveryType')}
+          id="deliveryType"
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          disabled={isLoading}
-        />
-        {errors.recipientName && (
-          <p className="text-sm text-red-600 mt-1">{errors.recipientName.message}</p>
+          disabled={isLoading || isLoadingLookups}
+        >
+          <option value="">
+            {isLoadingLookups ? 'Loading...' : 'Select type of delivery'}
+          </option>
+          {deliveryTypes.map((type) => (
+            <option key={type.id} value={type.label}>
+              {type.label}
+            </option>
+          ))}
+        </select>
+        {errors.deliveryType && (
+          <p className="text-sm text-red-600 mt-1">{errors.deliveryType.message}</p>
         )}
       </div>
 
-      {/* Recipient Email */}
+      {/* Host */}
       <div>
-        <label htmlFor="recipientEmail" className="block text-sm font-medium text-gray-700 mb-1">
-          Email
+        <label htmlFor="hostId" className="block text-sm font-medium text-gray-700 mb-1">
+          Host *
         </label>
-        <input
-          {...register('recipientEmail')}
-          type="email"
-          id="recipientEmail"
-          placeholder="Enter email address"
+        <select
+          {...register('hostId')}
+          id="hostId"
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          disabled={isLoading}
-        />
-        {errors.recipientEmail && (
-          <p className="text-sm text-red-600 mt-1">{errors.recipientEmail.message}</p>
+          disabled={isLoading || isLoadingLookups}
+        >
+          <option value="">
+            {isLoadingLookups ? 'Loading...' : 'Select a host'}
+          </option>
+          {hosts.map((host) => (
+            <option key={host.id} value={host.id}>
+              {host.name} - {host.company}
+            </option>
+          ))}
+        </select>
+        {errors.hostId && (
+          <p className="text-sm text-red-600 mt-1">{errors.hostId.message}</p>
         )}
       </div>
 
-      {/* Recipient Phone */}
+      {/* Courier */}
       <div>
-        <label htmlFor="recipientPhone" className="block text-sm font-medium text-gray-700 mb-1">
-          Phone
+        <label htmlFor="courier" className="block text-sm font-medium text-gray-700 mb-1">
+          Courier *
         </label>
-        <input
-          {...register('recipientPhone')}
-          type="tel"
-          id="recipientPhone"
-          placeholder="Enter phone number"
+        <select
+          {...register('courier')}
+          id="courier"
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          disabled={isLoading}
-        />
-        {errors.recipientPhone && (
-          <p className="text-sm text-red-600 mt-1">{errors.recipientPhone.message}</p>
+          disabled={isLoading || isLoadingLookups}
+        >
+          <option value="">
+            {isLoadingLookups ? 'Loading...' : 'Select a courier'}
+          </option>
+          {couriers.map((courier) => (
+            <option key={courier.id} value={courier.label}>
+              {courier.label}
+            </option>
+          ))}
+        </select>
+        {errors.courier && (
+          <p className="text-sm text-red-600 mt-1">{errors.courier.message}</p>
         )}
-      </div>
-
-      {/* Delivery Company */}
-      <div>
-        <label htmlFor="deliveryCompany" className="block text-sm font-medium text-gray-700 mb-1">
-          Delivery Company
-        </label>
-        <input
-          {...register('deliveryCompany')}
-          type="text"
-          id="deliveryCompany"
-          placeholder="E.g., DHL, FedEx, Aramex, etc."
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          disabled={isLoading}
-        />
-        {errors.deliveryCompany && (
-          <p className="text-sm text-red-600 mt-1">{errors.deliveryCompany.message}</p>
-        )}
-      </div>
-
-      {/* Description/Package Contents */}
-      <div>
-        <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-          Package Description
-        </label>
-        <input
-          {...register('description')}
-          type="text"
-          id="description"
-          placeholder="E.g., Office supplies, Electronics, Documents, etc."
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          disabled={isLoading}
-        />
-        {errors.description && (
-          <p className="text-sm text-red-600 mt-1">{errors.description.message}</p>
-        )}
-      </div>
-
-      {/* Notes */}
-      <div>
-        <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">
-          Notes
-        </label>
-        <textarea
-          {...register('notes')}
-          id="notes"
-          placeholder="Any additional notes about the delivery"
-          rows={3}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          disabled={isLoading}
-        ></textarea>
-        {errors.notes && <p className="text-sm text-red-600 mt-1">{errors.notes.message}</p>}
       </div>
 
       {/* Submit Button */}
       <button
         type="submit"
-        disabled={isLoading}
+        disabled={isLoading || isLoadingLookups}
         className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-400 transition"
       >
-        {isLoading ? 'Saving...' : initialData ? 'Update Delivery' : 'Record Delivery'}
+        {isLoading ? 'Saving...' : 'Record Delivery'}
       </button>
     </form>
   )

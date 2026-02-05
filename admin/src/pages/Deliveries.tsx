@@ -202,7 +202,6 @@ export default function Deliveries() {
         isOpen={isModalOpen}
         onClose={handleCloseModal}
         onSubmit={handleFormSubmit}
-        deliveryData={selectedDelivery}
         isLoading={isSubmitting}
       />
 

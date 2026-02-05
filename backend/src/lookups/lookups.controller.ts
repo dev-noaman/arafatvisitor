@@ -23,4 +23,22 @@ export class LookupsController {
       orderBy: { sortOrder: "asc" },
     });
   }
+
+  @Get("couriers")
+  @Public()
+  async getCouriers() {
+    return this.prisma.lookupCourier.findMany({
+      where: { active: true },
+      orderBy: { sortOrder: "asc" },
+    });
+  }
+
+  @Get("locations")
+  @Public()
+  async getLocations() {
+    return this.prisma.lookupLocation.findMany({
+      where: { active: true },
+      orderBy: { sortOrder: "asc" },
+    });
+  }
 }

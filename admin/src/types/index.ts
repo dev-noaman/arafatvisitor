@@ -215,12 +215,9 @@ export interface PreRegistrationFormData {
 }
 
 export interface DeliveryFormData {
-  recipientName: string;
-  recipientEmail?: string;
-  recipientPhone?: string;
-  deliveryCompany?: string;
-  description?: string;
-  notes?: string;
+  deliveryType: string;
+  hostId: string;
+  courier: string;
 }
 
 export interface SmtpSettingsFormData {
