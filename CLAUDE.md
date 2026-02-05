@@ -1,6 +1,6 @@
 # Arafat Visitor Management System Development Guidelines
 
-Last updated: 2026-02-05 (WhatsApp & Email QR sending verified working)
+Last updated: 2026-02-05 (Database-driven dropdowns for Purpose & Delivery Type)
 
 ## Active Technologies
 
@@ -335,3 +335,29 @@ Lookup tables store values for dropdown menus, fetched from the database.
 - DOCUMENT (Document)
 - FOOD (Food)
 - GIFT (Gift)
+
+## Database Migrations
+
+All migrations are consolidated into a single clean init file:
+```
+backend/prisma/migrations/20260205000000_init/migration.sql
+```
+
+This includes all enums, tables, indexes, and foreign keys. The seed script (`backend/prisma/seed.ts`) populates lookup tables with initial values on deployment.
+
+## Dropdown Implementation
+
+### Purpose of Visit (Admin Panel)
+- Location: `admin/src/components/visitors/VisitForm.tsx`
+- Fetches from: `/admin/api/lookups/purposes`
+- Service: `admin/src/services/lookups.ts`
+
+### Type of Delivery (Reception Kiosk)
+- Location: `src/features/deliveries/DeliveryForm.tsx`
+- Fetches from: `/lookups/delivery-types`
+- Uses Radix UI Select component
+
+### Backend Lookups Module
+- Controller: `backend/src/lookups/lookups.controller.ts`
+- Module: `backend/src/lookups/lookups.module.ts`
+- Public endpoints (no auth required) for reception kiosk access
