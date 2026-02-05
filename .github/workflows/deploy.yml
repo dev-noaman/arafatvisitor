@@ -174,5 +174,6 @@ jobs:
 
       - name: Stop SSH control master
         if: always()
+        continue-on-error: true
         run: |
           sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh ${{ env.SSH_OPTS }} -O exit ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} 2>/dev/null || true
