@@ -1192,23 +1192,40 @@ export class AdminApiController {
       }
 
       try {
-        console.log("[send-qr] Sending WhatsApp text message...");
-        const qrLink = `${process.env.FRONTEND_URL || "https://arafatvisitor.cloud"}/check-in?session=${token}`;
-        const message = `Hello ${visit.visitorName}!\n\nYour visitor pass for ${visit.host?.company || "our office"} is ready.\n\nPlease use this link to access your QR code:\n${qrLink}\n\nOr show this message at reception for check-in.\n\nHost: ${visit.host?.name || "N/A"}\nPurpose: ${visit.purpose || "Visit"}`;
+        console.log("[send-qr] Generating QR code image for WhatsApp...");
 
-        console.log("[send-qr] Sending to:", visit.visitorPhone);
-        const sent = await this.whatsappService.send(visit.visitorPhone, message);
-        console.log("[send-qr] WhatsApp result:", sent);
+        // Generate QR code as base64 PNG
+        const qrBuffer = await QRCode.toBuffer(token, {
+          type: "png",
+          width: 400,
+          margin: 2,
+          color: {
+            dark: "#1E3A8A",
+            light: "#FFFFFF",
+          },
+        });
+        const qrBase64 = qrBuffer.toString("base64");
+
+        // Caption with visitor info
+        const caption = `*VISITOR PASS*\n\n*${visit.visitorName}*${visit.visitorCompany ? `\n${visit.visitorCompany}` : ""}\n\n*Host:* ${visit.host?.name || "N/A"}\n*Company:* ${visit.host?.company || "N/A"}\n*Purpose:* ${visit.purpose || "Visit"}\n\nShow this QR code at reception for check-in.`;
+
+        console.log("[send-qr] Sending QR image to:", visit.visitorPhone);
+        const sent = await this.whatsappService.sendImage(
+          visit.visitorPhone,
+          qrBase64,
+          caption
+        );
+        console.log("[send-qr] WhatsApp image result:", sent);
 
         if (!sent) {
           throw new HttpException(
-            "WhatsApp service failed to send message. Check configuration.",
+            "WhatsApp service failed to send image. Check configuration.",
             HttpStatus.SERVICE_UNAVAILABLE,
           );
         }
         return {
           success: true,
-          message: "QR link sent via WhatsApp",
+          message: "QR code image sent via WhatsApp",
         };
       } catch (e) {
         console.error("[send-qr] WhatsApp error:", e);
