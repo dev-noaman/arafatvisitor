@@ -1,6 +1,6 @@
 # Arafat Visitor Management System Development Guidelines
 
-Last updated: 2026-02-05 (Database-driven dropdowns for Purpose & Delivery Type)
+Last updated: 2026-02-05 (Database-driven lookups for all dropdowns)
 
 ## Active Technologies
 
@@ -287,12 +287,16 @@ GET  /admin/api/hosts                     # List hosts
 GET  /admin/api/users                     # List users (Admin only)
 GET  /admin/api/lookups/purposes          # Purpose of visit dropdown values
 GET  /admin/api/lookups/delivery-types    # Delivery type dropdown values
+GET  /admin/api/lookups/couriers          # Courier dropdown values
+GET  /admin/api/lookups/locations         # Location dropdown values
 ```
 
 ### Public API (for Reception Kiosk)
 ```
 GET  /lookups/purposes                    # Purpose of visit dropdown values
 GET  /lookups/delivery-types              # Delivery type dropdown values
+GET  /lookups/couriers                    # Courier dropdown values
+GET  /lookups/locations                   # Location dropdown values
 ```
 
 ## Database Schema (Key Models)
@@ -315,7 +319,7 @@ A **contact person at a company** who can receive visitors or deliveries (NOT in
 - id, visitId, token, expiresAt, usedAt
 
 ### Delivery
-- id, recipient, hostId, courier, location, status, notes
+- id, deliveryType, recipient, hostId, courier, location, status, notes
 - receivedAt, pickedUpAt
 
 ### Location Enum
@@ -323,18 +327,15 @@ A **contact person at a company** who can receive visitors or deliveries (NOT in
 
 ### Lookup Tables (Configurable Dropdowns)
 Lookup tables store values for dropdown menus, fetched from the database.
+**Note**: Lookup values are NOT seeded - they must be inserted directly into the database.
 
-**LookupPurpose** - Purpose of Visit options:
-- MEETING (Meeting)
-- INTERVIEW (Interview)
-- DELIVERY (Delivery)
-- MAINTENANCE (Maintenance)
-- OTHER (Other)
+**LookupPurpose** - Purpose of Visit options (e.g., Meeting, Interview, Delivery, Maintenance, Other)
 
-**LookupDeliveryType** - Type of Delivery options:
-- DOCUMENT (Document)
-- FOOD (Food)
-- GIFT (Gift)
+**LookupDeliveryType** - Type of Delivery options (e.g., Document, Food, Gift)
+
+**LookupCourier** - Courier options (e.g., DHL, FedEx, Aramex, Qatar Post, UPS, TNT Express)
+
+**LookupLocation** - Location options (e.g., Barwa Towers, Marina 50, Element Mariott)
 
 ## Database Migrations
 
@@ -343,7 +344,9 @@ All migrations are consolidated into a single clean init file:
 backend/prisma/migrations/20260205000000_init/migration.sql
 ```
 
-This includes all enums, tables, indexes, and foreign keys. The seed script (`backend/prisma/seed.ts`) populates lookup tables with initial values on deployment.
+This includes all enums, tables, indexes, and foreign keys.
+
+**Important**: The seed script (`backend/prisma/seed.ts`) only contains mock/test data. Lookup table values (Purpose, DeliveryType, Courier, Location) must be inserted directly into the database - they are NOT seeded.
 
 ## Dropdown Implementation
 
@@ -351,6 +354,12 @@ This includes all enums, tables, indexes, and foreign keys. The seed script (`ba
 - Location: `admin/src/components/visitors/VisitForm.tsx`
 - Fetches from: `/admin/api/lookups/purposes`
 - Service: `admin/src/services/lookups.ts`
+
+### Admin Deliveries Form
+- Location: `admin/src/components/deliveries/DeliveryForm.tsx`
+- Three dropdowns: Type of Delivery, Host, Courier
+- Fetches from: `/admin/api/lookups/delivery-types`, `/admin/api/hosts`, `/admin/api/lookups/couriers`
+- Backend derives recipient name and location from selected host
 
 ### Type of Delivery (Reception Kiosk)
 - Location: `src/features/deliveries/DeliveryForm.tsx`
