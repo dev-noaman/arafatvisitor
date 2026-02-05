@@ -44,6 +44,12 @@ export class EmailService {
     subject: string;
     html: string;
     text?: string;
+    attachments?: Array<{
+      filename: string;
+      content: Buffer | string;
+      contentType?: string;
+      cid?: string; // Content-ID for inline images
+    }>;
   }): Promise<boolean> {
     if (!this.transporter) {
       console.warn(
@@ -60,13 +66,25 @@ export class EmailService {
         options.to,
         "subject:",
         options.subject,
+        "attachments:",
+        options.attachments?.length || 0,
       );
+
+      // Convert attachments to nodemailer format
+      const nodemailerAttachments = options.attachments?.map((att) => ({
+        filename: att.filename,
+        content: att.content,
+        contentType: att.contentType,
+        cid: att.cid, // For inline images: <img src="cid:xxx">
+      }));
+
       const result = await this.transporter.sendMail({
         from,
         to: options.to,
         subject: options.subject,
         html: options.html,
         text: options.text,
+        attachments: nodemailerAttachments,
       });
       console.log(
         "[EmailService] Email sent successfully, messageId:",

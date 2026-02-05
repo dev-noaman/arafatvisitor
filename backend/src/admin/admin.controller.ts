@@ -1248,19 +1248,56 @@ export class AdminApiController {
 
       try {
         console.log("[send-qr] Sending email to:", visit.visitorEmail);
+
+        // Extract base64 from data URL for attachment
+        const qrBase64 = qrDataUrl.replace(/^data:image\/png;base64,/, "");
+        const qrBuffer = Buffer.from(qrBase64, "base64");
+
         const sent = await this.emailService.send({
           to: visit.visitorEmail,
           subject: `Your Visit QR Code - ${visit.host?.company || "Office Visit"}`,
           html: `
-            <h2>Hello ${visit.visitorName}!</h2>
-            <p>Your QR code for visiting <strong>${visit.host?.company || "our office"}</strong> is ready.</p>
-            <p>Please show this QR code at reception for check-in:</p>
-            <img src="${qrDataUrl}" alt="QR Code" style="width: 200px; height: 200px;" />
-            <p>Host: ${visit.host?.name || "N/A"}</p>
-            <p>Purpose: ${visit.purpose}</p>
-            <br />
-            <p>Thank you!</p>
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <div style="background: linear-gradient(135deg, #1E3A8A, #3B82F6); padding: 20px; text-align: center;">
+                <h1 style="color: white; margin: 0;">VISITOR PASS</h1>
+                <p style="color: rgba(255,255,255,0.9); margin: 5px 0 0 0;">Arafat Group</p>
+              </div>
+              <div style="padding: 30px; background: #f9fafb;">
+                <h2 style="color: #1E3A8A; margin-top: 0;">Hello ${visit.visitorName}!</h2>
+                <p>Your QR code for visiting <strong>${visit.host?.company || "our office"}</strong> is ready.</p>
+                <p>Please show this QR code at reception for check-in:</p>
+                <div style="text-align: center; padding: 20px; background: white; border-radius: 10px; margin: 20px 0;">
+                  <img src="cid:qrcode" alt="QR Code" style="width: 200px; height: 200px;" />
+                </div>
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr>
+                    <td style="padding: 10px 0; border-bottom: 1px solid #e5e7eb;"><strong>Host:</strong></td>
+                    <td style="padding: 10px 0; border-bottom: 1px solid #e5e7eb;">${visit.host?.name || "N/A"}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 10px 0; border-bottom: 1px solid #e5e7eb;"><strong>Company:</strong></td>
+                    <td style="padding: 10px 0; border-bottom: 1px solid #e5e7eb;">${visit.host?.company || "N/A"}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 10px 0;"><strong>Purpose:</strong></td>
+                    <td style="padding: 10px 0;">${visit.purpose || "Visit"}</td>
+                  </tr>
+                </table>
+                <p style="margin-top: 20px; color: #6b7280; font-size: 14px;">Thank you for visiting!</p>
+              </div>
+              <div style="padding: 15px; text-align: center; background: #1E3A8A; color: rgba(255,255,255,0.7); font-size: 12px;">
+                Powered by Arafat Visitor Management System
+              </div>
+            </div>
           `,
+          attachments: [
+            {
+              filename: "qrcode.png",
+              content: qrBuffer,
+              contentType: "image/png",
+              cid: "qrcode", // Content-ID for inline reference
+            },
+          ],
         });
         console.log("[send-qr] Email result:", sent);
 
