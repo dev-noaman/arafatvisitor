@@ -3,7 +3,7 @@ import React, { useState } from 'react'
 export interface FilterOption {
   id: string
   label: string
-  value: any
+  value: string | number | boolean | Date
 }
 
 export interface FilterField {
@@ -15,7 +15,7 @@ export interface FilterField {
 }
 
 export interface FilterConfig {
-  [fieldId: string]: any
+  [fieldId: string]: string | number | boolean | Date | null | undefined
 }
 
 interface AdvancedFilterPanelProps {
@@ -115,7 +115,7 @@ export function AdvancedFilterPanel({
                   <input
                     id={field.id}
                     type="text"
-                    value={filters[field.id] || ''}
+                    value={String(filters[field.id] || '')}
                     onChange={(e) => handleChange(field.id, e.target.value)}
                     placeholder={field.placeholder}
                     disabled={isLoading}
@@ -126,14 +126,14 @@ export function AdvancedFilterPanel({
                 {field.type === 'select' && field.options && (
                   <select
                     id={field.id}
-                    value={filters[field.id] || ''}
+                    value={String(filters[field.id] || '')}
                     onChange={(e) => handleChange(field.id, e.target.value)}
                     disabled={isLoading}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
                   >
                     <option value="">All</option>
                     {field.options.map((opt) => (
-                      <option key={opt.id} value={opt.value}>
+                      <option key={opt.id} value={String(opt.value)}>
                         {opt.label}
                       </option>
                     ))}
@@ -144,7 +144,7 @@ export function AdvancedFilterPanel({
                   <input
                     id={field.id}
                     type="date"
-                    value={filters[field.id] || ''}
+                    value={String(filters[field.id] || '')}
                     onChange={(e) => handleChange(field.id, e.target.value)}
                     disabled={isLoading}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
@@ -155,7 +155,7 @@ export function AdvancedFilterPanel({
                   <div className="space-y-2">
                     <input
                       type="date"
-                      value={filters[`${field.id}_from`] || ''}
+                      value={String(filters[`${field.id}_from`] || '')}
                       onChange={(e) => handleChange(`${field.id}_from`, e.target.value)}
                       placeholder="From"
                       disabled={isLoading}
@@ -163,7 +163,7 @@ export function AdvancedFilterPanel({
                     />
                     <input
                       type="date"
-                      value={filters[`${field.id}_to`] || ''}
+                      value={String(filters[`${field.id}_to`] || '')}
                       onChange={(e) => handleChange(`${field.id}_to`, e.target.value)}
                       placeholder="To"
                       disabled={isLoading}

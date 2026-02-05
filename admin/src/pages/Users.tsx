@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useCallback, useState, useEffect } from 'react'
 import { UsersList, UserModal, DeleteConfirmationDialog } from '@/components/users'
 import ErrorState from '@/components/common/ErrorState'
-import { usersService } from '@/services/users'
+import { getUsers, createUser, updateUser, deleteUser, deactivateUser, activateUser } from '@/services/users'
 import { useToast } from '@/hooks'
 import type { User, UserFormData, UserRole, UserStatus, PaginatedResponse } from '@/types'
 
@@ -28,7 +28,7 @@ export default function Users() {
   const [statusFilter, setStatusFilter] = useState<UserStatus | ''>('')
 
   // Fetch users
-  const fetchUsers = async (
+  const fetchUsers = useCallback(async (
     page = 1,
     search = '',
     role: UserRole | '' = '',
@@ -37,7 +37,7 @@ export default function Users() {
     setIsLoading(true)
     setLoadError(null)
     try {
-      const params: any = {
+      const params: Record<string, string | number> = {
         page,
         limit: pagination.limit,
       }
@@ -45,7 +45,7 @@ export default function Users() {
       if (role) params.role = role
       if (status) params.status = status
 
-      const response = await usersService.getUsers(params)
+      const response = await getUsers(params)
       setUsers(response.data || [])
       setPagination({
         page: response.page || 1,
@@ -59,11 +59,11 @@ export default function Users() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [pagination.limit, error])
 
   useEffect(() => {
     fetchUsers(1, '', '', '')
-  }, [])
+  }, [fetchUsers])
 
   // Handle search
   const handleSearch = (search: string) => {
@@ -93,10 +93,10 @@ export default function Users() {
     setIsSubmitting(true)
     try {
       if (selectedUser) {
-        await usersService.updateUser(selectedUser.id, data)
+        await updateUser(selectedUser.id, data)
         success('User updated successfully')
       } else {
-        await usersService.createUser(data)
+        await createUser(data)
         success('User created successfully')
       }
       setIsModalOpen(false)
@@ -114,10 +114,10 @@ export default function Users() {
     setIsActioning(true)
     try {
       if (user.status === 'ACTIVE') {
-        await usersService.deactivateUser(user.id)
+        await deactivateUser(user.id)
         success('User deactivated successfully')
       } else {
-        await usersService.activateUser(user.id)
+        await activateUser(user.id)
         success('User activated successfully')
       }
       await fetchUsers(pagination.page, searchQuery, roleFilter, statusFilter)
@@ -133,7 +133,7 @@ export default function Users() {
     if (!userToDelete) return
     setIsDeleting(true)
     try {
-      await usersService.deleteUser(userToDelete.id)
+      await deleteUser(userToDelete.id)
       success('User deleted successfully')
       setIsDeleteDialogOpen(false)
       setUserToDelete(undefined)

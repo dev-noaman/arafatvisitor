@@ -24,8 +24,8 @@ export function CurrentVisitorsList({
       await dashboardService.checkoutVisitor(sessionId)
       showSuccess('Visitor checked out successfully')
       onCheckoutAction?.()
-    } catch (error: any) {
-      showError(error.message || 'Failed to checkout visitor')
+    } catch (error: unknown) {
+      showError(error instanceof Error ? error.message : 'Failed to checkout visitor')
     } finally {
       setCheckoutSessionId(null)
     }

@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useCallback, useState, useEffect } from 'react'
 import { DeliveriesList, DeliveryModal, DeleteConfirmationDialog } from '@/components/deliveries'
 import ErrorState from '@/components/common/ErrorState'
-import { deliveriesService } from '@/services/deliveries'
+import { getDeliveries, createDelivery, updateDelivery, deleteDelivery, markAsPickedUp } from '@/services/deliveries'
 import { useToast } from '@/hooks'
 import type { Delivery, DeliveryFormData, PaginatedResponse, DeliveryStatus } from '@/types'
 
@@ -27,7 +27,7 @@ export default function Deliveries() {
   const [statusFilter, setStatusFilter] = useState<DeliveryStatus | ''>('')
 
   // Fetch deliveries
-  const fetchDeliveries = async (
+  const fetchDeliveries = useCallback(async (
     page = 1,
     search = '',
     status: DeliveryStatus | '' = ''
@@ -35,14 +35,14 @@ export default function Deliveries() {
     setIsLoading(true)
     setLoadError(null)
     try {
-      const params: any = {
+      const params: Record<string, string | number> = {
         page,
         limit: pagination.limit,
       }
       if (search) params.search = search
       if (status) params.status = status
 
-      const response = await deliveriesService.getDeliveries(params)
+      const response = await getDeliveries(params)
       setDeliveries(response.data || [])
       setPagination({
         page: response.page || 1,
@@ -56,11 +56,11 @@ export default function Deliveries() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [pagination.limit, error])
 
   useEffect(() => {
     fetchDeliveries(1, '', '')
-  }, [])
+  }, [fetchDeliveries])
 
   // Handle search
   const handleSearch = (search: string) => {
@@ -84,10 +84,10 @@ export default function Deliveries() {
     setIsSubmitting(true)
     try {
       if (selectedDelivery) {
-        await deliveriesService.updateDelivery(selectedDelivery.id, data)
+        await updateDelivery(selectedDelivery.id, data)
         success('Delivery updated successfully')
       } else {
-        await deliveriesService.createDelivery(data)
+        await createDelivery(data)
         success('Delivery recorded successfully')
       }
       setIsModalOpen(false)
@@ -104,7 +104,7 @@ export default function Deliveries() {
   const handleMarkPickedUp = async (delivery: Delivery) => {
     setIsActioning(true)
     try {
-      await deliveriesService.markAsPickedUp(delivery.id)
+      await markAsPickedUp(delivery.id)
       success('Delivery marked as picked up')
       await fetchDeliveries(pagination.page, searchQuery, statusFilter)
     } catch (err) {
@@ -119,7 +119,7 @@ export default function Deliveries() {
     if (!deliveryToDelete) return
     setIsDeleting(true)
     try {
-      await deliveriesService.deleteDelivery(deliveryToDelete.id)
+      await deleteDelivery(deliveryToDelete.id)
       success('Delivery deleted successfully')
       setIsDeleteDialogOpen(false)
       setDeliveryToDelete(undefined)

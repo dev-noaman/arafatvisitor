@@ -1,12 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useCallback, useState, useEffect } from 'react'
 import {
   PreRegistrationsList,
   PreRegistrationModal,
   DeleteConfirmationDialog,
 } from '@/components/preregistrations'
 import ErrorState from '@/components/common/ErrorState'
-import { preRegistrationsService } from '@/services/preregistrations'
-import { hostsService } from '@/services/hosts'
+import { getPreRegistrations, createPreRegistration, updatePreRegistration, deletePreRegistration, approvePreRegistration, rejectPreRegistration, reApproveRejected } from '@/services/preregistrations'
+import { getHosts } from '@/services/hosts'
 import { useToast } from '@/hooks'
 import type {
   PreRegistration,
@@ -41,20 +41,20 @@ export default function PreRegister() {
   >('')
 
   // Fetch hosts for dropdown
-  const fetchHosts = async () => {
+  const fetchHosts = useCallback(async () => {
     setIsLoadingHosts(true)
     try {
-      const response = await hostsService.getHosts({ limit: 100 })
+      const response = await getHosts({ limit: 100 })
       setHosts(response.data || [])
     } catch (err) {
       error('Failed to load hosts')
     } finally {
       setIsLoadingHosts(false)
     }
-  }
-
+  }, [error])
+  
   // Fetch pre-registrations
-  const fetchPreRegistrations = async (
+  const fetchPreRegistrations = useCallback(async (
     page = 1,
     search = '',
     status: 'PENDING_APPROVAL' | 'REJECTED' | 'APPROVED' | '' = ''
@@ -62,14 +62,14 @@ export default function PreRegister() {
     setIsLoading(true)
     setLoadError(null)
     try {
-      const params: any = {
+      const params: Record<string, string | number> = {
         page,
         limit: pagination.limit,
       }
       if (search) params.search = search
       if (status) params.status = status
 
-      const response = await preRegistrationsService.getPreRegistrations(params)
+      const response = await getPreRegistrations(params)
       setPreRegistrations(response.data || [])
       setPagination({
         page: response.page || 1,
@@ -83,12 +83,12 @@ export default function PreRegister() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [pagination.limit, error])
 
   useEffect(() => {
     fetchHosts()
     fetchPreRegistrations(1, '', '')
-  }, [])
+  }, [fetchHosts, fetchPreRegistrations])
 
   // Handle search
   const handleSearch = (search: string) => {
@@ -112,10 +112,10 @@ export default function PreRegister() {
     setIsSubmitting(true)
     try {
       if (selectedPreReg) {
-        await preRegistrationsService.updatePreRegistration(selectedPreReg.id, data)
+        await updatePreRegistration(selectedPreReg.id, data)
         success('Pre-registration updated successfully')
       } else {
-        await preRegistrationsService.createPreRegistration(data)
+        await createPreRegistration(data)
         success('Pre-registration created successfully')
       }
       setIsModalOpen(false)
@@ -132,7 +132,7 @@ export default function PreRegister() {
   const handleApprove = async (preReg: PreRegistration) => {
     setIsActioning(true)
     try {
-      await preRegistrationsService.approvePreRegistration(preReg.id)
+      await approvePreRegistration(preReg.id)
       success('Pre-registration approved successfully')
       await fetchPreRegistrations(pagination.page, searchQuery, statusFilter)
     } catch (err) {
@@ -146,7 +146,7 @@ export default function PreRegister() {
   const handleReject = async (preReg: PreRegistration) => {
     setIsActioning(true)
     try {
-      await preRegistrationsService.rejectPreRegistration(preReg.id)
+      await rejectPreRegistration(preReg.id)
       success('Pre-registration rejected')
       await fetchPreRegistrations(pagination.page, searchQuery, statusFilter)
     } catch (err) {
@@ -160,7 +160,7 @@ export default function PreRegister() {
   const handleReApprove = async (preReg: PreRegistration) => {
     setIsActioning(true)
     try {
-      await preRegistrationsService.reApproveRejected(preReg.id)
+      await reApproveRejected(preReg.id)
       success('Pre-registration re-approved successfully')
       await fetchPreRegistrations(pagination.page, searchQuery, statusFilter)
     } catch (err) {
@@ -175,7 +175,7 @@ export default function PreRegister() {
     if (!preRegToDelete) return
     setIsDeleting(true)
     try {
-      await preRegistrationsService.deletePreRegistration(preRegToDelete.id)
+      await deletePreRegistration(preRegToDelete.id)
       success('Pre-registration deleted successfully')
       setIsDeleteDialogOpen(false)
       setPreRegToDelete(undefined)

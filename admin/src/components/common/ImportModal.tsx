@@ -5,7 +5,7 @@ interface ImportPreviewRow {
   rowNumber: number
   valid: boolean
   error?: string
-  data?: Record<string, any>
+  data?: Record<string, unknown>
 }
 
 interface ImportModalProps {
@@ -14,7 +14,7 @@ interface ImportModalProps {
   description?: string
   isLoading?: boolean
   onFileSelected: (file: File) => Promise<ImportPreviewRow[]>
-  onConfirm: (validRows: any[]) => Promise<void>
+  onConfirm: (validRows: Record<string, unknown>[]) => Promise<void>
   onCancel: () => void
 }
 
@@ -28,14 +28,12 @@ export function ImportModal({
   onCancel,
 }: ImportModalProps) {
   const [step, setStep] = useState<'upload' | 'preview' | 'confirm'>('upload')
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [previewData, setPreviewData] = useState<ImportPreviewRow[]>([])
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const handleFileSelect = async (file: File) => {
     setError(null)
-    setSelectedFile(file)
     setIsProcessing(true)
 
     try {
@@ -56,7 +54,7 @@ export function ImportModal({
     try {
       const validRows = previewData
         .filter((row) => row.valid && row.data)
-        .map((row) => row.data)
+        .map((row) => row.data) as Record<string, unknown>[]
 
       if (validRows.length === 0) {
         throw new Error('No valid rows to import')
@@ -73,7 +71,6 @@ export function ImportModal({
 
   const handleClose = () => {
     setStep('upload')
-    setSelectedFile(null)
     setPreviewData([])
     setError(null)
     onCancel()

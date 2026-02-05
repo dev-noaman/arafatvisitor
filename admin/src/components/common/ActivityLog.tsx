@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react'
-import { auditService, type AuditLogEntry } from '@/services/audit'
+import React, { useCallback, useEffect, useState } from 'react'
+import { getRecentActivities, getActionColor, type AuditLogEntry } from '@/services/audit'
 import { useToast } from '@/hooks'
 
 interface ActivityLogProps {
@@ -12,14 +12,10 @@ export function ActivityLog({ limit = 20, onActivityCount }: ActivityLogProps) {
   const [activities, setActivities] = useState<AuditLogEntry[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
-  useEffect(() => {
-    fetchActivities()
-  }, [])
-
-  const fetchActivities = async () => {
+  const fetchActivities = useCallback(async () => {
     setIsLoading(true)
     try {
-      const data = await auditService.getRecentActivities(limit)
+      const data = await getRecentActivities(limit)
       setActivities(data)
       onActivityCount?.(data.length)
     } catch (err) {
@@ -27,7 +23,11 @@ export function ActivityLog({ limit = 20, onActivityCount }: ActivityLogProps) {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [limit, onActivityCount, showError])
+
+  useEffect(() => {
+    fetchActivities()
+  }, [fetchActivities])
 
   if (isLoading) {
     return (
@@ -61,7 +61,7 @@ export function ActivityLog({ limit = 20, onActivityCount }: ActivityLogProps) {
                   {activity.userName || 'System'}
                 </span>
                 <span
-                  className={`px-2 py-0.5 rounded text-xs font-semibold ${auditService.getActionColor(activity.action)}`}
+                  className={`px-2 py-0.5 rounded text-xs font-semibold ${getActionColor(activity.action)}`}
                 >
                   {activity.action}
                 </span>

@@ -25,22 +25,16 @@ export function SearchHighlight({
 
   return (
     <span className={className}>
-      {parts.map((part, idx) => {
-        const isMatch = regex.test(part)
-        // Reset regex state for next test
-        regex.lastIndex = 0
-
-        return (
-          <span
-            key={idx}
-            className={
-              part.toLowerCase() === query.toLowerCase() ? highlightClassName : undefined
-            }
-          >
-            {part}
-          </span>
-        )
-      })}
+      {parts.map((part, idx) => (
+        <span
+          key={idx}
+          className={
+            part.toLowerCase() === query.toLowerCase() ? highlightClassName : undefined
+          }
+        >
+          {part}
+        </span>
+      ))}
     </span>
   )
 }

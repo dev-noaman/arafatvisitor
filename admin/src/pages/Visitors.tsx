@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useCallback, useState, useEffect } from 'react'
 import { VisitorsList, VisitModal, DeleteConfirmationDialog } from '@/components/visitors'
 import ErrorState from '@/components/common/ErrorState'
-import { visitorsService } from '@/services/visitors'
-import { hostsService } from '@/services/hosts'
+import { getVisitors, createVisit, updateVisit, deleteVisit, approveVisit, rejectVisit, checkoutVisit } from '@/services/visitors'
+import { getHosts } from '@/services/hosts'
 import { useToast } from '@/hooks'
 import type { Visit, VisitFormData, Host, VisitStatus, PaginatedResponse } from '@/types'
 
@@ -30,31 +30,31 @@ export default function Visitors() {
   const [statusFilter, setStatusFilter] = useState<VisitStatus | ''>('')
 
   // Fetch hosts for dropdown
-  const fetchHosts = async () => {
+  const fetchHosts = useCallback(async () => {
     setIsLoadingHosts(true)
     try {
-      const response = await hostsService.getHosts({ limit: 100 })
+      const response = await getHosts({ limit: 100 })
       setHosts(response.data || [])
     } catch (err) {
       error('Failed to load hosts')
     } finally {
       setIsLoadingHosts(false)
     }
-  }
+  }, [error])
 
   // Fetch visitors
-  const fetchVisitors = async (page = 1, search = '', status: VisitStatus | '' = '') => {
+  const fetchVisitors = useCallback(async (page = 1, search = '', status: VisitStatus | '' = '') => {
     setIsLoading(true)
     setLoadError(null)
     try {
-      const params: any = {
+      const params: Record<string, string | number> = {
         page,
         limit: pagination.limit,
       }
       if (search) params.search = search
       if (status) params.status = status
 
-      const response = await visitorsService.getVisitors(params)
+      const response = await getVisitors(params)
       setVisitors(response.data || [])
       setPagination({
         page: response.page || 1,
@@ -68,12 +68,12 @@ export default function Visitors() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [pagination.limit, error])
 
   useEffect(() => {
     fetchHosts()
     fetchVisitors(1, '', '')
-  }, [])
+  }, [fetchHosts, fetchVisitors])
 
   // Handle search
   const handleSearch = (search: string) => {
@@ -97,10 +97,10 @@ export default function Visitors() {
     setIsSubmitting(true)
     try {
       if (selectedVisitor) {
-        await visitorsService.updateVisit(selectedVisitor.id, data)
+        await updateVisit(selectedVisitor.id, data)
         success('Visitor updated successfully')
       } else {
-        await visitorsService.createVisit(data)
+        await createVisit(data)
         success('Visitor registered successfully')
       }
       setIsModalOpen(false)
@@ -117,7 +117,7 @@ export default function Visitors() {
   const handleApprove = async (visitor: Visit) => {
     setIsActioning(true)
     try {
-      await visitorsService.approveVisit(visitor.id)
+      await approveVisit(visitor.id)
       success('Visitor approved successfully')
       await fetchVisitors(pagination.page, searchQuery, statusFilter)
     } catch (err) {
@@ -131,7 +131,7 @@ export default function Visitors() {
   const handleReject = async (visitor: Visit) => {
     setIsActioning(true)
     try {
-      await visitorsService.rejectVisit(visitor.id)
+      await rejectVisit(visitor.id)
       success('Visitor rejected')
       await fetchVisitors(pagination.page, searchQuery, statusFilter)
     } catch (err) {
@@ -145,7 +145,7 @@ export default function Visitors() {
   const handleCheckout = async (visitor: Visit) => {
     setIsActioning(true)
     try {
-      await visitorsService.checkoutVisit(visitor.id)
+      await checkoutVisit(visitor.id)
       success('Visitor checked out successfully')
       await fetchVisitors(pagination.page, searchQuery, statusFilter)
     } catch (err) {
@@ -160,7 +160,7 @@ export default function Visitors() {
     if (!visitorToDelete) return
     setIsDeleting(true)
     try {
-      await visitorsService.deleteVisit(visitorToDelete.id)
+      await deleteVisit(visitorToDelete.id)
       success('Visitor record deleted successfully')
       setIsDeleteDialogOpen(false)
       setVisitorToDelete(undefined)

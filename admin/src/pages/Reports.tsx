@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useCallback, useState, useEffect } from 'react'
 import {
   DateRangePicker,
   SummaryCard,
@@ -6,7 +6,7 @@ import {
   BarChart,
 } from '@/components/reports'
 import ErrorState from '@/components/common/ErrorState'
-import { reportsService } from '@/services/reports'
+import { getReports, exportVisitReport, exportDeliveryReport, downloadReport } from '@/services/reports'
 import { useToast } from '@/hooks'
 import type { VisitReport, DeliveryReport, HostReport } from '@/types'
 
@@ -59,11 +59,11 @@ export default function Reports() {
   })
 
   // Fetch reports
-  const fetchReports = async (startDate: string, endDate: string) => {
+  const fetchReports = useCallback(async (startDate: string, endDate: string) => {
     setIsLoading(true)
     setLoadError(null)
     try {
-      const result = await reportsService.getReports({
+      const result = await getReports({
         startDate,
         endDate,
       })
@@ -74,11 +74,11 @@ export default function Reports() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [error])
 
   useEffect(() => {
     fetchReports(dateRange.startDate, dateRange.endDate)
-  }, [])
+  }, [fetchReports, dateRange.startDate, dateRange.endDate])
 
   // Handle date range change
   const handleDateRangeChange = (startDate: string, endDate: string) => {
@@ -90,8 +90,8 @@ export default function Reports() {
   const handleExportVisits = async () => {
     setIsExporting(true)
     try {
-      const blob = await reportsService.exportVisitReport(dateRange, 'csv')
-      reportsService.downloadReport(
+      const blob = await exportVisitReport(dateRange, 'csv')
+      downloadReport(
         blob,
         `visit-report-${dateRange.startDate}-${dateRange.endDate}.csv`
       )
@@ -106,8 +106,8 @@ export default function Reports() {
   const handleExportDeliveries = async () => {
     setIsExporting(true)
     try {
-      const blob = await reportsService.exportDeliveryReport(dateRange, 'csv')
-      reportsService.downloadReport(
+      const blob = await exportDeliveryReport(dateRange, 'csv')
+      downloadReport(
         blob,
         `delivery-report-${dateRange.startDate}-${dateRange.endDate}.csv`
       )

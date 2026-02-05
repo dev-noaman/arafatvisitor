@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useCallback, useState, useEffect } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
 import {
@@ -7,7 +7,7 @@ import {
   PasswordChangeForm,
   PreferencesForm,
 } from '@/components/profile'
-import { profileService } from '@/services'
+import { getProfile, updateProfile, changePassword, getPreferences, updatePreferences } from '@/services/profile'
 import type { User, ProfileFormData, PreferencesFormData } from '@/types'
 import type { ChangePasswordData } from '@/services/profile'
 
@@ -22,46 +22,46 @@ export default function Profile() {
   const [activeTab, setActiveTab] = useState<'profile' | 'password' | 'preferences'>('profile')
 
   // Fetch profile data on mount
+  const fetchProfile = useCallback(async () => {
+    setIsProfileLoading(true)
+    try {
+      const response = await getProfile()
+      setUser(response.data || (response as User))
+    } catch (err: unknown) {
+      error(err instanceof Error ? err.message : 'Failed to load profile')
+    } finally {
+      setIsProfileLoading(false)
+    }
+  }, [error])
+
+  const fetchPreferences = useCallback(async () => {
+    try {
+      const response = await getPreferences()
+      setPreferences(response.data || (response as PreferencesFormData))
+    } catch {
+      // Preferences might not exist, that's okay
+      setPreferences({
+        theme: 'auto',
+        language: 'en',
+        notificationsEnabled: true,
+      })
+    }
+  }, [])
+
   useEffect(() => {
-    const fetchProfile = async () => {
-      setIsProfileLoading(true)
-      try {
-        const response = await profileService.getProfile()
-        setUser(response.data || (response as any))
-      } catch (err: any) {
-        error(err?.message || 'Failed to load profile')
-      } finally {
-        setIsProfileLoading(false)
-      }
-    }
-
-    const fetchPreferences = async () => {
-      try {
-        const response = await profileService.getPreferences()
-        setPreferences(response.data || (response as any))
-      } catch {
-        // Preferences might not exist, that's okay
-        setPreferences({
-          theme: 'auto',
-          language: 'en',
-          notificationsEnabled: true,
-        })
-      }
-    }
-
     fetchProfile()
     fetchPreferences()
-  }, [])
+  }, [fetchProfile, fetchPreferences])
 
   // Handle profile update
   const handleProfileUpdate = async (data: ProfileFormData) => {
     setIsProfileLoading(true)
     try {
-      const response = await profileService.updateProfile(data)
-      setUser(response.data || (response as any))
+      const response = await updateProfile(data)
+      setUser(response.data || (response as User))
       success('Profile updated successfully')
-    } catch (err: any) {
-      error(err?.message || 'Failed to update profile')
+    } catch (err: unknown) {
+      error(err instanceof Error ? err.message : 'Failed to update profile')
     } finally {
       setIsProfileLoading(false)
     }
@@ -71,10 +71,10 @@ export default function Profile() {
   const handlePasswordChange = async (data: ChangePasswordData) => {
     setIsPasswordLoading(true)
     try {
-      await profileService.changePassword(data)
+      await changePassword(data)
       success('Password changed successfully')
-    } catch (err: any) {
-      error(err?.message || 'Failed to change password')
+    } catch (err: unknown) {
+      error(err instanceof Error ? err.message : 'Failed to change password')
     } finally {
       setIsPasswordLoading(false)
     }
@@ -84,11 +84,11 @@ export default function Profile() {
   const handlePreferencesUpdate = async (data: PreferencesFormData) => {
     setIsPreferencesLoading(true)
     try {
-      const response = await profileService.updatePreferences(data)
-      setPreferences(response.data || (response as any))
+      const response = await updatePreferences(data)
+      setPreferences(response.data || (response as PreferencesFormData))
       success('Preferences saved successfully')
-    } catch (err: any) {
-      error(err?.message || 'Failed to save preferences')
+    } catch (err: unknown) {
+      error(err instanceof Error ? err.message : 'Failed to save preferences')
     } finally {
       setIsPreferencesLoading(false)
     }

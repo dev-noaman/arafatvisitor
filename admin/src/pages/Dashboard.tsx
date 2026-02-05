@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import {
   KpiCard,
@@ -8,7 +8,12 @@ import {
 } from '@/components/dashboard'
 import ErrorState from '@/components/common/ErrorState'
 import { useToast } from '@/hooks/useToast'
-import * as dashboardService from '@/services/dashboard'
+import {
+  getKpis,
+  getPendingApprovals,
+  getReceivedDeliveries,
+  getCurrentVisitors,
+} from '@/services/dashboard'
 import {
   DashboardKpis,
   PendingApproval,
@@ -38,7 +43,7 @@ export default function Dashboard() {
   const [visitorsLoading, setVisitorsLoading] = useState(true)
 
   // Fetch all dashboard data
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     setLoadError(null)
     setKpisLoading(true)
     setApprovalsLoading(true)
@@ -46,31 +51,31 @@ export default function Dashboard() {
     setVisitorsLoading(true)
     try {
       const [kpisData, approvalsData, deliveriesData, visitorsData] = await Promise.all([
-        dashboardService.getKpis(),
-        dashboardService.getPendingApprovals(),
-        dashboardService.getReceivedDeliveries(),
-        dashboardService.getCurrentVisitors(),
+        getKpis(),
+        getPendingApprovals(),
+        getReceivedDeliveries(),
+        getCurrentVisitors(),
       ])
 
       setKpis(kpisData)
       setApprovals(approvalsData)
       setDeliveries(deliveriesData)
       setVisitors(visitorsData)
-    } catch (error: any) {
+    } catch (error: unknown) {
       setLoadError('Failed to load dashboard data. Please check your connection and try again.')
-      showError(error.message || 'Failed to load dashboard data')
+      showError(error instanceof Error ? error.message : 'Failed to load dashboard data')
     } finally {
       setKpisLoading(false)
       setApprovalsLoading(false)
       setDeliveriesLoading(false)
       setVisitorsLoading(false)
     }
-  }
+  }, [showError])
 
   // Load data on mount
   useEffect(() => {
     fetchDashboardData()
-  }, [])
+  }, [fetchDashboardData])
 
   return (
     <div className="space-y-6">

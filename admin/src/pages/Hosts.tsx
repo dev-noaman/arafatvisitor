@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useCallback, useState, useEffect } from 'react'
 import { HostsList, HostModal, DeleteConfirmationDialog } from '@/components/hosts'
 import ErrorState from '@/components/common/ErrorState'
-import { hostsService } from '@/services'
+import { getHosts, createHost, updateHost, deleteHost } from '@/services/hosts'
 import { useToast } from '@/hooks'
 import type { Host, HostFormData, PaginatedResponse } from '@/types'
 
@@ -25,11 +25,11 @@ export default function Hosts() {
   const [searchQuery, setSearchQuery] = useState('')
 
   // Fetch hosts
-  const fetchHosts = async (page = 1, search = '') => {
+  const fetchHosts = useCallback(async (page = 1, search = '') => {
     setIsLoading(true)
     setLoadError(null)
     try {
-      const response = await hostsService.getHosts({
+      const response = await getHosts({
         page,
         limit: pagination.limit,
         search,
@@ -47,11 +47,11 @@ export default function Hosts() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [pagination.limit, error])
 
   useEffect(() => {
     fetchHosts(1, '')
-  }, [])
+  }, [fetchHosts])
 
   // Handle search
   const handleSearch = (search: string) => {
@@ -69,10 +69,10 @@ export default function Hosts() {
     setIsSubmitting(true)
     try {
       if (selectedHost) {
-        await hostsService.updateHost(selectedHost.id, data)
+        await updateHost(selectedHost.id, data)
         success('Host updated successfully')
       } else {
-        await hostsService.createHost(data)
+        await createHost(data)
         success('Host created successfully')
       }
       setIsModalOpen(false)
@@ -90,7 +90,7 @@ export default function Hosts() {
     if (!hostToDelete) return
     setIsDeleting(true)
     try {
-      await hostsService.deleteHost(hostToDelete.id)
+      await deleteHost(hostToDelete.id)
       success('Host deleted successfully')
       setIsDeleteDialogOpen(false)
       setHostToDelete(undefined)

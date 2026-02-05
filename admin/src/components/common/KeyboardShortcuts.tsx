@@ -17,10 +17,6 @@ export function KeyboardShortcuts({
   shortcuts,
   onClose,
 }: KeyboardShortcutsProps) {
-  const [registeredShortcuts, setRegisteredShortcuts] = useState<
-    Map<string, () => void>
-  >(new Map())
-
   useEffect(() => {
     // Register shortcuts
     const shortcutMap = new Map<string, () => void>()
@@ -31,8 +27,6 @@ export function KeyboardShortcuts({
         shortcutMap.set(key, shortcut.action)
       }
     })
-
-    setRegisteredShortcuts(shortcutMap)
 
     // Handle keyboard events
     const handleKeyDown = (e: KeyboardEvent) => {
