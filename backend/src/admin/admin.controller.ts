@@ -2,6 +2,8 @@ import {
   Controller,
   Get,
   Post,
+  Put,
+  Delete,
   Body,
   Param,
   Query,
@@ -1496,15 +1498,25 @@ export class AdminApiController {
 
   @Get("settings")
   async getSettings() {
+    // Return settings in the format expected by the frontend
     return {
+      id: "settings",
+      smtpHost: process.env.SMTP_HOST || "",
+      smtpPort: process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : 587,
+      smtpSecure: process.env.SMTP_SECURE === "true",
+      smtpUser: process.env.SMTP_USER || "",
+      smtpFrom: process.env.SMTP_FROM || "",
+      whatsappApiKey: process.env.WHATSAPP_API_KEY ? "***configured***" : "",
+      whatsappPhoneNumber: process.env.WHATSAPP_CLIENT || "",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      // Additional fields for compatibility
       site: {
         name: process.env.SITE_NAME || "Arafat VMS",
         timezone: process.env.SITE_TIMEZONE || "Asia/Qatar",
       },
       whatsapp: {
-        enabled: !!(
-          process.env.WHATSAPP_ENDPOINT && process.env.WHATSAPP_API_KEY
-        ),
+        enabled: !!(process.env.WHATSAPP_ENDPOINT && process.env.WHATSAPP_API_KEY),
         provider: "wbiztool",
         configured: !!(
           process.env.WHATSAPP_ENDPOINT &&
@@ -1523,6 +1535,95 @@ export class AdminApiController {
         message: process.env.MAINTENANCE_MESSAGE || "System under maintenance",
       },
     };
+  }
+
+  @Put("settings/smtp")
+  async updateSmtpSettings(
+    @Body()
+    body: {
+      smtpHost?: string;
+      smtpPort?: number;
+      smtpSecure?: boolean;
+      smtpUser?: string;
+      smtpPassword?: string;
+      smtpFrom?: string;
+    },
+  ) {
+    const envPath = path.join(process.cwd(), ".env");
+
+    try {
+      let envContent = fs.readFileSync(envPath, "utf8");
+
+      const updateEnvVar = (key: string, value: string | number | boolean) => {
+        const strValue = String(value);
+        const regex = new RegExp(`^${key}=.*$`, "m");
+        if (regex.test(envContent)) {
+          envContent = envContent.replace(regex, `${key}=${strValue}`);
+        } else {
+          envContent += `\n${key}=${strValue}`;
+        }
+        process.env[key] = strValue;
+      };
+
+      if (body.smtpHost !== undefined) updateEnvVar("SMTP_HOST", body.smtpHost);
+      if (body.smtpPort !== undefined) updateEnvVar("SMTP_PORT", body.smtpPort);
+      if (body.smtpSecure !== undefined) updateEnvVar("SMTP_SECURE", body.smtpSecure);
+      if (body.smtpUser !== undefined) updateEnvVar("SMTP_USER", body.smtpUser);
+      if (body.smtpPassword !== undefined) updateEnvVar("SMTP_PASS", body.smtpPassword);
+      if (body.smtpFrom !== undefined) updateEnvVar("SMTP_FROM", body.smtpFrom);
+
+      fs.writeFileSync(envPath, envContent);
+
+      return this.getSettings();
+    } catch (e) {
+      console.error("Failed to update SMTP settings:", e);
+      throw new HttpException(
+        "Failed to update SMTP settings",
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Put("settings/whatsapp")
+  async updateWhatsAppSettings(
+    @Body()
+    body: {
+      whatsappApiKey?: string;
+      whatsappPhoneNumber?: string;
+      whatsappEndpoint?: string;
+      whatsappClientId?: string;
+    },
+  ) {
+    const envPath = path.join(process.cwd(), ".env");
+
+    try {
+      let envContent = fs.readFileSync(envPath, "utf8");
+
+      const updateEnvVar = (key: string, value: string) => {
+        const regex = new RegExp(`^${key}=.*$`, "m");
+        if (regex.test(envContent)) {
+          envContent = envContent.replace(regex, `${key}=${value}`);
+        } else {
+          envContent += `\n${key}=${value}`;
+        }
+        process.env[key] = value;
+      };
+
+      if (body.whatsappApiKey !== undefined) updateEnvVar("WHATSAPP_API_KEY", body.whatsappApiKey);
+      if (body.whatsappPhoneNumber !== undefined) updateEnvVar("WHATSAPP_CLIENT", body.whatsappPhoneNumber);
+      if (body.whatsappEndpoint !== undefined) updateEnvVar("WHATSAPP_ENDPOINT", body.whatsappEndpoint);
+      if (body.whatsappClientId !== undefined) updateEnvVar("WHATSAPP_CLIENT_ID", body.whatsappClientId);
+
+      fs.writeFileSync(envPath, envContent);
+
+      return this.getSettings();
+    } catch (e) {
+      console.error("Failed to update WhatsApp settings:", e);
+      throw new HttpException(
+        "Failed to update WhatsApp settings",
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
 
   @Post("settings/test-whatsapp")
@@ -1664,6 +1765,1093 @@ export class AdminApiController {
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
+  }
+
+  // ============ VISITORS CRUD ============
+
+  @Get("visitors")
+  async getVisitors(
+    @Query("page") page = "1",
+    @Query("limit") limit = "10",
+    @Query("search") search?: string,
+    @Query("status") status?: string,
+    @Query("location") location?: string,
+    @Query("sortBy") sortBy = "createdAt",
+    @Query("sortOrder") sortOrder: "asc" | "desc" = "desc",
+  ) {
+    const pageNum = parseInt(page, 10);
+    const limitNum = parseInt(limit, 10);
+    const skip = (pageNum - 1) * limitNum;
+
+    const where: Prisma.VisitWhereInput = {
+      // Visitors panel shows APPROVED, CHECKED_IN, CHECKED_OUT
+      status: status
+        ? (status as Prisma.EnumVisitStatusFilter)
+        : { in: ["APPROVED", "CHECKED_IN", "CHECKED_OUT"] },
+    };
+
+    if (search) {
+      where.OR = [
+        { visitorName: { contains: search, mode: "insensitive" } },
+        { visitorCompany: { contains: search, mode: "insensitive" } },
+        { visitorPhone: { contains: search, mode: "insensitive" } },
+        { visitorEmail: { contains: search, mode: "insensitive" } },
+      ];
+    }
+
+    if (location) {
+      where.location = location as Prisma.EnumLocationFilter;
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.visit.findMany({
+        where,
+        include: { host: true },
+        skip,
+        take: limitNum,
+        orderBy: { [sortBy]: sortOrder },
+      }),
+      this.prisma.visit.count({ where }),
+    ]);
+
+    return {
+      data,
+      total,
+      page: pageNum,
+      limit: limitNum,
+      totalPages: Math.ceil(total / limitNum),
+    };
+  }
+
+  @Get("visitors/:id")
+  async getVisitor(@Param("id") id: string) {
+    const visit = await this.prisma.visit.findUnique({
+      where: { id },
+      include: { host: true, qrToken: true },
+    });
+
+    if (!visit) {
+      throw new HttpException("Visitor not found", HttpStatus.NOT_FOUND);
+    }
+
+    return visit;
+  }
+
+  @Post("visitors")
+  async createVisitor(
+    @Body()
+    body: {
+      visitorName: string;
+      visitorCompany?: string;
+      visitorPhone: string;
+      visitorEmail?: string;
+      hostId: string;
+      purpose: string;
+      location: string;
+      expectedDate?: string;
+    },
+  ) {
+    const sessionId = crypto.randomUUID();
+
+    const visit = await this.prisma.visit.create({
+      data: {
+        sessionId,
+        visitorName: body.visitorName,
+        visitorCompany: body.visitorCompany || "",
+        visitorPhone: body.visitorPhone,
+        visitorEmail: body.visitorEmail,
+        hostId: BigInt(body.hostId),
+        purpose: body.purpose,
+        location: body.location as "BARWA_TOWERS" | "MARINA_50" | "ELEMENT_MARIOTT",
+        status: "APPROVED",
+        expectedDate: body.expectedDate ? new Date(body.expectedDate) : null,
+        approvedAt: new Date(),
+      },
+      include: { host: true },
+    });
+
+    return visit;
+  }
+
+  @Put("visitors/:id")
+  async updateVisitor(
+    @Param("id") id: string,
+    @Body()
+    body: {
+      visitorName?: string;
+      visitorCompany?: string;
+      visitorPhone?: string;
+      visitorEmail?: string;
+      hostId?: string;
+      purpose?: string;
+      location?: string;
+      status?: string;
+    },
+  ) {
+    const existing = await this.prisma.visit.findUnique({ where: { id } });
+    if (!existing) {
+      throw new HttpException("Visitor not found", HttpStatus.NOT_FOUND);
+    }
+
+    const updateData: Prisma.VisitUpdateInput = {};
+    if (body.visitorName !== undefined) updateData.visitorName = body.visitorName;
+    if (body.visitorCompany !== undefined) updateData.visitorCompany = body.visitorCompany;
+    if (body.visitorPhone !== undefined) updateData.visitorPhone = body.visitorPhone;
+    if (body.visitorEmail !== undefined) updateData.visitorEmail = body.visitorEmail;
+    if (body.purpose !== undefined) updateData.purpose = body.purpose;
+    if (body.location !== undefined)
+      updateData.location = body.location as "BARWA_TOWERS" | "MARINA_50" | "ELEMENT_MARIOTT";
+    if (body.status !== undefined)
+      updateData.status = body.status as Prisma.EnumVisitStatusFieldUpdateOperationsInput["set"];
+    if (body.hostId !== undefined) {
+      updateData.host = { connect: { id: BigInt(body.hostId) } };
+    }
+
+    const visit = await this.prisma.visit.update({
+      where: { id },
+      data: updateData,
+      include: { host: true },
+    });
+
+    return visit;
+  }
+
+  @Delete("visitors/:id")
+  async deleteVisitor(@Param("id") id: string) {
+    const existing = await this.prisma.visit.findUnique({ where: { id } });
+    if (!existing) {
+      throw new HttpException("Visitor not found", HttpStatus.NOT_FOUND);
+    }
+
+    await this.prisma.visit.delete({ where: { id } });
+    return { success: true, message: "Visitor deleted" };
+  }
+
+  @Post("visitors/:id/approve")
+  async approveVisitor(@Param("id") id: string) {
+    const visit = await this.prisma.visit.findUnique({ where: { id } });
+    if (!visit) {
+      throw new HttpException("Visit not found", HttpStatus.NOT_FOUND);
+    }
+
+    await this.prisma.visit.update({
+      where: { id },
+      data: {
+        status: "APPROVED",
+        approvedAt: new Date(),
+        rejectedAt: null,
+        rejectionReason: null,
+      },
+    });
+
+    return { success: true, message: "Visit approved" };
+  }
+
+  @Post("visitors/:id/reject")
+  async rejectVisitor(
+    @Param("id") id: string,
+    @Body() body: { reason?: string },
+  ) {
+    const visit = await this.prisma.visit.findUnique({ where: { id } });
+    if (!visit) {
+      throw new HttpException("Visit not found", HttpStatus.NOT_FOUND);
+    }
+
+    await this.prisma.visit.update({
+      where: { id },
+      data: {
+        status: "REJECTED",
+        rejectedAt: new Date(),
+        rejectionReason: body.reason,
+      },
+    });
+
+    return { success: true, message: "Visit rejected" };
+  }
+
+  @Post("visitors/:id/checkin")
+  async checkinVisitor(@Param("id") id: string) {
+    const visit = await this.prisma.visit.findUnique({ where: { id } });
+    if (!visit) {
+      throw new HttpException("Visit not found", HttpStatus.NOT_FOUND);
+    }
+
+    if (visit.status !== "APPROVED") {
+      throw new HttpException("Visit must be approved to check in", HttpStatus.BAD_REQUEST);
+    }
+
+    await this.prisma.visit.update({
+      where: { id },
+      data: {
+        status: "CHECKED_IN",
+        checkInAt: new Date(),
+      },
+    });
+
+    return { success: true, message: "Visitor checked in" };
+  }
+
+  @Post("visitors/:id/checkout")
+  async checkoutVisitorById(@Param("id") id: string) {
+    const visit = await this.prisma.visit.findUnique({ where: { id } });
+    if (!visit) {
+      throw new HttpException("Visit not found", HttpStatus.NOT_FOUND);
+    }
+
+    if (visit.status !== "CHECKED_IN") {
+      throw new HttpException("Visit must be checked in to check out", HttpStatus.BAD_REQUEST);
+    }
+
+    await this.prisma.visit.update({
+      where: { id },
+      data: {
+        status: "CHECKED_OUT",
+        checkOutAt: new Date(),
+      },
+    });
+
+    return { success: true, message: "Visitor checked out" };
+  }
+
+  @Post("visitors/bulk/approve")
+  async bulkApproveVisitors(@Body() body: { ids: string[] }) {
+    const { ids } = body;
+    if (!ids || ids.length === 0) {
+      throw new HttpException("No IDs provided", HttpStatus.BAD_REQUEST);
+    }
+
+    await this.prisma.visit.updateMany({
+      where: { id: { in: ids } },
+      data: {
+        status: "APPROVED",
+        approvedAt: new Date(),
+        rejectedAt: null,
+        rejectionReason: null,
+      },
+    });
+
+    return { success: true, message: `${ids.length} visits approved` };
+  }
+
+  @Post("visitors/bulk/reject")
+  async bulkRejectVisitors(@Body() body: { ids: string[]; reason?: string }) {
+    const { ids, reason } = body;
+    if (!ids || ids.length === 0) {
+      throw new HttpException("No IDs provided", HttpStatus.BAD_REQUEST);
+    }
+
+    await this.prisma.visit.updateMany({
+      where: { id: { in: ids } },
+      data: {
+        status: "REJECTED",
+        rejectedAt: new Date(),
+        rejectionReason: reason,
+      },
+    });
+
+    return { success: true, message: `${ids.length} visits rejected` };
+  }
+
+  @Post("visitors/bulk/checkout")
+  async bulkCheckoutVisitors(@Body() body: { ids: string[] }) {
+    const { ids } = body;
+    if (!ids || ids.length === 0) {
+      throw new HttpException("No IDs provided", HttpStatus.BAD_REQUEST);
+    }
+
+    await this.prisma.visit.updateMany({
+      where: { id: { in: ids }, status: "CHECKED_IN" },
+      data: {
+        status: "CHECKED_OUT",
+        checkOutAt: new Date(),
+      },
+    });
+
+    return { success: true, message: `Visitors checked out` };
+  }
+
+  // ============ HOSTS CRUD ============
+
+  @Get("hosts")
+  async getHosts(
+    @Query("page") page = "1",
+    @Query("limit") limit = "10",
+    @Query("search") search?: string,
+    @Query("location") location?: string,
+    @Query("status") status?: string,
+    @Query("sortBy") sortBy = "createdAt",
+    @Query("sortOrder") sortOrder: "asc" | "desc" = "desc",
+  ) {
+    const pageNum = parseInt(page, 10);
+    const limitNum = parseInt(limit, 10);
+    const skip = (pageNum - 1) * limitNum;
+
+    const where: Prisma.HostWhereInput = {
+      deletedAt: null,
+    };
+
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: "insensitive" } },
+        { company: { contains: search, mode: "insensitive" } },
+        { email: { contains: search, mode: "insensitive" } },
+        { phone: { contains: search, mode: "insensitive" } },
+      ];
+    }
+
+    if (location) {
+      where.location = location as Prisma.EnumLocationFilter;
+    }
+
+    if (status !== undefined) {
+      where.status = parseInt(status, 10);
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.host.findMany({
+        where,
+        skip,
+        take: limitNum,
+        orderBy: { [sortBy]: sortOrder },
+      }),
+      this.prisma.host.count({ where }),
+    ]);
+
+    return {
+      data,
+      total,
+      page: pageNum,
+      limit: limitNum,
+      totalPages: Math.ceil(total / limitNum),
+    };
+  }
+
+  @Get("hosts/:id")
+  async getHost(@Param("id") id: string) {
+    const host = await this.prisma.host.findUnique({
+      where: { id: BigInt(id) },
+    });
+
+    if (!host) {
+      throw new HttpException("Host not found", HttpStatus.NOT_FOUND);
+    }
+
+    return host;
+  }
+
+  @Post("hosts")
+  async createHost(
+    @Body()
+    body: {
+      name: string;
+      company: string;
+      email?: string;
+      phone?: string;
+      location?: string;
+      status?: number;
+      externalId?: string;
+    },
+  ) {
+    const host = await this.prisma.host.create({
+      data: {
+        name: body.name,
+        company: body.company,
+        email: body.email,
+        phone: body.phone,
+        location: body.location as "BARWA_TOWERS" | "MARINA_50" | "ELEMENT_MARIOTT" | undefined,
+        status: body.status ?? 1,
+        externalId: body.externalId,
+      },
+    });
+
+    return host;
+  }
+
+  @Put("hosts/:id")
+  async updateHost(
+    @Param("id") id: string,
+    @Body()
+    body: {
+      name?: string;
+      company?: string;
+      email?: string;
+      phone?: string;
+      location?: string;
+      status?: number;
+    },
+  ) {
+    const existing = await this.prisma.host.findUnique({
+      where: { id: BigInt(id) },
+    });
+
+    if (!existing) {
+      throw new HttpException("Host not found", HttpStatus.NOT_FOUND);
+    }
+
+    const host = await this.prisma.host.update({
+      where: { id: BigInt(id) },
+      data: {
+        name: body.name,
+        company: body.company,
+        email: body.email,
+        phone: body.phone,
+        location: body.location as "BARWA_TOWERS" | "MARINA_50" | "ELEMENT_MARIOTT" | undefined,
+        status: body.status,
+      },
+    });
+
+    return host;
+  }
+
+  @Delete("hosts/:id")
+  async deleteHost(@Param("id") id: string) {
+    const existing = await this.prisma.host.findUnique({
+      where: { id: BigInt(id) },
+    });
+
+    if (!existing) {
+      throw new HttpException("Host not found", HttpStatus.NOT_FOUND);
+    }
+
+    // Soft delete
+    await this.prisma.host.update({
+      where: { id: BigInt(id) },
+      data: { deletedAt: new Date(), status: 0 },
+    });
+
+    return { success: true, message: "Host deleted" };
+  }
+
+  @Post("hosts/bulk/delete")
+  async bulkDeleteHosts(@Body() body: { ids: string[] }) {
+    const { ids } = body;
+    if (!ids || ids.length === 0) {
+      throw new HttpException("No IDs provided", HttpStatus.BAD_REQUEST);
+    }
+
+    await this.prisma.host.updateMany({
+      where: { id: { in: ids.map((id) => BigInt(id)) } },
+      data: { deletedAt: new Date(), status: 0 },
+    });
+
+    return { success: true, message: `${ids.length} hosts deleted` };
+  }
+
+  // ============ DELIVERIES CRUD ============
+
+  @Get("deliveries")
+  async getDeliveries(
+    @Query("page") page = "1",
+    @Query("limit") limit = "10",
+    @Query("search") search?: string,
+    @Query("status") status?: string,
+    @Query("location") location?: string,
+    @Query("sortBy") sortBy = "createdAt",
+    @Query("sortOrder") sortOrder: "asc" | "desc" = "desc",
+  ) {
+    const pageNum = parseInt(page, 10);
+    const limitNum = parseInt(limit, 10);
+    const skip = (pageNum - 1) * limitNum;
+
+    const where: Prisma.DeliveryWhereInput = {};
+
+    if (search) {
+      where.OR = [
+        { recipient: { contains: search, mode: "insensitive" } },
+        { courier: { contains: search, mode: "insensitive" } },
+        { notes: { contains: search, mode: "insensitive" } },
+      ];
+    }
+
+    if (status) {
+      where.status = status as Prisma.EnumDeliveryStatusFilter;
+    }
+
+    if (location) {
+      where.location = location as Prisma.EnumLocationFilter;
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.delivery.findMany({
+        where,
+        include: { host: true },
+        skip,
+        take: limitNum,
+        orderBy: { [sortBy]: sortOrder },
+      }),
+      this.prisma.delivery.count({ where }),
+    ]);
+
+    return {
+      data,
+      total,
+      page: pageNum,
+      limit: limitNum,
+      totalPages: Math.ceil(total / limitNum),
+    };
+  }
+
+  @Get("deliveries/:id")
+  async getDelivery(@Param("id") id: string) {
+    const delivery = await this.prisma.delivery.findUnique({
+      where: { id },
+      include: { host: true },
+    });
+
+    if (!delivery) {
+      throw new HttpException("Delivery not found", HttpStatus.NOT_FOUND);
+    }
+
+    return delivery;
+  }
+
+  @Post("deliveries")
+  async createDelivery(
+    @Body()
+    body: {
+      recipient: string;
+      hostId?: string;
+      courier: string;
+      location: string;
+      notes?: string;
+    },
+  ) {
+    const delivery = await this.prisma.delivery.create({
+      data: {
+        recipient: body.recipient,
+        hostId: body.hostId ? BigInt(body.hostId) : null,
+        courier: body.courier,
+        location: body.location as "BARWA_TOWERS" | "MARINA_50" | "ELEMENT_MARIOTT",
+        notes: body.notes,
+        status: "RECEIVED",
+        receivedAt: new Date(),
+      },
+      include: { host: true },
+    });
+
+    return delivery;
+  }
+
+  @Put("deliveries/:id")
+  async updateDelivery(
+    @Param("id") id: string,
+    @Body()
+    body: {
+      recipient?: string;
+      hostId?: string;
+      courier?: string;
+      location?: string;
+      notes?: string;
+      status?: string;
+    },
+  ) {
+    const existing = await this.prisma.delivery.findUnique({ where: { id } });
+    if (!existing) {
+      throw new HttpException("Delivery not found", HttpStatus.NOT_FOUND);
+    }
+
+    const updateData: Prisma.DeliveryUpdateInput = {};
+    if (body.recipient !== undefined) updateData.recipient = body.recipient;
+    if (body.courier !== undefined) updateData.courier = body.courier;
+    if (body.notes !== undefined) updateData.notes = body.notes;
+    if (body.location !== undefined)
+      updateData.location = body.location as "BARWA_TOWERS" | "MARINA_50" | "ELEMENT_MARIOTT";
+    if (body.status !== undefined) {
+      updateData.status = body.status as "RECEIVED" | "PICKED_UP";
+      if (body.status === "PICKED_UP") {
+        updateData.pickedUpAt = new Date();
+      }
+    }
+    if (body.hostId !== undefined) {
+      updateData.host = body.hostId ? { connect: { id: BigInt(body.hostId) } } : { disconnect: true };
+    }
+
+    const delivery = await this.prisma.delivery.update({
+      where: { id },
+      data: updateData,
+      include: { host: true },
+    });
+
+    return delivery;
+  }
+
+  @Delete("deliveries/:id")
+  async deleteDelivery(@Param("id") id: string) {
+    const existing = await this.prisma.delivery.findUnique({ where: { id } });
+    if (!existing) {
+      throw new HttpException("Delivery not found", HttpStatus.NOT_FOUND);
+    }
+
+    await this.prisma.delivery.delete({ where: { id } });
+    return { success: true, message: "Delivery deleted" };
+  }
+
+  @Post("deliveries/:id/mark-picked-up")
+  async markDeliveryPickedUp(@Param("id") id: string) {
+    const delivery = await this.prisma.delivery.findUnique({ where: { id } });
+    if (!delivery) {
+      throw new HttpException("Delivery not found", HttpStatus.NOT_FOUND);
+    }
+
+    if (delivery.status === "PICKED_UP") {
+      throw new HttpException("Delivery already picked up", HttpStatus.BAD_REQUEST);
+    }
+
+    await this.prisma.delivery.update({
+      where: { id },
+      data: {
+        status: "PICKED_UP",
+        pickedUpAt: new Date(),
+      },
+    });
+
+    return { success: true, message: "Delivery marked as picked up" };
+  }
+
+  // ============ PRE-REGISTRATIONS CRUD ============
+
+  @Get("pre-registrations")
+  async getPreRegistrations(
+    @Query("page") page = "1",
+    @Query("limit") limit = "10",
+    @Query("search") search?: string,
+    @Query("status") status?: string,
+    @Query("location") location?: string,
+    @Query("sortBy") sortBy = "createdAt",
+    @Query("sortOrder") sortOrder: "asc" | "desc" = "desc",
+  ) {
+    const pageNum = parseInt(page, 10);
+    const limitNum = parseInt(limit, 10);
+    const skip = (pageNum - 1) * limitNum;
+
+    const where: Prisma.VisitWhereInput = {
+      // Pre-registration panel shows PENDING_APPROVAL, REJECTED, PRE_REGISTERED
+      status: status
+        ? (status as Prisma.EnumVisitStatusFilter)
+        : { in: ["PENDING_APPROVAL", "REJECTED", "PRE_REGISTERED"] },
+    };
+
+    if (search) {
+      where.OR = [
+        { visitorName: { contains: search, mode: "insensitive" } },
+        { visitorCompany: { contains: search, mode: "insensitive" } },
+        { visitorPhone: { contains: search, mode: "insensitive" } },
+        { visitorEmail: { contains: search, mode: "insensitive" } },
+      ];
+    }
+
+    if (location) {
+      where.location = location as Prisma.EnumLocationFilter;
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.visit.findMany({
+        where,
+        include: { host: true },
+        skip,
+        take: limitNum,
+        orderBy: { [sortBy]: sortOrder },
+      }),
+      this.prisma.visit.count({ where }),
+    ]);
+
+    return {
+      data,
+      total,
+      page: pageNum,
+      limit: limitNum,
+      totalPages: Math.ceil(total / limitNum),
+    };
+  }
+
+  @Get("pre-registrations/:id")
+  async getPreRegistration(@Param("id") id: string) {
+    const visit = await this.prisma.visit.findUnique({
+      where: { id },
+      include: { host: true, qrToken: true },
+    });
+
+    if (!visit) {
+      throw new HttpException("Pre-registration not found", HttpStatus.NOT_FOUND);
+    }
+
+    return visit;
+  }
+
+  @Post("pre-registrations")
+  async createPreRegistration(
+    @Body()
+    body: {
+      visitorName: string;
+      visitorCompany?: string;
+      visitorPhone: string;
+      visitorEmail?: string;
+      hostId: string;
+      purpose: string;
+      location: string;
+      expectedDate?: string;
+    },
+  ) {
+    const sessionId = crypto.randomUUID();
+
+    const visit = await this.prisma.visit.create({
+      data: {
+        sessionId,
+        visitorName: body.visitorName,
+        visitorCompany: body.visitorCompany || "",
+        visitorPhone: body.visitorPhone,
+        visitorEmail: body.visitorEmail,
+        hostId: BigInt(body.hostId),
+        purpose: body.purpose,
+        location: body.location as "BARWA_TOWERS" | "MARINA_50" | "ELEMENT_MARIOTT",
+        status: "PENDING_APPROVAL",
+        expectedDate: body.expectedDate ? new Date(body.expectedDate) : null,
+      },
+      include: { host: true },
+    });
+
+    return visit;
+  }
+
+  @Put("pre-registrations/:id")
+  async updatePreRegistration(
+    @Param("id") id: string,
+    @Body()
+    body: {
+      visitorName?: string;
+      visitorCompany?: string;
+      visitorPhone?: string;
+      visitorEmail?: string;
+      hostId?: string;
+      purpose?: string;
+      location?: string;
+      expectedDate?: string;
+    },
+  ) {
+    const existing = await this.prisma.visit.findUnique({ where: { id } });
+    if (!existing) {
+      throw new HttpException("Pre-registration not found", HttpStatus.NOT_FOUND);
+    }
+
+    const updateData: Prisma.VisitUpdateInput = {};
+    if (body.visitorName !== undefined) updateData.visitorName = body.visitorName;
+    if (body.visitorCompany !== undefined) updateData.visitorCompany = body.visitorCompany;
+    if (body.visitorPhone !== undefined) updateData.visitorPhone = body.visitorPhone;
+    if (body.visitorEmail !== undefined) updateData.visitorEmail = body.visitorEmail;
+    if (body.purpose !== undefined) updateData.purpose = body.purpose;
+    if (body.location !== undefined)
+      updateData.location = body.location as "BARWA_TOWERS" | "MARINA_50" | "ELEMENT_MARIOTT";
+    if (body.expectedDate !== undefined)
+      updateData.expectedDate = body.expectedDate ? new Date(body.expectedDate) : null;
+    if (body.hostId !== undefined) {
+      updateData.host = { connect: { id: BigInt(body.hostId) } };
+    }
+
+    const visit = await this.prisma.visit.update({
+      where: { id },
+      data: updateData,
+      include: { host: true },
+    });
+
+    return visit;
+  }
+
+  @Delete("pre-registrations/:id")
+  async deletePreRegistration(@Param("id") id: string) {
+    const existing = await this.prisma.visit.findUnique({ where: { id } });
+    if (!existing) {
+      throw new HttpException("Pre-registration not found", HttpStatus.NOT_FOUND);
+    }
+
+    await this.prisma.visit.delete({ where: { id } });
+    return { success: true, message: "Pre-registration deleted" };
+  }
+
+  @Post("pre-registrations/:id/approve")
+  async approvePreRegistration(@Param("id") id: string) {
+    const visit = await this.prisma.visit.findUnique({ where: { id } });
+    if (!visit) {
+      throw new HttpException("Pre-registration not found", HttpStatus.NOT_FOUND);
+    }
+
+    await this.prisma.visit.update({
+      where: { id },
+      data: {
+        status: "APPROVED",
+        approvedAt: new Date(),
+        rejectedAt: null,
+        rejectionReason: null,
+      },
+    });
+
+    return { success: true, message: "Pre-registration approved" };
+  }
+
+  @Post("pre-registrations/:id/reject")
+  async rejectPreRegistration(
+    @Param("id") id: string,
+    @Body() body: { reason?: string },
+  ) {
+    const visit = await this.prisma.visit.findUnique({ where: { id } });
+    if (!visit) {
+      throw new HttpException("Pre-registration not found", HttpStatus.NOT_FOUND);
+    }
+
+    await this.prisma.visit.update({
+      where: { id },
+      data: {
+        status: "REJECTED",
+        rejectedAt: new Date(),
+        rejectionReason: body.reason,
+      },
+    });
+
+    return { success: true, message: "Pre-registration rejected" };
+  }
+
+  @Post("pre-registrations/:id/re-approve")
+  async reApprovePreRegistration(@Param("id") id: string) {
+    const visit = await this.prisma.visit.findUnique({ where: { id } });
+    if (!visit) {
+      throw new HttpException("Pre-registration not found", HttpStatus.NOT_FOUND);
+    }
+
+    if (visit.status !== "REJECTED") {
+      throw new HttpException("Only rejected pre-registrations can be re-approved", HttpStatus.BAD_REQUEST);
+    }
+
+    await this.prisma.visit.update({
+      where: { id },
+      data: {
+        status: "APPROVED",
+        approvedAt: new Date(),
+        rejectedAt: null,
+        rejectionReason: null,
+      },
+    });
+
+    return { success: true, message: "Pre-registration re-approved" };
+  }
+
+  // ============ USERS CRUD ============
+
+  @Get("users")
+  async getUsers(
+    @Query("page") page = "1",
+    @Query("limit") limit = "10",
+    @Query("search") search?: string,
+    @Query("role") role?: string,
+    @Query("sortBy") sortBy = "createdAt",
+    @Query("sortOrder") sortOrder: "asc" | "desc" = "desc",
+  ) {
+    const pageNum = parseInt(page, 10);
+    const limitNum = parseInt(limit, 10);
+    const skip = (pageNum - 1) * limitNum;
+
+    const where: Prisma.UserWhereInput = {};
+
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: "insensitive" } },
+        { email: { contains: search, mode: "insensitive" } },
+      ];
+    }
+
+    if (role) {
+      where.role = role as Prisma.EnumRoleFilter;
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.user.findMany({
+        where,
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+          hostId: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+        skip,
+        take: limitNum,
+        orderBy: { [sortBy]: sortOrder },
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+
+    return {
+      data,
+      total,
+      page: pageNum,
+      limit: limitNum,
+      totalPages: Math.ceil(total / limitNum),
+    };
+  }
+
+  @Get("users/:id")
+  async getUser(@Param("id") id: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: parseInt(id, 10) },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        hostId: true,
+        host: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    if (!user) {
+      throw new HttpException("User not found", HttpStatus.NOT_FOUND);
+    }
+
+    return user;
+  }
+
+  @Post("users")
+  async createUser(
+    @Body()
+    body: {
+      email: string;
+      name: string;
+      password: string;
+      role: string;
+      hostId?: string;
+    },
+  ) {
+    // Check if email already exists
+    const existing = await this.prisma.user.findUnique({
+      where: { email: body.email },
+    });
+
+    if (existing) {
+      throw new HttpException("Email already exists", HttpStatus.BAD_REQUEST);
+    }
+
+    const hashedPassword = await bcrypt.hash(body.password, 12);
+
+    const user = await this.prisma.user.create({
+      data: {
+        email: body.email,
+        name: body.name,
+        password: hashedPassword,
+        role: body.role as "ADMIN" | "RECEPTION" | "HOST",
+        hostId: body.hostId ? BigInt(body.hostId) : null,
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        hostId: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    return user;
+  }
+
+  @Put("users/:id")
+  async updateUser(
+    @Param("id") id: string,
+    @Body()
+    body: {
+      email?: string;
+      name?: string;
+      password?: string;
+      role?: string;
+      hostId?: string;
+    },
+  ) {
+    const userId = parseInt(id, 10);
+    const existing = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!existing) {
+      throw new HttpException("User not found", HttpStatus.NOT_FOUND);
+    }
+
+    // Check if new email already exists
+    if (body.email && body.email !== existing.email) {
+      const emailExists = await this.prisma.user.findUnique({
+        where: { email: body.email },
+      });
+      if (emailExists) {
+        throw new HttpException("Email already exists", HttpStatus.BAD_REQUEST);
+      }
+    }
+
+    const updateData: Prisma.UserUpdateInput = {};
+    if (body.email !== undefined) updateData.email = body.email;
+    if (body.name !== undefined) updateData.name = body.name;
+    if (body.role !== undefined) updateData.role = body.role as "ADMIN" | "RECEPTION" | "HOST";
+    if (body.password !== undefined) {
+      updateData.password = await bcrypt.hash(body.password, 12);
+    }
+    if (body.hostId !== undefined) {
+      updateData.host = body.hostId ? { connect: { id: BigInt(body.hostId) } } : { disconnect: true };
+    }
+
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        hostId: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    return user;
+  }
+
+  @Delete("users/:id")
+  async deleteUser(@Param("id") id: string) {
+    const userId = parseInt(id, 10);
+    const existing = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!existing) {
+      throw new HttpException("User not found", HttpStatus.NOT_FOUND);
+    }
+
+    await this.prisma.user.delete({ where: { id: userId } });
+    return { success: true, message: "User deleted" };
+  }
+
+  @Post("users/:id/change-password")
+  async changeUserPassword(
+    @Param("id") id: string,
+    @Body() body: { password: string },
+  ) {
+    const userId = parseInt(id, 10);
+    const existing = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!existing) {
+      throw new HttpException("User not found", HttpStatus.NOT_FOUND);
+    }
+
+    const hashedPassword = await bcrypt.hash(body.password, 12);
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { password: hashedPassword },
+    });
+
+    return { success: true, message: "Password changed" };
   }
 
   // ============ HELPER METHODS ============

@@ -14,6 +14,7 @@ import AppLayout from '@/layout/AppLayout'
 import SignIn from '@/pages/auth/SignIn'
 import ForgotPassword from '@/pages/auth/ForgotPassword'
 import ResetPassword from '@/pages/auth/ResetPassword'
+import AutoLogin from '@/pages/auth/AutoLogin'
 
 // Pages - Main
 import Dashboard from '@/pages/Dashboard'
@@ -36,6 +37,7 @@ export default function App() {
               <Routes>
                 {/* Public routes */}
                 <Route path="/admin/login" element={<SignIn />} />
+                <Route path="/admin/auto-login" element={<AutoLogin />} />
                 <Route path="/admin/forgot-password" element={<ForgotPassword />} />
                 <Route path="/admin/reset-password" element={<ResetPassword />} />
 

@@ -113,3 +113,13 @@ export async function upload<T>(endpoint: string, formData: FormData): Promise<A
 }
 
 export { getAuthToken, setAuthToken, removeAuthToken };
+
+// Export api object for services that import { api }
+export const api = {
+  get,
+  post,
+  put,
+  del,
+  delete: del,
+  upload,
+};

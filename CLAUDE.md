@@ -1,11 +1,13 @@
 ﻿# Arafat Visitor Management System Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2026-02-04
+Auto-generated from all feature plans. Last updated: 2026-02-05
 
 ## Active Technologies
 - TypeScript 5.9, NestJS (Node.js backend) + NestJS, Prisma ORM, AdminJS, bcrypt (002-host-user-sync)
 - TypeScript 5.9 (frontend), TypeScript 5.1 (backend) (004-fullstack-unit-testing)
 - N/A (tests use mocked Prisma client) (004-fullstack-unit-testing)
+- TypeScript 5.7 (admin), TypeScript 5.1 (backend) + React 19, React Router 7, TailwindCSS 4, ApexCharts, Vite 6 (006-tailadmin-migration)
+- PostgreSQL 16 via Prisma (existing backend - unchanged) (006-tailadmin-migration)
 
 - **Language**: TypeScript 5.9, React 19, ES2022 target
 - **Build**: Vite 7.2
@@ -78,6 +80,19 @@ npm run test:cov   # Run tests with coverage report
 npm run test:e2e   # Run end-to-end tests
 npm run lint       # ESLint (uses legacy config)
 ```
+
+### Admin SPA Commands
+```bash
+cd admin
+npm run dev        # Start dev server (http://localhost:5174) with proxy to backend
+npm run build      # Build SPA to backend/public/admin (production)
+npm run lint       # ESLint
+npm test           # Run all unit tests once (Vitest)
+npm run test:watch # Run tests in watch mode
+npm run test:cov   # Run tests with coverage report
+```
+
+**Note:** After building the admin SPA, restart the backend to serve the new static files.
 
 ### ESLint Configuration
 Root project uses ESLint 9 (flat config), backend uses ESLint 8 (legacy config).
@@ -258,10 +273,9 @@ Status flow: `RECEIVED` → `PICKED_UP`
 - Each test is independently testable and executable
 
 ## Recent Changes
+- 006-tailadmin-migration: Added TypeScript 5.7 (admin), TypeScript 5.1 (backend) + React 19, React Router 7, TailwindCSS 4, ApexCharts, Vite 6
 - **2026-02-04**: Fixed AdminJS action pattern (isVisible/isAccessible/handler), added DeliveryShow tracking component, updated resource filters (Visitors: APPROVED+CHECKED_IN+CHECKED_OUT, PreRegister: PENDING_APPROVAL+REJECTED), fixed ESLint v8/v9 conflict
 - 004-fullstack-unit-testing: Added TypeScript 5.9 (frontend), TypeScript 5.1 (backend)
-- 002-host-user-sync: Added TypeScript 5.9, NestJS (Node.js backend) + NestJS, Prisma ORM, AdminJS, bcrypt
-- **001-visitor-kiosk-ui**: Initial kiosk UI with walk-in check-in, QR scanning, delivery management, authentication, and role-based dashboard
 
 <!-- MANUAL ADDITIONS START -->
 
@@ -269,7 +283,38 @@ Status flow: `RECEIVED` → `PICKED_UP`
 
 ### URLs
 - **Admin Panel**: http://localhost:3000/admin
-- **Quick Login**: http://localhost:3000/admin/quick-login
+- **Login**: http://localhost:3000/admin/login
+- **Auto-Login**: http://localhost:3000/admin/auto-login?token=JWT_TOKEN
+
+### Auto-Login Feature
+The admin panel supports automatic login via JWT token in URL. This is useful for:
+- Single sign-on from external systems
+- Magic link authentication
+- Programmatic admin access
+
+**Usage:**
+```
+GET /admin/auto-login?token=<JWT_TOKEN>
+```
+
+The JWT payload must contain:
+- `sub`: User ID
+- `email`: User email
+- `role`: User role (ADMIN, RECEPTION, HOST)
+- `exp`: Expiration timestamp (optional, validated if present)
+
+**Example JWT payload:**
+```json
+{
+  "sub": 999001,
+  "email": "admin@arafatvisitor.cloud",
+  "role": "ADMIN",
+  "iat": 1770275219,
+  "exp": 1770361619
+}
+```
+
+The token is decoded client-side and stored in localStorage. On success, redirects to dashboard.
 
 ### Test Login Credentials
 | Role | Email | Password |

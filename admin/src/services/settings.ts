@@ -82,3 +82,14 @@ export const getWhatsAppStatusIcon = (
   }
   return { status: 'incomplete', color: 'text-yellow-600' }
 }
+
+// Export settingsService object for components that import { settingsService }
+export const settingsService = {
+  getSettings,
+  updateSmtpSettings,
+  updateWhatsAppSettings,
+  testEmailSettings,
+  testWhatsAppSettings,
+  getSmtpStatusIcon,
+  getWhatsAppStatusIcon,
+}

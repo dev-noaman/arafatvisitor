@@ -8,6 +8,7 @@ export interface AuthContextType {
   isAuthenticated: boolean
   isLoading: boolean
   login: (credentials: LoginCredentials) => Promise<void>
+  autoLogin: (token: string) => Promise<void>
   logout: () => void
 }
 
@@ -66,6 +67,50 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }
 
+  const autoLogin = async (jwtToken: string) => {
+    setIsLoading(true)
+    try {
+      // Decode the JWT payload (base64url decode the middle part)
+      const parts = jwtToken.split('.')
+      if (parts.length !== 3) {
+        throw new Error('Invalid token format')
+      }
+
+      // Decode base64url to base64, then decode
+      const payload = parts[1].replace(/-/g, '+').replace(/_/g, '/')
+      const decoded = JSON.parse(atob(payload))
+
+      // Extract user info from JWT payload
+      const user: User = {
+        id: String(decoded.sub),
+        email: decoded.email,
+        name: decoded.name || decoded.email.split('@')[0],
+        role: decoded.role as User['role'],
+        status: 'ACTIVE' as const,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+
+      // Check if token is expired
+      if (decoded.exp && decoded.exp * 1000 < Date.now()) {
+        throw new Error('Token has expired')
+      }
+
+      setAuthToken(jwtToken)
+      setToken(jwtToken)
+      setUser(user)
+
+      // Store in localStorage
+      localStorage.setItem('admin_token', jwtToken)
+      localStorage.setItem('admin_user', JSON.stringify(user))
+    } catch (error) {
+      console.error('Auto-login failed:', error)
+      throw error
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const logout = () => {
     removeAuthToken()
     setToken(null)
@@ -80,6 +125,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     isAuthenticated: !!token && !!user,
     isLoading,
     login,
+    autoLogin,
     logout,
   }
 
