@@ -123,10 +123,29 @@ export class EmailService {
 
   async sendPasswordReset(to: string, resetUrl: string): Promise<boolean> {
     const html = `
-      <h2>Password Reset</h2>
-      <p>Click the link below to reset your password:</p>
-      <p><a href="${resetUrl}">${resetUrl}</a></p>
-      <p>This link expires in 1 hour.</p>
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: linear-gradient(135deg, #1E3A8A, #3B82F6); padding: 30px; text-align: center;">
+          <h1 style="color: white; margin: 0; font-size: 28px;">PASSWORD RESET</h1>
+          <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0;">Arafat Visitor Management System</p>
+        </div>
+        <div style="padding: 40px 30px; background: #f9fafb;">
+          <h2 style="color: #1E3A8A; margin-top: 0;">Hello!</h2>
+          <p style="color: #374151; line-height: 1.6;">We received a request to reset your password for your Arafat VMS account.</p>
+          <p style="color: #374151; line-height: 1.6;">Click the button below to set a new password:</p>
+          <div style="text-align: center; padding: 30px 0;">
+            <a href="${resetUrl}" style="display: inline-block; background: linear-gradient(135deg, #1E3A8A, #3B82F6); color: white; text-decoration: none; padding: 15px 40px; border-radius: 8px; font-weight: bold; font-size: 16px;">Reset Password</a>
+          </div>
+          <p style="color: #6b7280; font-size: 14px; line-height: 1.6;">Or copy and paste this link into your browser:</p>
+          <p style="color: #3B82F6; font-size: 13px; word-break: break-all; background: #e5e7eb; padding: 12px; border-radius: 6px;">${resetUrl}</p>
+          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+            <p style="color: #9ca3af; font-size: 13px; margin: 0;">⏱ This link expires in <strong>1 hour</strong>.</p>
+            <p style="color: #9ca3af; font-size: 13px; margin: 8px 0 0 0;">If you didn't request this password reset, you can safely ignore this email.</p>
+          </div>
+        </div>
+        <div style="padding: 20px; text-align: center; background: #1E3A8A; color: rgba(255,255,255,0.8); font-size: 13px;">
+          Powered by Arafat Visitor Management System
+        </div>
+      </div>
     `;
     return this.send({
       to,
