@@ -38,6 +38,7 @@ export default function App() {
                 {/* Public routes */}
                 <Route path="/admin/login" element={<SignIn />} />
                 <Route path="/admin/auto-login" element={<AutoLogin />} />
+                <Route path="/admin/quick-login" element={<AutoLogin />} />
                 <Route path="/admin/forgot-password" element={<ForgotPassword />} />
                 <Route path="/admin/reset-password" element={<ResetPassword />} />
 

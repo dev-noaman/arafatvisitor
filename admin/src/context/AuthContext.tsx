@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react'
 import { User, LoginResponse, LoginCredentials } from '@/types'
 import { post, setAuthToken, removeAuthToken } from '@/services/api'
 
@@ -38,36 +38,36 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setIsLoading(false)
   }, [])
 
-  const login = async (credentials: LoginCredentials) => {
+  const login = useCallback(async (credentials: LoginCredentials) => {
     setIsLoading(true)
     try {
       const response = await post<LoginResponse>('/auth/login', credentials)
 
       // Handle both response formats
       const loginData = (response as any).data || response
-      const token = loginData.token
-      const user = loginData.user
+      const authToken = loginData.token
+      const authUser = loginData.user
 
-      if (!token || !user) {
+      if (!authToken || !authUser) {
         throw new Error('Invalid login response')
       }
 
-      setAuthToken(token)
-      setToken(token)
-      setUser(user)
+      setAuthToken(authToken)
+      setToken(authToken)
+      setUser(authUser)
 
       // Store in localStorage
-      localStorage.setItem('admin_token', token)
-      localStorage.setItem('admin_user', JSON.stringify(user))
+      localStorage.setItem('admin_token', authToken)
+      localStorage.setItem('admin_user', JSON.stringify(authUser))
     } catch (error) {
       console.error('Login failed:', error)
       throw error
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [])
 
-  const autoLogin = async (jwtToken: string) => {
+  const autoLogin = useCallback(async (jwtToken: string) => {
     setIsLoading(true)
     try {
       // Decode the JWT payload (base64url decode the middle part)
@@ -81,7 +81,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const decoded = JSON.parse(atob(payload))
 
       // Extract user info from JWT payload
-      const user: User = {
+      const authUser: User = {
         id: String(decoded.sub),
         email: decoded.email,
         name: decoded.name || decoded.email.split('@')[0],
@@ -98,28 +98,28 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       setAuthToken(jwtToken)
       setToken(jwtToken)
-      setUser(user)
+      setUser(authUser)
 
       // Store in localStorage
       localStorage.setItem('admin_token', jwtToken)
-      localStorage.setItem('admin_user', JSON.stringify(user))
+      localStorage.setItem('admin_user', JSON.stringify(authUser))
     } catch (error) {
       console.error('Auto-login failed:', error)
       throw error
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [])
 
-  const logout = () => {
+  const logout = useCallback(() => {
     removeAuthToken()
     setToken(null)
     setUser(null)
     localStorage.removeItem('admin_token')
     localStorage.removeItem('admin_user')
-  }
+  }, [])
 
-  const value: AuthContextType = {
+  const value = useMemo<AuthContextType>(() => ({
     user,
     token,
     isAuthenticated: !!token && !!user,
@@ -127,7 +127,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     login,
     autoLogin,
     logout,
-  }
+  }), [user, token, isLoading, login, autoLogin, logout])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

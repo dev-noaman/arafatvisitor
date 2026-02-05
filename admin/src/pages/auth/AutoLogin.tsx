@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useSearchParams, useNavigate } from 'react-router'
 import { useAuthContext } from '@/context/AuthContext'
 
@@ -8,8 +8,13 @@ export default function AutoLogin() {
   const { autoLogin, isAuthenticated } = useAuthContext()
   const [error, setError] = useState<string | null>(null)
   const [isProcessing, setIsProcessing] = useState(true)
+  const hasAttempted = useRef(false)
 
   useEffect(() => {
+    // Prevent double-execution in React StrictMode or re-renders
+    if (hasAttempted.current) return
+    hasAttempted.current = true
+
     const token = searchParams.get('token')
 
     if (!token) {
@@ -21,6 +26,7 @@ export default function AutoLogin() {
     const performAutoLogin = async () => {
       try {
         await autoLogin(token)
+        setIsProcessing(false)
         // Redirect to dashboard after successful login
         navigate('/admin', { replace: true })
       } catch (err) {
@@ -31,13 +37,6 @@ export default function AutoLogin() {
 
     performAutoLogin()
   }, [searchParams, autoLogin, navigate])
-
-  // If already authenticated, redirect to dashboard
-  useEffect(() => {
-    if (isAuthenticated && !isProcessing) {
-      navigate('/admin', { replace: true })
-    }
-  }, [isAuthenticated, isProcessing, navigate])
 
   if (error) {
     return (
