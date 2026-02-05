@@ -355,14 +355,6 @@ jobs:
                   proxy_set_header Upgrade $http_upgrade;
                   proxy_set_header Connection "upgrade";
                   proxy_cache_bypass $http_upgrade;
-
-                  # Prevent caching of AdminJS bundles
-                  location ~* /admin/frontend/assets/.*\.js$ {
-                      proxy_pass http://127.0.0.1:3000;
-                      add_header Cache-Control "no-cache, no-store, must-revalidate";
-                      add_header Pragma "no-cache";
-                      add_header Expires "0";
-                  }
               }
           }
           NGINXCONF
@@ -430,14 +422,8 @@ jobs:
 
           export $(grep -v '^#' .env | xargs) 2>/dev/null || true
 
-          # Install canvas native dependencies (for QR card image generation)
-          apt-get update && apt-get install -y build-essential libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev 2>/dev/null || true
-
-          # Install any new dependencies (including devDependencies for ts-node if needed)
+          # Install dependencies (including devDependencies for ts-node if needed)
           npm install --include=dev
-
-          # Rebuild canvas to link against native libraries
-          npm rebuild canvas 2>/dev/null || echo "Canvas rebuild skipped"
 
           # Generate Prisma client
           npx prisma generate
@@ -447,13 +433,6 @@ jobs:
 
           # Run seed (adds test data if not exists)
           npm run prisma:seed || echo "Seed completed with warnings"
-
-          # Clear AdminJS caches but preserve the pre-built bundle
-          # The .adminjs/bundle.js is committed and should NOT be deleted
-          rm -rf node_modules/.cache 2>/dev/null || true
-          rm -rf node_modules/.adminjs 2>/dev/null || true
-          rm -rf dist/.adminjs 2>/dev/null || true
-          rm -rf /tmp/adminjs* 2>/dev/null || true
 
           # Rebuild backend
           npm run build
@@ -538,14 +517,6 @@ jobs:
                   proxy_set_header Upgrade $http_upgrade;
                   proxy_set_header Connection "upgrade";
                   proxy_cache_bypass $http_upgrade;
-
-                  # Prevent caching of AdminJS bundles
-                  location ~* /admin/frontend/assets/.*\.js$ {
-                      proxy_pass http://127.0.0.1:3000;
-                      add_header Cache-Control "no-cache, no-store, must-revalidate";
-                      add_header Pragma "no-cache";
-                      add_header Expires "0";
-                  }
               }
           }
           NGINXCONF
