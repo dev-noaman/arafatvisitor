@@ -106,7 +106,7 @@ The login page has quick demo login buttons for Admin, Reception, and Host roles
 - **Visitors**: Manage visitors (APPROVED, CHECKED_IN, CHECKED_OUT)
 - **Pre Register**: Pre-registered visits (PENDING_APPROVAL, REJECTED)
 - **Deliveries**: Package tracking with timeline view
-- **Hosts**: Manage host/employee records
+- **Hosts**: Manage companies and host contacts (with Bulk Import button)
 - **Users**: System user management (Admin only)
 - **Reports**: Visit and delivery reports with export
 - **Settings**: SMTP and WhatsApp configuration
@@ -293,7 +293,10 @@ GET  /admin/api/users                     # List users (Admin only)
 - id, email, password, name, role (ADMIN/RECEPTION/HOST), hostId
 
 ### Host
+A **contact person at a company** who can receive visitors or deliveries (NOT internal employees).
 - id, externalId, name, company, email, phone, location, status
+- Each host belongs to one location; a company can have hosts across multiple locations
+- Bulk Import: CSV/XLSX upload via "Bulk Add" button on /admin/hosts
 
 ### Visit
 - id, sessionId, visitorName, visitorCompany, visitorPhone, visitorEmail
