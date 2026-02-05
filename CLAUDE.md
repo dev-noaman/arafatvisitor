@@ -1,6 +1,6 @@
 # Arafat Visitor Management System Development Guidelines
 
-Last updated: 2026-02-05
+Last updated: 2026-02-05 (WhatsApp & Email QR sending verified working)
 
 ## Active Technologies
 
@@ -9,7 +9,7 @@ Last updated: 2026-02-05
 - **Frontend (Reception)**: React 19, TailwindCSS 4.1, Vite 7.2
 - **Forms**: React Hook Form + Zod validation
 - **Backend**: NestJS + Prisma ORM + PostgreSQL 16
-- **Notifications**: Sonner (toast), node-canvas (badge generation)
+- **Notifications**: Sonner (toast), nodemailer (email), wbiztool API (WhatsApp)
 - **Icons**: Lucide React
 - **Testing**: Vitest + React Testing Library (frontend), Jest (backend)
 
@@ -45,9 +45,8 @@ Last updated: 2026-02-05
 │   │   ├── visits/                # Visit management
 │   │   ├── deliveries/            # Delivery management
 │   │   └── notifications/
-│   │       ├── email.service.ts   # SMTP email sending
-│   │       ├── whatsapp.service.ts # WhatsApp via wbiztool
-│   │       └── badge-generator.service.ts # Visitor pass image generation
+│   │       ├── email.service.ts   # SMTP email sending (with CID attachments)
+│   │       └── whatsapp.service.ts # WhatsApp via wbiztool (text + images)
 │   └── public/
 │       └── admin/                 # Built admin SPA served here
 └── src/                           # Reception frontend (Vite + React)
@@ -155,24 +154,22 @@ Send QR codes to visitors via Email or WhatsApp from the Admin Panel Dashboard.
 3. Modal opens with QR code display
 4. Click **WhatsApp** or **Email** to send
 
-### WhatsApp Visitor Pass Image
-WhatsApp sends a **vertical visitor pass image** (1080x1920 pixels, 9:16 ratio) with:
-- Company header with gradient background ("ARAFAT GROUP")
-- "VISITOR PASS" label
-- Visitor name (large, centered, uppercase)
-- Visitor company (if available)
-- Large QR code (500x500) in a rounded box
-- Instruction text for check-in
-- Details section: Host, Company, Location, Purpose, Date, Time
-- Green "ACTIVE" status badge
-- Badge ID
+### WhatsApp QR Code
+WhatsApp sends a **QR code image** with caption containing:
+- "VISITOR PASS" header
+- Visitor name and company
+- Host name and company
+- Purpose of visit
+- Check-in instructions
 
-Generated using `node-canvas` and sent via wbiztool API (`msg_type: 1` for images).
-
-**Note**: Requires native canvas dependencies installed on server (libcairo2-dev, libpango1.0-dev, libjpeg-dev, libgif-dev, librsvg2-dev).
+Generated using `qrcode` library (toDataURL) and sent via wbiztool API using native FormData (`msg_type: 1` for images).
 
 ### Email Template
-HTML email with embedded QR code image, visitor details, and host information.
+Professional HTML email with:
+- Gradient header with "VISITOR PASS" branding
+- Inline QR code image (CID attachment for email client compatibility)
+- Visitor details table (Host, Company, Purpose)
+- Styled footer with Arafat VMS branding
 
 ### API Endpoints
 ```
@@ -254,10 +251,9 @@ Test data is identified by:
 1. Push to `main` branch triggers deployment
 2. Admin SPA built and uploaded to VPS
 3. Backend uploaded, dependencies installed
-4. Canvas native dependencies installed + npm rebuild canvas
-5. Prisma migrations run
-6. PM2 restarts the backend
-7. Nginx config updated
+4. Prisma migrations run
+5. PM2 restarts the backend
+6. Nginx config updated
 
 ### Production URLs
 - **Frontend**: https://arafatvisitor.cloud
