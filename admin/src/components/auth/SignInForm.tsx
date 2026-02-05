@@ -14,11 +14,18 @@ const signInSchema = z.object({
 
 type SignInFormData = z.infer<typeof signInSchema>
 
+const DEMO_ACCOUNTS = [
+  { role: 'Admin', email: 'admin@arafatvisitor.cloud', password: 'admin123', color: 'red' },
+  { role: 'Reception', email: 'reception@arafatvisitor.cloud', password: 'reception123', color: 'blue' },
+  { role: 'Host', email: 'host@arafatvisitor.cloud', password: 'host123', color: 'green' },
+]
+
 export function SignInForm() {
   const { login } = useAuth()
   const { error: showError, success: showSuccess } = useToast()
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [loadingRole, setLoadingRole] = useState<string | null>(null)
   const [rememberMe, setRememberMe] = useState(false)
 
   const {
@@ -28,8 +35,8 @@ export function SignInForm() {
   } = useForm<SignInFormData>({
     resolver: zodResolver(signInSchema),
     defaultValues: {
-      email: 'admin@arafatvisitor.cloud',
-      password: 'admin123',
+      email: '',
+      password: '',
     },
   })
 
@@ -43,6 +50,19 @@ export function SignInForm() {
       showError(errorMessage)
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const handleQuickLogin = async (account: typeof DEMO_ACCOUNTS[0]) => {
+    setLoadingRole(account.role)
+    try {
+      await login({ email: account.email, password: account.password })
+      showSuccess(`Logged in as ${account.role}! Redirecting...`)
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Login failed. Please try again.'
+      showError(errorMessage)
+    } finally {
+      setLoadingRole(null)
     }
   }
 
@@ -194,25 +214,63 @@ export function SignInForm() {
             </button>
           </form>
 
-          {/* Test Credentials Info */}
-          <div className="mt-8 p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <p className="text-sm font-medium text-gray-700 mb-2">Demo Credentials</p>
-            <div className="grid grid-cols-3 gap-2 text-xs text-gray-500">
-              <div>
-                <p className="font-medium text-gray-600">Admin</p>
-                <p>admin@arafatvisitor.cloud</p>
-                <p>admin123</p>
+          {/* Quick Demo Login */}
+          <div className="mt-8">
+            <div className="relative mb-4">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-200"></div>
               </div>
-              <div>
-                <p className="font-medium text-gray-600">Reception</p>
-                <p>reception@...cloud</p>
-                <p>reception123</p>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-4 bg-white text-gray-500">Quick Demo Login</span>
               </div>
-              <div>
-                <p className="font-medium text-gray-600">Host</p>
-                <p>host@...cloud</p>
-                <p>host123</p>
-              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              {DEMO_ACCOUNTS.map((account) => (
+                <button
+                  key={account.role}
+                  type="button"
+                  onClick={() => handleQuickLogin(account)}
+                  disabled={loadingRole !== null || isLoading}
+                  className={`relative flex flex-col items-center gap-1 p-3 rounded-xl border-2 transition-all duration-200 ${
+                    loadingRole === account.role
+                      ? 'border-gray-300 bg-gray-50'
+                      : account.color === 'red'
+                      ? 'border-red-200 bg-red-50 hover:border-red-400 hover:bg-red-100'
+                      : account.color === 'blue'
+                      ? 'border-blue-200 bg-blue-50 hover:border-blue-400 hover:bg-blue-100'
+                      : 'border-green-200 bg-green-50 hover:border-green-400 hover:bg-green-100'
+                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                >
+                  {loadingRole === account.role ? (
+                    <svg className="animate-spin h-6 w-6 text-gray-500" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                  ) : (
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                      account.color === 'red'
+                        ? 'bg-red-500'
+                        : account.color === 'blue'
+                        ? 'bg-blue-500'
+                        : 'bg-green-500'
+                    }`}>
+                      <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  )}
+                  <span className={`text-sm font-semibold ${
+                    account.color === 'red'
+                      ? 'text-red-700'
+                      : account.color === 'blue'
+                      ? 'text-blue-700'
+                      : 'text-green-700'
+                  }`}>
+                    {account.role}
+                  </span>
+                  <span className="text-xs text-gray-500">Click to login</span>
+                </button>
+              ))}
             </div>
           </div>
         </div>
