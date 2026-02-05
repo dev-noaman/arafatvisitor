@@ -19,7 +19,6 @@ import { Response } from "express";
 import { PrismaService } from "../prisma/prisma.service";
 import { EmailService } from "../notifications/email.service";
 import { WhatsAppService } from "../notifications/whatsapp.service";
-import { BadgeGeneratorService } from "../notifications/badge-generator.service";
 import { Public } from "../common/decorators/public.decorator";
 import * as bcrypt from "bcrypt";
 import * as QRCode from "qrcode";
@@ -48,7 +47,6 @@ export class AdminApiController {
     private readonly prisma: PrismaService,
     private readonly emailService: EmailService,
     private readonly whatsappService: WhatsAppService,
-    private readonly badgeGeneratorService: BadgeGeneratorService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
   ) {}
@@ -1194,51 +1192,13 @@ export class AdminApiController {
       }
 
       try {
-        // Try to generate and send badge image
-        let sent = false;
-        let usedImage = false;
+        console.log("[send-qr] Sending WhatsApp text message...");
+        const qrLink = `${process.env.FRONTEND_URL || "https://arafatvisitor.cloud"}/check-in?session=${token}`;
+        const message = `Hello ${visit.visitorName}!\n\nYour visitor pass for ${visit.host?.company || "our office"} is ready.\n\nPlease use this link to access your QR code:\n${qrLink}\n\nOr show this message at reception for check-in.\n\nHost: ${visit.host?.name || "N/A"}\nPurpose: ${visit.purpose || "Visit"}`;
 
-        // Check if badge generator is available (canvas native deps)
-        const badgeAvailable = await this.badgeGeneratorService.isAvailable();
-
-        if (badgeAvailable) {
-          try {
-            console.log("[send-qr] Generating visitor badge image...");
-            const badgeBase64 = await this.badgeGeneratorService.generateVisitorBadge({
-              visitorName: visit.visitorName,
-              visitorCompany: visit.visitorCompany || undefined,
-              hostName: visit.host?.name || "N/A",
-              hostCompany: visit.host?.company || "Arafat Group",
-              location: visit.location || "BARWA_TOWERS",
-              purpose: visit.purpose || "Visit",
-              sessionId: token,
-              visitDate: visit.expectedDate || new Date(),
-            });
-
-            console.log("[send-qr] Badge generated, sending via WhatsApp to:", visit.visitorPhone);
-            sent = await this.whatsappService.sendImage(
-              visit.visitorPhone,
-              badgeBase64,
-              `Visitor Pass for ${visit.visitorName}`
-            );
-            usedImage = true;
-            console.log("[send-qr] WhatsApp image result:", sent);
-          } catch (badgeError) {
-            console.warn("[send-qr] Badge generation failed, falling back to text:", badgeError);
-          }
-        } else {
-          console.log("[send-qr] Badge generator not available, using text message");
-        }
-
-        // Fallback to text message if image failed or not available
-        if (!sent) {
-          console.log("[send-qr] Sending text message fallback...");
-          const qrLink = `${process.env.FRONTEND_URL || "https://arafatvisitor.cloud"}/check-in?session=${token}`;
-          const message = `Hello ${visit.visitorName}!\n\nYour visitor pass for ${visit.host?.company || "our office"} is ready.\n\nPlease use this link to access your QR code:\n${qrLink}\n\nOr show this message at reception for check-in.\n\nHost: ${visit.host?.name || "N/A"}\nPurpose: ${visit.purpose || "Visit"}`;
-
-          sent = await this.whatsappService.send(visit.visitorPhone, message);
-          console.log("[send-qr] WhatsApp text result:", sent);
-        }
+        console.log("[send-qr] Sending to:", visit.visitorPhone);
+        const sent = await this.whatsappService.send(visit.visitorPhone, message);
+        console.log("[send-qr] WhatsApp result:", sent);
 
         if (!sent) {
           throw new HttpException(
@@ -1248,7 +1208,7 @@ export class AdminApiController {
         }
         return {
           success: true,
-          message: usedImage ? "Visitor pass image sent via WhatsApp" : "QR link sent via WhatsApp",
+          message: "QR link sent via WhatsApp",
         };
       } catch (e) {
         console.error("[send-qr] WhatsApp error:", e);
