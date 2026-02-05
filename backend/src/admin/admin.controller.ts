@@ -1372,7 +1372,7 @@ export class AdminApiController {
       if (v.status === "APPROVED") entry.approved++;
       else if (v.status === "CHECKED_IN") entry.checkedIn++;
       else if (v.status === "CHECKED_OUT") entry.checkedOut++;
-      else if (v.status === "PENDING" || v.status === "PENDING_APPROVAL") entry.pending++;
+      else if (v.status === "PENDING_APPROVAL" || v.status === "PRE_REGISTERED") entry.pending++;
       else if (v.status === "REJECTED") entry.rejected++;
     });
 
