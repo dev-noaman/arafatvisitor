@@ -9,7 +9,7 @@ Last updated: 2026-02-05
 - **Frontend (Reception)**: React 19, TailwindCSS 4.1, Vite 7.2
 - **Forms**: React Hook Form + Zod validation
 - **Backend**: NestJS + Prisma ORM + PostgreSQL 16
-- **Notifications**: Sonner (toast), node-canvas (badge generation)
+- **Notifications**: Sonner (toast)
 - **Icons**: Lucide React
 - **Testing**: Vitest + React Testing Library (frontend), Jest (backend)
 
@@ -46,8 +46,7 @@ Last updated: 2026-02-05
 │   │   ├── deliveries/            # Delivery management
 │   │   └── notifications/
 │   │       ├── email.service.ts   # SMTP email sending
-│   │       ├── whatsapp.service.ts # WhatsApp via wbiztool
-│   │       └── badge-generator.service.ts # Visitor pass image generation
+│   │       └── whatsapp.service.ts # WhatsApp via wbiztool
 │   └── public/
 │       └── admin/                 # Built admin SPA served here
 └── src/                           # Reception frontend (Vite + React)
@@ -155,19 +154,15 @@ Send QR codes to visitors via Email or WhatsApp from the Admin Panel Dashboard.
 3. Modal opens with QR code display
 4. Click **WhatsApp** or **Email** to send
 
-### WhatsApp Visitor Pass Image
-WhatsApp sends a **vertical visitor pass image** (1080x1920 pixels, 9:16 ratio) with:
-- Company header with gradient background
-- "VISITOR PASS" label
-- Visitor name (large, centered)
-- Visitor company
-- Large QR code (500x500) in a box
-- Instruction text
-- Details section: Host, Company, Location, Purpose, Date, Time
-- Green "ACTIVE" status badge
-- Badge ID
+### WhatsApp Message
+WhatsApp sends a **text message** with:
+- Greeting with visitor name
+- QR code link for check-in
+- Host name and purpose
 
-Generated using `node-canvas` and sent via wbiztool API (`msg_type: 1` for images).
+Sent via wbiztool API (`msg_type: 0` for text messages).
+
+**Note**: Badge image generation (1080x1920 visitor pass) is implemented in `badge-generator.service.ts` but disabled due to canvas native dependencies not being available on the server. The file is preserved for future use.
 
 ### Email Template
 HTML email with embedded QR code image, visitor details, and host information.
@@ -252,10 +247,9 @@ Test data is identified by:
 1. Push to `main` branch triggers deployment
 2. Admin SPA built and uploaded to VPS
 3. Backend uploaded, dependencies installed
-4. Canvas native dependencies installed (for visitor pass generation)
-5. Prisma migrations run
-6. PM2 restarts the backend
-7. Nginx config updated
+4. Prisma migrations run
+5. PM2 restarts the backend
+6. Nginx config updated
 
 ### Production URLs
 - **Frontend**: https://arafatvisitor.cloud
