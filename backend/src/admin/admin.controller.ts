@@ -1194,38 +1194,59 @@ export class AdminApiController {
       }
 
       try {
-        console.log("[send-qr] Generating visitor badge image...");
+        console.log("[send-qr] Attempting to generate visitor badge image...");
 
-        // Generate vertical visitor badge image (1080x1920)
-        const badgeBase64 = await this.badgeGeneratorService.generateVisitorBadge({
-          visitorName: visit.visitorName,
-          visitorCompany: visit.visitorCompany || undefined,
-          hostName: visit.host?.name || "Host",
-          hostCompany: visit.host?.company || "Arafat Group",
-          location: visit.location || "BARWA_TOWERS",
-          purpose: visit.purpose || "Visit",
-          sessionId: token,
-          visitDate: visit.expectedDate || new Date(),
-          badgeId: visit.sessionId?.substring(0, 12).toUpperCase(),
-        });
+        let sent = false;
+        let usedFallback = false;
 
-        console.log("[send-qr] Badge generated, length:", badgeBase64.length);
-        console.log("[send-qr] Sending WhatsApp image to:", visit.visitorPhone);
+        try {
+          // Try to generate vertical visitor badge image (1080x1920)
+          const badgeBase64 = await this.badgeGeneratorService.generateVisitorBadge({
+            visitorName: visit.visitorName,
+            visitorCompany: visit.visitorCompany || undefined,
+            hostName: visit.host?.name || "Host",
+            hostCompany: visit.host?.company || "Arafat Group",
+            location: visit.location || "BARWA_TOWERS",
+            purpose: visit.purpose || "Visit",
+            sessionId: token,
+            visitDate: visit.expectedDate || new Date(),
+            badgeId: visit.sessionId?.substring(0, 12).toUpperCase(),
+          });
 
-        const sent = await this.whatsappService.sendImage(
-          visit.visitorPhone,
-          badgeBase64,
-          `Hello ${visit.visitorName}! Here is your visitor pass for ${visit.host?.company || "our office"}. Please show this at reception for check-in.`,
-        );
-        console.log("[send-qr] WhatsApp image result:", sent);
+          console.log("[send-qr] Badge generated, length:", badgeBase64.length);
+          console.log("[send-qr] Sending WhatsApp image to:", visit.visitorPhone);
+
+          sent = await this.whatsappService.sendImage(
+            visit.visitorPhone,
+            badgeBase64,
+            `Hello ${visit.visitorName}! Here is your visitor pass for ${visit.host?.company || "our office"}. Please show this at reception for check-in.`,
+          );
+          console.log("[send-qr] WhatsApp image result:", sent);
+        } catch (badgeError) {
+          // Badge generation failed, fall back to text message with QR link
+          console.error("[send-qr] Badge generation failed, using text fallback:", badgeError);
+          usedFallback = true;
+
+          const qrLink = `${process.env.FRONTEND_URL || "https://arafatvisitor.cloud"}/check-in?session=${token}`;
+          const message = `Hello ${visit.visitorName}!\n\nYour visitor pass for ${visit.host?.company || "our office"} is ready.\n\nPlease use this link to access your QR code:\n${qrLink}\n\nOr show this message at reception for check-in.\n\nHost: ${visit.host?.name || "N/A"}\nPurpose: ${visit.purpose || "Visit"}`;
+
+          console.log("[send-qr] Sending WhatsApp text to:", visit.visitorPhone);
+          sent = await this.whatsappService.send(visit.visitorPhone, message);
+          console.log("[send-qr] WhatsApp text result:", sent);
+        }
 
         if (!sent) {
           throw new HttpException(
-            "WhatsApp service failed to send visitor pass. Check configuration.",
+            "WhatsApp service failed to send message. Check configuration.",
             HttpStatus.SERVICE_UNAVAILABLE,
           );
         }
-        return { success: true, message: "Visitor pass sent via WhatsApp" };
+        return {
+          success: true,
+          message: usedFallback
+            ? "QR link sent via WhatsApp (badge generation unavailable)"
+            : "Visitor pass sent via WhatsApp",
+        };
       } catch (e) {
         console.error("[send-qr] WhatsApp error:", e);
         if (e instanceof HttpException) throw e;
