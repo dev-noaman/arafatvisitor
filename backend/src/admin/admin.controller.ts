@@ -232,7 +232,7 @@ export class AdminApiController {
       throw new HttpException("User not found", HttpStatus.NOT_FOUND);
     }
     console.log('[DEBUG] User found:', { id: user.id, name: user.name, email: user.email, role: user.role });
-    return { id: user.id, name: user.name, email: user.email, role: user.role };
+    return { id: user.id, name: user.name, email: user.email, role: user.role, createdAt: user.createdAt, updatedAt: user.updatedAt };
   }
 
   @Get("profile/preferences")

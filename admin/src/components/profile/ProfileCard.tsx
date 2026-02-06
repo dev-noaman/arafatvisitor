@@ -77,13 +77,13 @@ export default function ProfileCard({ user, isLoading }: ProfileCardProps) {
             <div>
               <p className="text-gray-600">Member Since</p>
               <p className="text-gray-900 font-medium">
-                {new Date(user.createdAt).toLocaleDateString()}
+                {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
               </p>
             </div>
             <div>
               <p className="text-gray-600">Last Updated</p>
               <p className="text-gray-900 font-medium">
-                {new Date(user.updatedAt).toLocaleDateString()}
+                {user.updatedAt ? new Date(user.updatedAt).toLocaleDateString() : 'N/A'}
               </p>
             </div>
           </div>
