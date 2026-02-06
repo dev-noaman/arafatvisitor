@@ -248,6 +248,17 @@ Module: `backend/src/tasks/cleanup.service.ts`
 - Exponential backoff: 1s, 3s, 5s delays (max 3 retries)
 - Dispatches `networkRetry` custom events for UI notifications
 
+### QR Check-In Welcome Badge
+- When a visitor scans their QR code on the kiosk (Check In > Scan QR), the system auto-checks them in
+- Flow: QR scan → auto-call `POST /visits/:sessionId/checkin` → display full-screen welcome badge
+- Badge shows: visitor name, company, host details, purpose, location, check-in time, badge ID
+- 5-second countdown timer then auto-returns to home screen
+- On check-in, host is notified via WhatsApp and email with visitor arrival details
+- Component: `src/features/visitors/CheckInBadge.tsx`
+- Backend endpoint: `POST /visits/:sessionId/checkin` (ADMIN/RECEPTION roles)
+- The check-in endpoint accepts APPROVED or already-CHECKED_IN visits
+- Notifications only trigger on new check-ins (APPROVED → CHECKED_IN), not re-scans
+
 ## Code Splitting (Admin)
 
 All admin pages are lazy-loaded via `React.lazy()` with `<Suspense>` fallbacks:
@@ -326,6 +337,14 @@ WHATSAPP_CLIENT_ID=11158
 WHATSAPP_CLIENT=5219
 WHATSAPP_API_KEY=<secret>
 ```
+
+### Notification Triggers
+| Event | Email | WhatsApp | Recipient |
+|-------|-------|----------|-----------|
+| Walk-in visit created | Visitor arrival | Visitor arrival | Host |
+| QR check-in (APPROVED → CHECKED_IN) | Visitor arrival with details | Visitor arrival with details | Host |
+| Password reset requested | Reset link | — | User |
+| QR code sent from admin | QR email template | QR image + caption | Visitor |
 
 ## Code Style
 
@@ -432,6 +451,15 @@ GET  /admin/api/lookups/purposes          # Purpose of visit (cached 1h)
 GET  /admin/api/lookups/delivery-types    # Delivery types (cached 1h)
 GET  /admin/api/lookups/couriers          # Couriers (cached 1h)
 GET  /admin/api/lookups/locations         # Locations (cached 1h)
+```
+
+### Visits API (JWT, ADMIN/RECEPTION)
+```
+POST /visits                              # Create visit (walk-in check-in)
+GET  /visits/:sessionId                   # Get visit by session ID
+POST /visits/:sessionId/checkin           # Check in visitor by session ID
+POST /visits/:sessionId/checkout          # Check out visitor by session ID
+GET  /visits/pass/:sessionId              # Get visit pass (public, no auth)
 ```
 
 ### Public API (for Reception Kiosk)
