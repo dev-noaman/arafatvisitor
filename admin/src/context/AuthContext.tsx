@@ -19,39 +19,42 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [token, setToken] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  // Verify session on mount by checking if cookies are still valid
+  // Restore auth state from localStorage on mount
   useEffect(() => {
-    const verifySession = async () => {
-      try {
-        // Note: In production, we could call a /api/auth/me endpoint to verify session
-        // For now, we rely on the API service's auto-refresh mechanism
-        setIsLoading(false)
-      } catch (error) {
-        console.error('Session verification failed:', error)
-        setIsLoading(false)
+    try {
+      const savedUser = localStorage.getItem('auth_user')
+      const savedToken = localStorage.getItem('auth_token')
+      if (savedUser && savedToken) {
+        setUser(JSON.parse(savedUser))
+        setToken(savedToken)
       }
+    } catch {
+      localStorage.removeItem('auth_user')
+      localStorage.removeItem('auth_token')
     }
-
-    verifySession()
+    setIsLoading(false)
   }, [])
 
   const login = useCallback(async (credentials: LoginCredentials) => {
     setIsLoading(true)
     try {
-      const response = await post<LoginResponse>('/api/auth/login', credentials)
+      const response = await post<LoginResponse>('/admin/api/login', credentials)
 
       // Handle both response formats
       const loginData = (response as any).data || response
       const authUser = loginData.user
+      const authToken = loginData.token
 
       if (!authUser) {
         throw new Error('Invalid login response')
       }
 
-      // Store only user data in state; token is stored in httpOnly cookie
+      // Persist auth state
+      localStorage.setItem('auth_user', JSON.stringify(authUser))
+      localStorage.setItem('auth_token', authToken || 'authenticated')
+
       setUser(authUser)
-      // Set a dummy token for isAuthenticated checks (actual token is in cookie)
-      setToken('authenticated')
+      setToken(authToken || 'authenticated')
     } catch (error) {
       console.error('Login failed:', error)
       throw error
@@ -89,10 +92,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         throw new Error('Token has expired')
       }
 
-      // Store only user data in state
+      // Persist auth state
+      localStorage.setItem('auth_user', JSON.stringify(authUser))
+      localStorage.setItem('auth_token', jwtToken)
+
       setUser(authUser)
-      // Set a dummy token for isAuthenticated checks
-      setToken('authenticated')
+      setToken(jwtToken)
     } catch (error) {
       console.error('Auto-login failed:', error)
       throw error
@@ -102,13 +107,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, [])
 
   const logout = useCallback(async () => {
-    try {
-      // Call logout endpoint to revoke refresh token and clear cookies
-      await post('/api/auth/logout', {})
-    } catch (error) {
-      console.error('Logout request failed:', error)
-      // Continue with logout even if the request fails
-    }
+    // Clear persisted state
+    localStorage.removeItem('auth_user')
+    localStorage.removeItem('auth_token')
     setToken(null)
     setUser(null)
   }, [])

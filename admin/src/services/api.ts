@@ -6,45 +6,13 @@ import { ApiError } from '../types';
 // /auth/* -> http://localhost:3000
 // /admin/api/* -> http://localhost:3000
 const API_BASE_URL = '';
-let isRefreshing = false;
-let refreshPromise: Promise<boolean> | null = null;
 
-// Attempt to refresh the access token using the refresh token cookie
-async function refreshAccessToken(): Promise<boolean> {
-  if (isRefreshing) {
-    return refreshPromise || Promise.resolve(false);
-  }
-
-  isRefreshing = true;
-  refreshPromise = (async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
-        method: 'POST',
-        credentials: 'include', // Include cookies
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        return true;
-      } else {
-        // Refresh failed, redirect to login
-        sessionStorage.setItem('session_expired', 'Your session has expired. Please sign in again.');
-        window.location.href = '/admin/login';
-        return false;
-      }
-    } catch (error) {
-      sessionStorage.setItem('session_expired', 'Your session has expired. Please sign in again.');
-      window.location.href = '/admin/login';
-      return false;
-    } finally {
-      isRefreshing = false;
-      refreshPromise = null;
-    }
-  })();
-
-  return refreshPromise;
+// Handle session expiry - redirect to login
+function handleSessionExpired(): void {
+  localStorage.removeItem('auth_user');
+  localStorage.removeItem('auth_token');
+  sessionStorage.setItem('session_expired', 'Your session has expired. Please sign in again.');
+  window.location.href = '/admin/login';
 }
 
 // Generic API request function - returns T directly (backend returns data unwrapped)
@@ -54,24 +22,22 @@ async function apiRequest<T>(
 ): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
 
+  const token = localStorage.getItem('auth_token');
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
+    ...(token && token !== 'authenticated' ? { 'Authorization': `Bearer ${token}` } : {}),
     ...options.headers,
   };
 
   const response = await fetch(url, {
     ...options,
-    credentials: 'include', // Always include cookies for authentication
+    credentials: 'include', // Include cookies for httpOnly cookie auth
     headers,
   });
 
-  // Handle 401 Unauthorized - try to refresh token first
+  // Handle 401 Unauthorized - session expired
   if (response.status === 401) {
-    const refreshed = await refreshAccessToken();
-    if (refreshed) {
-      // Retry the original request with the new token
-      return apiRequest<T>(endpoint, options);
-    }
+    handleSessionExpired();
     throw new Error('Unauthorized - session expired');
   }
 
@@ -117,18 +83,20 @@ export async function del<T>(endpoint: string): Promise<T> {
 export async function upload<T>(endpoint: string, formData: FormData): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
 
+  const token = localStorage.getItem('auth_token');
+  const headers: HeadersInit = token && token !== 'authenticated'
+    ? { 'Authorization': `Bearer ${token}` }
+    : {};
+
   const response = await fetch(url, {
     method: 'POST',
     credentials: 'include', // Include cookies
+    headers,
     body: formData,
   });
 
   if (response.status === 401) {
-    const refreshed = await refreshAccessToken();
-    if (refreshed) {
-      // Retry the upload
-      return upload<T>(endpoint, formData);
-    }
+    handleSessionExpired();
     throw new Error('Unauthorized - session expired');
   }
 

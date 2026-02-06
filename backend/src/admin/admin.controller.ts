@@ -58,8 +58,12 @@ export class AdminApiController {
 
   // ============ AUTHENTICATION ============
 
+  @Public()
   @Post("login")
-  async login(@Body() body: { email: string; password: string }) {
+  async login(
+    @Body() body: { email: string; password: string },
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const { email, password } = body;
 
     if (!email || !password) {
@@ -88,6 +92,16 @@ export class AdminApiController {
       expiresIn: this.configService.get("JWT_EXPIRES_IN") || "24h",
     });
 
+    // Set httpOnly cookie for secure authentication
+    const isProduction = this.configService.get("NODE_ENV") === "production";
+    res.cookie("access_token", token, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: "strict",
+      path: "/",
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    });
+
     return {
       token,
       user: {
@@ -98,6 +112,52 @@ export class AdminApiController {
         hostId: user.hostId,
       },
     };
+  }
+
+  @Public()
+  @Post("forgot-password")
+  async forgotPassword(@Body() body: { email: string }) {
+    const user = await this.prisma.user.findUnique({
+      where: { email: body.email?.toLowerCase() },
+    });
+    if (!user) {
+      return { message: "If an account exists, a reset link has been sent." };
+    }
+    const resetToken = this.jwtService.sign(
+      { sub: user.id, purpose: "reset" },
+      { expiresIn: "1h" },
+    );
+    const adminUrl =
+      this.configService.get("ADMIN_URL") || "https://arafatvisitor.cloud/admin";
+    const resetUrl = `${adminUrl}/reset-password?token=${resetToken}`;
+    await this.emailService
+      .sendPasswordReset(user.email, resetUrl)
+      .catch(() => {});
+    return { message: "If an account exists, a reset link has been sent." };
+  }
+
+  @Public()
+  @Post("reset-password")
+  async resetPassword(@Body() body: { token: string; newPassword: string }) {
+    try {
+      const payload = this.jwtService.verify<{ sub: number; purpose: string }>(
+        body.token,
+      );
+      if (payload.purpose !== "reset") {
+        throw new HttpException("Invalid token", HttpStatus.BAD_REQUEST);
+      }
+      const hash = await bcrypt.hash(body.newPassword, 12);
+      await this.prisma.user.update({
+        where: { id: payload.sub },
+        data: { password: hash },
+      });
+      return { message: "Password reset successfully" };
+    } catch {
+      throw new HttpException(
+        "Invalid or expired reset token",
+        HttpStatus.BAD_REQUEST,
+      );
+    }
   }
 
   // ============ DASHBOARD KPIs ============
