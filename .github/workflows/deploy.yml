@@ -234,6 +234,16 @@ jobs:
           pm2 start dist/src/main.js --name arafatvisitor-api --update-env
           pm2 save
 
+          # Wait for app to start, then check status and capture logs
+          sleep 5
+          echo "=== PM2 STATUS ==="
+          pm2 status
+          echo "=== PM2 LOGS (last 100 lines) ==="
+          pm2 logs arafatvisitor-api --nostream --lines 100 || true
+          echo "=== HEALTH CHECK ==="
+          curl -s -o /dev/null -w "HTTP Status: %{http_code}\n" http://localhost:3000/health || echo "Health check failed"
+          curl -s http://localhost:3000/health || echo "No response body"
+
           echo "DEPLOY_COMPLETE"
           ENDSSH
 
