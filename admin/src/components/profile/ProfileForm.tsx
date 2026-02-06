@@ -32,7 +32,7 @@ export default function ProfileForm({ user, onSubmit, isLoading }: ProfileFormPr
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         {/* Name Field */}
         <div>
-          <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
+          <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Full Name *
           </label>
           <input
@@ -40,15 +40,15 @@ export default function ProfileForm({ user, onSubmit, isLoading }: ProfileFormPr
             type="text"
             id="name"
             placeholder="Enter your full name"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             disabled={isLoading}
           />
-          {errors.name && <p className="text-sm text-red-600 mt-1">{String(errors.name?.message)}</p>}
+          {errors.name && <p className="text-sm text-red-600 dark:text-red-400 mt-1">{String(errors.name?.message)}</p>}
         </div>
 
         {/* Email Field (Read-only) */}
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+          <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Email Address
           </label>
           <input
@@ -56,15 +56,15 @@ export default function ProfileForm({ user, onSubmit, isLoading }: ProfileFormPr
             id="email"
             value={user.email}
             disabled
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-600 text-gray-600 dark:text-gray-400 cursor-not-allowed"
           />
-          <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Email cannot be changed</p>
         </div>
       </div>
 
       {/* Phone Field */}
       <div>
-        <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
+        <label htmlFor="phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           Phone Number
         </label>
         <input
@@ -72,10 +72,10 @@ export default function ProfileForm({ user, onSubmit, isLoading }: ProfileFormPr
           type="tel"
           id="phone"
           placeholder="Enter your phone number (optional)"
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
           disabled={isLoading}
         />
-        {errors.phone && <p className="text-sm text-red-600 mt-1">{String(errors.phone?.message)}</p>}
+        {errors.phone && <p className="text-sm text-red-600 dark:text-red-400 mt-1">{String(errors.phone?.message)}</p>}
       </div>
 
       {/* Submit Button */}

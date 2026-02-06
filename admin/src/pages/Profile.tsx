@@ -40,8 +40,7 @@ export default function Profile() {
     } catch {
       // Preferences might not exist, that's okay
       setPreferences({
-        theme: 'auto',
-        language: 'en',
+        theme: 'light',
         notificationsEnabled: true,
       })
     }
@@ -95,12 +94,12 @@ export default function Profile() {
 
   if (isProfileLoading && !user) {
     return (
-      <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-6 lg:p-8">
         <div className="max-w-4xl mx-auto">
           <div className="animate-pulse space-y-6">
-            <div className="h-12 bg-gray-300 rounded w-1/3" />
-            <div className="bg-white rounded-lg shadow p-6 h-32" />
-            <div className="bg-white rounded-lg shadow p-6 h-96" />
+            <div className="h-12 bg-gray-300 dark:bg-gray-700 rounded w-1/3" />
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 h-32" />
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 h-96" />
           </div>
         </div>
       </div>
@@ -109,10 +108,10 @@ export default function Profile() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-6 lg:p-8">
         <div className="max-w-4xl mx-auto">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <p className="text-red-800">Failed to load profile. Please try refreshing the page.</p>
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+            <p className="text-red-800 dark:text-red-300">Failed to load profile. Please try refreshing the page.</p>
           </div>
         </div>
       </div>
@@ -120,27 +119,27 @@ export default function Profile() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-6 lg:p-8">
       <div className="max-w-4xl mx-auto space-y-8">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Profile Settings</h1>
-          <p className="text-gray-600 mt-2">Manage your account settings and preferences</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Profile Settings</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">Manage your account settings and preferences</p>
         </div>
 
         {/* Profile Card */}
         <ProfileCard user={user} isLoading={isProfileLoading} />
 
         {/* Tabs */}
-        <div className="bg-white rounded-lg shadow">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
           {/* Tab Navigation */}
-          <div className="border-b border-gray-200 flex gap-0">
+          <div className="border-b border-gray-200 dark:border-gray-700 flex gap-0">
             <button
               onClick={() => setActiveTab('profile')}
               className={`flex-1 py-4 px-6 font-medium text-center transition ${
                 activeTab === 'profile'
                   ? 'border-b-2 border-blue-600 text-blue-600'
-                  : 'text-gray-600 hover:text-gray-900'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
               }`}
             >
               <div className="flex items-center justify-center gap-2">
@@ -160,7 +159,7 @@ export default function Profile() {
               className={`flex-1 py-4 px-6 font-medium text-center transition ${
                 activeTab === 'password'
                   ? 'border-b-2 border-blue-600 text-blue-600'
-                  : 'text-gray-600 hover:text-gray-900'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
               }`}
             >
               <div className="flex items-center justify-center gap-2">
@@ -180,7 +179,7 @@ export default function Profile() {
               className={`flex-1 py-4 px-6 font-medium text-center transition ${
                 activeTab === 'preferences'
                   ? 'border-b-2 border-blue-600 text-blue-600'
-                  : 'text-gray-600 hover:text-gray-900'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
               }`}
             >
               <div className="flex items-center justify-center gap-2">
@@ -208,8 +207,8 @@ export default function Profile() {
             {activeTab === 'profile' && (
               <div className="space-y-6">
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900 mb-4">Basic Information</h2>
-                  <p className="text-gray-600 text-sm mb-6">
+                  <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Basic Information</h2>
+                  <p className="text-gray-600 dark:text-gray-400 text-sm mb-6">
                     Update your name and contact information
                   </p>
                 </div>
@@ -220,8 +219,8 @@ export default function Profile() {
             {activeTab === 'password' && (
               <div className="space-y-6">
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900 mb-4">Change Password</h2>
-                  <p className="text-gray-600 text-sm mb-6">
+                  <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Change Password</h2>
+                  <p className="text-gray-600 dark:text-gray-400 text-sm mb-6">
                     Update your password to keep your account secure
                   </p>
                 </div>
@@ -232,8 +231,8 @@ export default function Profile() {
             {activeTab === 'preferences' && (
               <div className="space-y-6">
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900 mb-4">Preferences</h2>
-                  <p className="text-gray-600 text-sm mb-6">
+                  <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Preferences</h2>
+                  <p className="text-gray-600 dark:text-gray-400 text-sm mb-6">
                     Customize your experience and notification settings
                   </p>
                 </div>

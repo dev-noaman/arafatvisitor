@@ -56,7 +56,7 @@ export default function PasswordChangeForm({ onSubmit, isLoading }: PasswordChan
     setShow: (value: boolean) => void
   ) => (
     <div>
-      <label htmlFor={fieldName} className="block text-sm font-medium text-gray-700 mb-2">
+      <label htmlFor={fieldName} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
         {label} *
       </label>
       <div className="relative">
@@ -65,13 +65,13 @@ export default function PasswordChangeForm({ onSubmit, isLoading }: PasswordChan
           type={show ? 'text' : 'password'}
           id={fieldName}
           placeholder={`Enter ${label.toLowerCase()}`}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10"
+          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10"
           disabled={isLoading}
         />
         <button
           type="button"
           onClick={() => setShow(!show)}
-          className="absolute right-3 top-2.5 text-gray-500 hover:text-gray-700 transition"
+          className="absolute right-3 top-2.5 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition"
           tabIndex={-1}
         >
           {show ? (
@@ -107,14 +107,14 @@ export default function PasswordChangeForm({ onSubmit, isLoading }: PasswordChan
           )}
         </button>
       </div>
-      {errors[fieldName] && <p className="text-sm text-red-600 mt-1">{errors[fieldName]?.message}</p>}
+      {errors[fieldName] && <p className="text-sm text-red-600 dark:text-red-400 mt-1">{errors[fieldName]?.message}</p>}
     </div>
   )
 
   return (
     <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-        <p className="text-sm text-blue-800">
+      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
+        <p className="text-sm text-blue-800 dark:text-blue-300">
           <span className="font-medium">Security Note:</span> Passwords must be at least 8 characters long. New and
           confirm password fields must match.
         </p>

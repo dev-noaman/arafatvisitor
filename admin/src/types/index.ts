@@ -240,8 +240,7 @@ export interface ProfileFormData {
 }
 
 export interface PreferencesFormData {
-  theme?: 'light' | 'dark' | 'auto';
-  language?: string;
+  theme?: 'light' | 'dark';
   notificationsEnabled?: boolean;
 }
 

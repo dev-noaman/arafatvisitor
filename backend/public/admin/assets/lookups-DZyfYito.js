@@ -1,1 +1,0 @@
-import{g as o}from"./index-BroCKSSz.js";async function s(){return o("/admin/api/lookups/purposes")}async function r(){return o("/admin/api/lookups/delivery-types")}async function p(){return o("/admin/api/lookups/couriers")}export{r as a,p as b,s as g};
