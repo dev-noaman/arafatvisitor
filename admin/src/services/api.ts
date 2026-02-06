@@ -6,48 +6,73 @@ import { ApiError } from '../types';
 // /auth/* -> http://localhost:3000
 // /admin/api/* -> http://localhost:3000
 const API_BASE_URL = '';
+let isRefreshing = false;
+let refreshPromise: Promise<boolean> | null = null;
 
-// Get auth token from localStorage
-const getAuthToken = (): string | null => {
-  return localStorage.getItem('admin_token');
-};
+// Attempt to refresh the access token using the refresh token cookie
+async function refreshAccessToken(): Promise<boolean> {
+  if (isRefreshing) {
+    return refreshPromise || Promise.resolve(false);
+  }
 
-// Set auth token in localStorage
-const setAuthToken = (token: string): void => {
-  localStorage.setItem('admin_token', token);
-};
+  isRefreshing = true;
+  refreshPromise = (async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
+        method: 'POST',
+        credentials: 'include', // Include cookies
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
 
-// Remove auth token from localStorage
-const removeAuthToken = (): void => {
-  localStorage.removeItem('admin_token');
-};
+      if (response.ok) {
+        return true;
+      } else {
+        // Refresh failed, redirect to login
+        sessionStorage.setItem('session_expired', 'Your session has expired. Please sign in again.');
+        window.location.href = '/admin/login';
+        return false;
+      }
+    } catch (error) {
+      sessionStorage.setItem('session_expired', 'Your session has expired. Please sign in again.');
+      window.location.href = '/admin/login';
+      return false;
+    } finally {
+      isRefreshing = false;
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
+}
 
 // Generic API request function - returns T directly (backend returns data unwrapped)
 async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const token = getAuthToken();
   const url = `${API_BASE_URL}${endpoint}`;
 
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
-    ...(token && { Authorization: `Bearer ${token}` }),
     ...options.headers,
   };
 
   const response = await fetch(url, {
     ...options,
+    credentials: 'include', // Always include cookies for authentication
     headers,
   });
 
-  // Handle 401 Unauthorized - redirect to login with message
+  // Handle 401 Unauthorized - try to refresh token first
   if (response.status === 401) {
-    removeAuthToken();
-    // Store session expiry message for display on login page
-    sessionStorage.setItem('session_expired', 'Your session has expired. Please sign in again.');
-    window.location.href = '/admin/login';
-    throw new Error('Unauthorized - redirecting to login');
+    const refreshed = await refreshAccessToken();
+    if (refreshed) {
+      // Retry the original request with the new token
+      return apiRequest<T>(endpoint, options);
+    }
+    throw new Error('Unauthorized - session expired');
   }
 
   // Handle non-OK responses
@@ -90,16 +115,22 @@ export async function del<T>(endpoint: string): Promise<T> {
 
 // Upload file (multipart/form-data)
 export async function upload<T>(endpoint: string, formData: FormData): Promise<T> {
-  const token = getAuthToken();
   const url = `${API_BASE_URL}${endpoint}`;
 
   const response = await fetch(url, {
     method: 'POST',
-    headers: {
-      ...(token && { Authorization: `Bearer ${token}` }),
-    },
+    credentials: 'include', // Include cookies
     body: formData,
   });
+
+  if (response.status === 401) {
+    const refreshed = await refreshAccessToken();
+    if (refreshed) {
+      // Retry the upload
+      return upload<T>(endpoint, formData);
+    }
+    throw new Error('Unauthorized - session expired');
+  }
 
   if (!response.ok) {
     const errorData: ApiError = await response.json().catch(() => ({
@@ -112,7 +143,10 @@ export async function upload<T>(endpoint: string, formData: FormData): Promise<T
   return response.json();
 }
 
-export { getAuthToken, setAuthToken, removeAuthToken };
+// Stub functions for backwards compatibility - localStorage tokens are no longer used
+export const getAuthToken = (): string | null => null;
+export const setAuthToken = (token: string): void => {};
+export const removeAuthToken = (): void => {};
 
 // Export api object for services that import { api }
 export const api = {

@@ -11,8 +11,11 @@ import {
   Req,
   HttpException,
   HttpStatus,
+  UseInterceptors,
+  Logger,
 } from "@nestjs/common";
-import { SkipThrottle } from "@nestjs/throttler";
+import { CacheInterceptor, CacheKey, CacheTTL } from "@nestjs/cache-manager";
+import { SkipThrottle, Throttle } from "@nestjs/throttler";
 import { JwtService } from "@nestjs/jwt";
 import { ConfigService } from "@nestjs/config";
 import { Response } from "express";
@@ -27,6 +30,7 @@ import * as XLSX from "xlsx";
 import * as fs from "fs";
 import * as path from "path";
 import { Prisma } from "@prisma/client";
+import { DashboardGateway } from "../dashboard/dashboard.gateway";
 // csv-parse import moved to dynamic import inside method for ESM compatibility
 
 // Type for visit with host relation
@@ -36,19 +40,20 @@ type VisitWithHost = Prisma.VisitGetPayload<{ include: { host: true } }>;
 type DeliveryWithHost = Prisma.DeliveryGetPayload<{ include: { host: true } }>;
 
 // Note: These endpoints are meant to be accessed through the AdminJS session
-// They use @Public() to bypass JWT auth - they rely on AdminJS cookie authentication
-// @SkipThrottle() bypasses rate limiting for admin panel which makes many concurrent requests
+// They use JWT auth with Bearer token or httpOnly cookie
+// Individual endpoints have specific rate limiting applied
 
 @Controller("admin/api")
-@SkipThrottle() // Bypass rate limiting - admin panel makes many concurrent API calls
-@Public() // Bypass JWT auth - AdminJS uses cookie-based session auth
 export class AdminApiController {
+  private readonly logger = new Logger(AdminApiController.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly emailService: EmailService,
     private readonly whatsappService: WhatsAppService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly dashboardGateway: DashboardGateway,
   ) {}
 
   // ============ AUTHENTICATION ============
@@ -98,6 +103,9 @@ export class AdminApiController {
   // ============ DASHBOARD KPIs ============
 
   @Get("dashboard/kpis")
+  @UseInterceptors(CacheInterceptor)
+  @CacheKey("dashboard:kpis")
+  @CacheTTL(60) // Cache for 60 seconds
   async getDashboardKpis() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -1003,14 +1011,19 @@ export class AdminApiController {
   // ============ CHART DATA ============
 
   @Get("dashboard/charts")
+  @UseInterceptors(CacheInterceptor)
+  @CacheKey("dashboard:charts")
+  @CacheTTL(60) // Cache for 60 seconds
   async getChartData() {
     const today = new Date();
     const sevenDaysAgo = new Date(today);
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     sevenDaysAgo.setHours(0, 0, 0, 0);
 
-    // Visits per day (last 7 days)
-    const visitsPerDay: { date: string; count: number }[] = [];
+    // Parallelize all date range queries using Promise.all
+    const visitsPerDayPromises = [];
+    const deliveriesPerDayPromises = [];
+
     for (let i = 6; i >= 0; i--) {
       const date = new Date(today);
       date.setDate(date.getDate() - i);
@@ -1018,49 +1031,50 @@ export class AdminApiController {
       const nextDate = new Date(date);
       nextDate.setDate(nextDate.getDate() + 1);
 
-      const count = await this.prisma.visit.count({
-        where: {
-          checkInAt: {
-            gte: date,
-            lt: nextDate,
-          },
-        },
-      });
+      // Parallel query for visits
+      visitsPerDayPromises.push(
+        this.prisma.visit
+          .count({
+            where: {
+              checkInAt: {
+                gte: date,
+                lt: nextDate,
+              },
+            },
+          })
+          .then((count) => ({ date: date.toISOString(), count })),
+      );
 
-      visitsPerDay.push({ date: date.toISOString(), count });
+      // Parallel query for deliveries
+      deliveriesPerDayPromises.push(
+        this.prisma.delivery
+          .count({
+            where: {
+              receivedAt: {
+                gte: date,
+                lt: nextDate,
+              },
+            },
+          })
+          .then((count) => ({ date: date.toISOString(), count })),
+      );
     }
 
-    // Status distribution - include all statuses
-    const statusCounts = await this.prisma.visit.groupBy({
-      by: ["status"],
-      _count: { status: true },
-    });
+    // Wait for all queries to complete in parallel
+    const [visitsPerDay, deliveriesPerDay, statusCounts] = await Promise.all([
+      Promise.all(visitsPerDayPromises),
+      Promise.all(deliveriesPerDayPromises),
+      // Status distribution - include all statuses
+      this.prisma.visit.groupBy({
+        by: ["status"],
+        _count: { status: true },
+      }),
+    ]);
 
     const statusDistribution = statusCounts.map((s) => ({
       status: s.status,
       count: s._count.status,
     }));
-
-    // Deliveries per day (last 7 days)
-    const deliveriesPerDay: { date: string; count: number }[] = [];
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date(today);
-      date.setDate(date.getDate() - i);
-      date.setHours(0, 0, 0, 0);
-      const nextDate = new Date(date);
-      nextDate.setDate(nextDate.getDate() + 1);
-
-      const count = await this.prisma.delivery.count({
-        where: {
-          receivedAt: {
-            gte: date,
-            lt: nextDate,
-          },
-        },
-      });
-
-      deliveriesPerDay.push({ date: date.toISOString(), count });
-    }
 
     return { visitsPerDay, statusDistribution, deliveriesPerDay };
   }
@@ -1076,6 +1090,7 @@ export class AdminApiController {
         qrToken: true,
       },
       orderBy: { checkInAt: "desc" },
+      take: 50, // Limit to 50 results for performance
     });
 
     const visitorsWithQr = await Promise.all(
@@ -1116,7 +1131,10 @@ export class AdminApiController {
 
   @Post("dashboard/approve/:id")
   async approveVisit(@Param("id") id: string) {
-    const visit = await this.prisma.visit.findUnique({ where: { id } });
+    const visit = await this.prisma.visit.findUnique({
+      where: { id },
+      include: { host: true },
+    });
     if (!visit) {
       throw new HttpException("Visit not found", HttpStatus.NOT_FOUND);
     }
@@ -1139,6 +1157,14 @@ export class AdminApiController {
         rejectionReason: null,
       },
     });
+
+    // Emit WebSocket event
+    this.dashboardGateway.emitVisitorApproved({
+      visitId: visit.id,
+      visitorName: visit.visitorName,
+      hostName: visit.host?.name || "Unknown",
+    });
+    this.dashboardGateway.emitDashboardRefresh();
 
     // TODO: Generate QR token and send notifications
 
@@ -1166,6 +1192,13 @@ export class AdminApiController {
         rejectedAt: new Date(),
       },
     });
+
+    // Emit WebSocket event
+    this.dashboardGateway.emitVisitorRejected({
+      visitId: visit.id,
+      visitorName: visit.visitorName,
+    });
+    this.dashboardGateway.emitDashboardRefresh();
 
     // TODO: Send rejection notification
 
@@ -1198,6 +1231,14 @@ export class AdminApiController {
         checkOutAt: new Date(),
       },
     });
+
+    // Emit WebSocket event
+    this.dashboardGateway.emitVisitorCheckout({
+      visitId: visit.id,
+      sessionId: visit.sessionId,
+      visitorName: visit.visitorName,
+    });
+    this.dashboardGateway.emitDashboardRefresh();
 
     return { success: true, message: "Visitor checked out" };
   }

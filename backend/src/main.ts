@@ -10,11 +10,37 @@ import { NestExpressApplication } from "@nestjs/platform-express";
 import { AppModule } from "./app.module";
 import * as path from "path";
 import * as express from "express";
+import * as helmet from "helmet";
+import * as compression from "compression";
+import * as cookieParser from "cookie-parser";
+import { AllExceptionsFilter } from "./common/filters/all-exceptions.filter";
+import { SanitizePipe } from "./common/pipes/sanitize.pipe";
+import { RequestIdMiddleware } from "./common/middleware/request-id.middleware";
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     bodyParser: true,
   });
+
+  // Security middleware: Helmet with CSP for inline styles (TailwindCSS)
+  app.use(
+    helmet.default({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          imgSrc: ["'self'", "data:"],
+          fontSrc: ["'self'"],
+        },
+      },
+    }),
+  );
+
+  // Response compression middleware
+  app.use(compression());
+
+  // Cookie parser middleware
+  app.use(cookieParser());
 
   // Increase body size limit for file uploads (CSV/XLSX imports)
   app.use(express.json({ limit: "50mb" }));
@@ -29,7 +55,12 @@ async function bootstrap() {
     expressApp.set("trust proxy", 1);
   }
 
+  // Global exception filter (catch all errors)
+  app.useGlobalFilters(new AllExceptionsFilter());
+
+  // Global pipes for validation and sanitization
   app.useGlobalPipes(
+    new SanitizePipe(),
     new ValidationPipe({
       whitelist: true,
       forbidNonWhitelisted: true,

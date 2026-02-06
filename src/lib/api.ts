@@ -129,23 +129,62 @@ export async function getVisitPass(sessionId: string): Promise<any> {
   return response.json()
 }
 
-async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+async function apiFetch<T>(endpoint: string, options: RequestInit = {}, retryCount = 0): Promise<T> {
   const base = getApiBase()
   if (!base) throw new Error('API not configured')
-  
+
   const token = getAuthToken()
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...options.headers,
   }
-  
-  const res = await fetch(`${base}${endpoint}`, { ...options, headers })
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({ message: res.statusText }))
-    throw new Error(error.message || 'Request failed')
+
+  const maxRetries = 3
+  const retryDelays = [1000, 3000, 5000] // Exponential backoff: 1s, 3s, 5s
+
+  try {
+    // Check if browser is online
+    if (!navigator.onLine) {
+      throw new Error('Network is offline. Please check your connection.')
+    }
+
+    const res = await fetch(`${base}${endpoint}`, { ...options, headers })
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({ message: res.statusText }))
+      throw new Error(error.message || 'Request failed')
+    }
+    return res.json()
+  } catch (error) {
+    const isNetworkError = error instanceof TypeError || (error instanceof Error &&
+      (error.message.includes('Failed to fetch') ||
+       error.message.includes('Network') ||
+       error.message.includes('offline')))
+
+    // Retry on network errors up to max retries
+    if (isNetworkError && retryCount < maxRetries) {
+      const delay = retryDelays[retryCount]
+      console.warn(`Network error, retrying in ${delay}ms (attempt ${retryCount + 1}/${maxRetries})`)
+
+      // Show toast notification for retries
+      if (typeof window !== 'undefined' && window.dispatchEvent) {
+        const event = new CustomEvent('networkRetry', {
+          detail: { message: `Network error. Retrying... (${retryCount + 1}/${maxRetries})` }
+        })
+        window.dispatchEvent(event)
+      }
+
+      await new Promise(resolve => setTimeout(resolve, delay))
+      return apiFetch<T>(endpoint, options, retryCount + 1)
+    }
+
+    // Final error message
+    if (isNetworkError && retryCount >= maxRetries) {
+      throw new Error('Unable to connect. Please check your network connection.')
+    }
+
+    throw error
   }
-  return res.json()
 }
 
 export async function login(email: string, password: string): Promise<{ token: string; role: string; user: { name: string; email: string; role: string } }> {

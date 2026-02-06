@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
+import { useDashboardSocket } from '@/hooks/useDashboardSocket'
 import {
   KpiCard,
   PendingApprovalsList,
@@ -72,7 +73,21 @@ export default function Dashboard() {
     }
   }, [showError])
 
-  // Load data on mount
+  // Set up WebSocket connection and event listeners
+  const handleDashboardEvent = useCallback(
+    (event: any) => {
+      // On dashboard refresh event, refetch the KPIs and lists
+      if (event.type === 'dashboard:refresh') {
+        // Refetch KPIs, approvals, visitors, deliveries
+        fetchDashboardData()
+      }
+    },
+    [fetchDashboardData],
+  )
+
+  const { addEventListener } = useDashboardSocket(handleDashboardEvent)
+
+  // Load data on mount and set up WebSocket listeners
   useEffect(() => {
     fetchDashboardData()
   }, [fetchDashboardData])

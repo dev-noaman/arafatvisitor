@@ -22,14 +22,29 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  auditLogs   AuditLog[]
-  checkEvents CheckEvent[]
+  auditLogs      AuditLog[]
+  checkEvents    CheckEvent[]
+  refreshTokens  RefreshToken[]
 }
 
 enum Role {
   ADMIN
   RECEPTION
   HOST
+}
+
+// ============ REFRESH TOKENS ============
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    Int
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 // ============ HOSTS ============
@@ -49,6 +64,10 @@ model Host {
   visits     Visit[]
   deliveries Delivery[]
   users      User[]
+
+  @@index([status])
+  @@index([location])
+  @@index([status, location])
 }
 
 enum Location {
@@ -85,6 +104,13 @@ model Visit {
 
   qrToken    QrToken?
   checkEvents CheckEvent[]
+
+  @@index([status])
+  @@index([checkInAt])
+  @@index([status, checkInAt])
+  @@index([hostId])
+  @@index([location])
+  @@index([status, location])
 }
 
 enum VisitStatus {
@@ -106,6 +132,8 @@ model QrToken {
   expiresAt DateTime
   usedAt   DateTime?
   createdAt DateTime @default(now())
+
+  @@index([expiresAt])
 }
 
 // ============ CHECK EVENTS ============
@@ -119,6 +147,9 @@ model CheckEvent {
   ip        String?
   userAgent String?
   createdAt DateTime  @default(now())
+
+  @@index([visitId])
+  @@index([userId])
 }
 
 enum CheckType {
@@ -141,6 +172,12 @@ model Delivery {
   receivedAt   DateTime       @default(now())
   receivedById String?
   pickedUpAt   DateTime?
+
+  @@index([status])
+  @@index([receivedAt])
+  @@index([status, receivedAt])
+  @@index([hostId])
+  @@index([location])
 }
 
 enum DeliveryStatus {
@@ -161,6 +198,10 @@ model AuditLog {
   ip        String?
   userAgent String?
   createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([entity])
+  @@index([createdAt])
 }
 
 // ============ LOOKUP TABLES ============
@@ -172,6 +213,8 @@ model LookupPurpose {
   sortOrder Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([active])
 }
 
 model LookupDeliveryType {
@@ -182,6 +225,8 @@ model LookupDeliveryType {
   sortOrder Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([active])
 }
 
 model LookupCourier {
@@ -192,6 +237,8 @@ model LookupCourier {
   sortOrder Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([active])
 }
 
 model LookupLocation {
@@ -202,4 +249,6 @@ model LookupLocation {
   sortOrder Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([active])
 }

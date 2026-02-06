@@ -1,8 +1,10 @@
-# Arafat Visitor Management System Development Guidelines
+﻿# Arafat Visitor Management System Development Guidelines
 
 Last updated: 2026-02-05 (Forgot Password email template upgrade)
 
 ## Active Technologies
+- TypeScript 5.1 (backend), TypeScript 5.7 (admin), TypeScript 5.9 (kiosk) + NestJS 10, React 18 (admin) / React 19 (kiosk), Prisma 4, socket.io (new), Helmet (new), cache-manager (new) (007-production-optimization)
+- PostgreSQL 16 via Prisma ORM (007-production-optimization)
 
 - **Language**: TypeScript 5.7 (admin), TypeScript 5.1 (backend), ES2022 target
 - **Admin Panel**: React 19, React Router 7, TailwindCSS 4, ApexCharts, Vite 6

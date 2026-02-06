@@ -6,34 +6,52 @@ import { HelmetProvider } from 'react-helmet-async'
 import { Toaster } from 'sonner'
 import { ProtectedRoute } from '@/components/common/ProtectedRoute'
 import { RoleGuard } from '@/components/common/RoleGuard'
+import { ErrorBoundary } from '@/components/common/ErrorBoundary'
 
 // Layout
 import AppLayout from '@/layout/AppLayout'
 
-// Pages - Auth
+import { Suspense, lazy } from 'react'
+
+// Pages - Auth (not lazy loaded - needed immediately)
 import SignIn from '@/pages/auth/SignIn'
 import ForgotPassword from '@/pages/auth/ForgotPassword'
 import ResetPassword from '@/pages/auth/ResetPassword'
 import AutoLogin from '@/pages/auth/AutoLogin'
 
-// Pages - Main
-import Dashboard from '@/pages/Dashboard'
-import Hosts from '@/pages/Hosts'
-import Visitors from '@/pages/Visitors'
-import PreRegister from '@/pages/PreRegister'
-import Deliveries from '@/pages/Deliveries'
-import Users from '@/pages/Users'
-import Reports from '@/pages/Reports'
-import Settings from '@/pages/Settings'
-import Profile from '@/pages/Profile'
+// Pages - Main (lazy loaded for code splitting)
+const Dashboard = lazy(() => import('@/pages/Dashboard'))
+const Hosts = lazy(() => import('@/pages/Hosts'))
+const Visitors = lazy(() => import('@/pages/Visitors'))
+const PreRegister = lazy(() => import('@/pages/PreRegister'))
+const Deliveries = lazy(() => import('@/pages/Deliveries'))
+const Users = lazy(() => import('@/pages/Users'))
+const Reports = lazy(() => import('@/pages/Reports'))
+const Settings = lazy(() => import('@/pages/Settings'))
+const Profile = lazy(() => import('@/pages/Profile'))
+
+// Loading skeleton for lazy-loaded components
+const PageLoader = () => (
+  <div className="flex items-center justify-center min-h-screen">
+    <div className="space-y-4">
+      <div className="h-8 bg-gray-200 rounded w-48 animate-pulse"></div>
+      <div className="space-y-2">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="h-4 bg-gray-100 rounded w-full animate-pulse"></div>
+        ))}
+      </div>
+    </div>
+  </div>
+)
 
 export default function App() {
   return (
-    <HelmetProvider>
-      <BrowserRouter>
-        <ThemeProvider>
-          <AuthProvider>
-            <SidebarProvider>
+    <ErrorBoundary>
+      <HelmetProvider>
+        <BrowserRouter>
+          <ThemeProvider>
+            <AuthProvider>
+              <SidebarProvider>
               <Routes>
                 {/* Public routes */}
                 <Route path="/admin/login" element={<SignIn />} />
@@ -51,29 +69,33 @@ export default function App() {
                     </ProtectedRoute>
                   }
                 >
-                  <Route index element={<Dashboard />} />
-                  <Route path="hosts" element={<Hosts />} />
-                  <Route path="visitors" element={<Visitors />} />
-                  <Route path="pre-register" element={<PreRegister />} />
-                  <Route path="deliveries" element={<Deliveries />} />
-                  <Route path="reports" element={<Reports />} />
-                  <Route path="profile" element={<Profile />} />
+                  <Route index element={<Suspense fallback={<PageLoader />}><Dashboard /></Suspense>} />
+                  <Route path="hosts" element={<Suspense fallback={<PageLoader />}><Hosts /></Suspense>} />
+                  <Route path="visitors" element={<Suspense fallback={<PageLoader />}><Visitors /></Suspense>} />
+                  <Route path="pre-register" element={<Suspense fallback={<PageLoader />}><PreRegister /></Suspense>} />
+                  <Route path="deliveries" element={<Suspense fallback={<PageLoader />}><Deliveries /></Suspense>} />
+                  <Route path="reports" element={<Suspense fallback={<PageLoader />}><Reports /></Suspense>} />
+                  <Route path="profile" element={<Suspense fallback={<PageLoader />}><Profile /></Suspense>} />
 
                   {/* Admin-only routes */}
                   <Route
                     path="users"
                     element={
-                      <RoleGuard allowedRoles={['ADMIN']}>
-                        <Users />
-                      </RoleGuard>
+                      <Suspense fallback={<PageLoader />}>
+                        <RoleGuard allowedRoles={['ADMIN']}>
+                          <Users />
+                        </RoleGuard>
+                      </Suspense>
                     }
                   />
                   <Route
                     path="settings"
                     element={
-                      <RoleGuard allowedRoles={['ADMIN']}>
-                        <Settings />
-                      </RoleGuard>
+                      <Suspense fallback={<PageLoader />}>
+                        <RoleGuard allowedRoles={['ADMIN']}>
+                          <Settings />
+                        </RoleGuard>
+                      </Suspense>
                     }
                   />
                 </Route>
@@ -87,5 +109,6 @@ export default function App() {
         </ThemeProvider>
       </BrowserRouter>
     </HelmetProvider>
+    </ErrorBoundary>
   )
 }

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react'
 import { User, LoginResponse, LoginCredentials } from '@/types'
-import { post, setAuthToken, removeAuthToken } from '@/services/api'
+import { post } from '@/services/api'
 
 export interface AuthContextType {
   user: User | null
@@ -9,7 +9,7 @@ export interface AuthContextType {
   isLoading: boolean
   login: (credentials: LoginCredentials) => Promise<void>
   autoLogin: (token: string) => Promise<void>
-  logout: () => void
+  logout: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -19,46 +19,39 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [token, setToken] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  // Load user from localStorage on mount
+  // Verify session on mount by checking if cookies are still valid
   useEffect(() => {
-    const storedToken = localStorage.getItem('admin_token')
-    const storedUser = localStorage.getItem('admin_user')
-
-    if (storedToken && storedUser) {
+    const verifySession = async () => {
       try {
-        setToken(storedToken)
-        setUser(JSON.parse(storedUser))
-        setAuthToken(storedToken)
+        // Note: In production, we could call a /api/auth/me endpoint to verify session
+        // For now, we rely on the API service's auto-refresh mechanism
+        setIsLoading(false)
       } catch (error) {
-        console.error('Failed to restore session:', error)
-        localStorage.removeItem('admin_token')
-        localStorage.removeItem('admin_user')
+        console.error('Session verification failed:', error)
+        setIsLoading(false)
       }
     }
-    setIsLoading(false)
+
+    verifySession()
   }, [])
 
   const login = useCallback(async (credentials: LoginCredentials) => {
     setIsLoading(true)
     try {
-      const response = await post<LoginResponse>('/admin/api/login', credentials)
+      const response = await post<LoginResponse>('/api/auth/login', credentials)
 
       // Handle both response formats
       const loginData = (response as any).data || response
-      const authToken = loginData.token
       const authUser = loginData.user
 
-      if (!authToken || !authUser) {
+      if (!authUser) {
         throw new Error('Invalid login response')
       }
 
-      setAuthToken(authToken)
-      setToken(authToken)
+      // Store only user data in state; token is stored in httpOnly cookie
       setUser(authUser)
-
-      // Store in localStorage
-      localStorage.setItem('admin_token', authToken)
-      localStorage.setItem('admin_user', JSON.stringify(authUser))
+      // Set a dummy token for isAuthenticated checks (actual token is in cookie)
+      setToken('authenticated')
     } catch (error) {
       console.error('Login failed:', error)
       throw error
@@ -96,13 +89,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         throw new Error('Token has expired')
       }
 
-      setAuthToken(jwtToken)
-      setToken(jwtToken)
+      // Store only user data in state
       setUser(authUser)
-
-      // Store in localStorage
-      localStorage.setItem('admin_token', jwtToken)
-      localStorage.setItem('admin_user', JSON.stringify(authUser))
+      // Set a dummy token for isAuthenticated checks
+      setToken('authenticated')
     } catch (error) {
       console.error('Auto-login failed:', error)
       throw error
@@ -111,12 +101,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, [])
 
-  const logout = useCallback(() => {
-    removeAuthToken()
+  const logout = useCallback(async () => {
+    try {
+      // Call logout endpoint to revoke refresh token and clear cookies
+      await post('/api/auth/logout', {})
+    } catch (error) {
+      console.error('Logout request failed:', error)
+      // Continue with logout even if the request fails
+    }
     setToken(null)
     setUser(null)
-    localStorage.removeItem('admin_token')
-    localStorage.removeItem('admin_user')
   }, [])
 
   const value = useMemo<AuthContextType>(() => ({

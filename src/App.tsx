@@ -9,8 +9,9 @@ import { WalkInForm } from "@/features/visitors/WalkInForm"
 import { DeliveryForm } from "@/features/deliveries/DeliveryForm"
 import { ReportsPanel } from "@/features/reports/ReportsPanel"
 import { VisitorPass } from "@/features/visitors/VisitorPass"
+import { useIdleTimeout } from "@/hooks/useIdleTimeout"
 import { Toaster } from "sonner"
-import { Truck, LogOut, ArrowLeft, User, ArrowRight } from "lucide-react"
+import { Truck, LogOut, ArrowLeft, User, ArrowRight, AlertTriangle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { setAuthToken, getAdminUrl } from "@/lib/api"
 import QRCode from "react-qr-code"
@@ -41,6 +42,28 @@ function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [role, setRole] = useState<Role | null>(null)
   const [currentView, setCurrentView] = useState<View>("dashboard")
+  const [showIdleWarning, setShowIdleWarning] = useState(false)
+  const [idleWarningSeconds, setIdleWarningSeconds] = useState(30)
+
+  // Handle idle timeout - reset to dashboard and clear form state
+  const handleIdleTimeout = () => {
+    setShowIdleWarning(false)
+    setCurrentView("dashboard")
+    // Clear any sensitive form data
+  }
+
+  const handleIdleWarning = (secondsRemaining: number) => {
+    setShowIdleWarning(true)
+    setIdleWarningSeconds(secondsRemaining)
+  }
+
+  // Set up idle timeout hook (2 minutes)
+  useIdleTimeout({
+    timeoutMinutes: 2,
+    warningSeconds: 30,
+    onTimeout: handleIdleTimeout,
+    onWarning: handleIdleWarning,
+  })
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000)
@@ -121,6 +144,29 @@ function App() {
           )}
         </div>
       </header>
+
+      {/* Idle timeout warning */}
+      {showIdleWarning && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg p-8 max-w-md">
+            <div className="flex justify-center mb-4">
+              <AlertTriangle className="w-12 h-12 text-yellow-600" />
+            </div>
+            <h2 className="text-xl font-bold text-center mb-2">Session Timeout</h2>
+            <p className="text-center text-gray-600 mb-6">
+              Your session will reset due to inactivity in {idleWarningSeconds} seconds.
+              <br />
+              Touch or click to continue.
+            </p>
+            <button
+              onClick={() => setShowIdleWarning(false)}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded"
+            >
+              Continue
+            </button>
+          </div>
+        </div>
+      )}
 
       <main className="flex-1 p-4 md:p-8 flex flex-col items-center justify-center w-full">
         {!isLoggedIn && !isRegisterPage ? (
