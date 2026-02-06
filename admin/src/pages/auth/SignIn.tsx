@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useAuth } from '@/hooks/useAuth'
 import { SignInForm } from '@/components/auth/SignInForm'
+import logo from '@/assets/logo.svg?url'
 
 export default function SignIn() {
   const { isAuthenticated, isLoading } = useAuth()
@@ -91,7 +92,7 @@ export default function SignIn() {
             {/* Logo */}
             <div className="mb-8">
               <div className="w-20 h-20 bg-white/10 backdrop-blur-sm rounded-2xl flex items-center justify-center mb-4 mx-auto">
-                <img src="/admin/logo.svg" className="w-12 h-12" alt="Logo" />
+                <img src={logo} className="w-12 h-12" alt="Logo" />
               </div>
               <h2 className="text-3xl font-bold text-white mb-2">Arafat VMS</h2>
               <p className="text-blue-200 text-lg">Visitor Management System</p>
