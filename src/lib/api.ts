@@ -188,14 +188,14 @@ async function apiFetch<T>(endpoint: string, options: RequestInit = {}, retryCou
 }
 
 export async function login(email: string, password: string): Promise<{ token: string; role: string; user: { name: string; email: string; role: string } }> {
-  return apiFetch('/auth/login', {
+  return apiFetch('/api/auth/login', {
     method: 'POST',
     body: JSON.stringify({ email, password }),
   })
 }
 
 export async function forgotPassword(email: string): Promise<void> {
-  await apiFetch('/auth/forgot-password', {
+  await apiFetch('/api/auth/forgot-password', {
     method: 'POST',
     body: JSON.stringify({ email }),
   })
