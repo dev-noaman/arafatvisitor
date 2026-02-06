@@ -10,8 +10,8 @@ import { NestExpressApplication } from "@nestjs/platform-express";
 import { AppModule } from "./app.module";
 import * as path from "path";
 import * as express from "express";
-import * as helmet from "helmet";
-import * as compression from "compression";
+import helmet from "helmet";
+import compression from "compression";
 import * as cookieParser from "cookie-parser";
 import { AllExceptionsFilter } from "./common/filters/all-exceptions.filter";
 import { SanitizePipe } from "./common/pipes/sanitize.pipe";
@@ -24,7 +24,7 @@ async function bootstrap() {
 
   // Security middleware: Helmet with CSP for inline styles (TailwindCSS)
   app.use(
-    helmet.default({
+    helmet({
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],

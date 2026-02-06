@@ -1,5 +1,4 @@
 import React, { ReactNode, ErrorInfo } from 'react'
-import { AlertTriangle, RotateCcw, Home } from 'lucide-react'
 
 interface ErrorBoundaryProps {
   children: ReactNode
@@ -46,7 +45,9 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
         <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
           <div className="max-w-md w-full bg-white rounded-lg shadow-md p-8">
             <div className="flex justify-center mb-4">
-              <AlertTriangle className="w-12 h-12 text-red-500" />
+              <svg className="w-12 h-12 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+              </svg>
             </div>
 
             <h1 className="text-2xl font-bold text-center text-gray-900 mb-2">
@@ -80,7 +81,9 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
                 onClick={this.handleReload}
                 className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
               >
-                <RotateCcw className="w-4 h-4" />
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M1 4v6h6M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+                </svg>
                 Reload Page
               </button>
 
@@ -88,7 +91,9 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
                 onClick={this.handleGoHome}
                 className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-gray-200 text-gray-900 rounded-md hover:bg-gray-300 transition-colors"
               >
-                <Home className="w-4 h-4" />
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><path strokeLinecap="round" strokeLinejoin="round" d="M9 22V12h6v10" />
+                </svg>
                 Go Home
               </button>
             </div>

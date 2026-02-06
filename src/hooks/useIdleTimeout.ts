@@ -13,8 +13,8 @@ export const useIdleTimeout = ({
   onTimeout,
   onWarning,
 }: UseIdleTimeoutOptions) => {
-  const timeoutRef = useRef<NodeJS.Timeout>()
-  const warningTimeoutRef = useRef<NodeJS.Timeout>()
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const warningTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastActivityRef = useRef<number>(Date.now())
 
   const timeoutMs = timeoutMinutes * 60 * 1000

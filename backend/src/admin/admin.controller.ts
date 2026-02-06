@@ -1021,8 +1021,8 @@ export class AdminApiController {
     sevenDaysAgo.setHours(0, 0, 0, 0);
 
     // Parallelize all date range queries using Promise.all
-    const visitsPerDayPromises = [];
-    const deliveriesPerDayPromises = [];
+    const visitsPerDayPromises: Promise<{ date: string; count: number }>[] = [];
+    const deliveriesPerDayPromises: Promise<{ date: string; count: number }>[] = [];
 
     for (let i = 6; i >= 0; i--) {
       const date = new Date(today);

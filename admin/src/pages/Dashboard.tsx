@@ -85,7 +85,7 @@ export default function Dashboard() {
     [fetchDashboardData],
   )
 
-  const { addEventListener } = useDashboardSocket(handleDashboardEvent)
+  useDashboardSocket(handleDashboardEvent)
 
   // Load data on mount and set up WebSocket listeners
   useEffect(() => {

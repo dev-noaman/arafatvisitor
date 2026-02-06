@@ -12,7 +12,7 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Public()
-  @Throttle('login-account', 'login-ip')
+  @Throttle({ 'login-account': { limit: 5, ttl: 900000 }, 'login-ip': { limit: 20, ttl: 900000 } })
   @Post("login")
   async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
     const result = await this.authService.login(dto);
@@ -42,7 +42,7 @@ export class AuthController {
   }
 
   @Public()
-  @Throttle('default')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @Post("refresh")
   async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const refreshToken = req.cookies?.refresh_token;
@@ -82,7 +82,7 @@ export class AuthController {
   }
 
   @Public()
-  @Throttle('default')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @Post("forgot-password")
   async forgotPassword(@Body() dto: ForgotPasswordDto) {
     return this.authService.forgotPassword(dto);

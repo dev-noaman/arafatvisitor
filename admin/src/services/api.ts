@@ -145,7 +145,7 @@ export async function upload<T>(endpoint: string, formData: FormData): Promise<T
 
 // Stub functions for backwards compatibility - localStorage tokens are no longer used
 export const getAuthToken = (): string | null => null;
-export const setAuthToken = (token: string): void => {};
+export const setAuthToken = (_token: string): void => {};
 export const removeAuthToken = (): void => {};
 
 // Export api object for services that import { api }

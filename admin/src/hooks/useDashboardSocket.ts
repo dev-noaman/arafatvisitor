@@ -23,8 +23,7 @@ export const useDashboardSocket = (onEvent?: EventHandler) => {
       ? 'https://arafatvisitor.cloud'
       : 'http://localhost:3000'
 
-    socketRef.current = io(socketUrl, {
-      namespace: '/dashboard',
+    socketRef.current = io(`${socketUrl}/dashboard`, {
       auth: (cb) => {
         // Send the JWT token in the auth callback
         // In production, the token is in httpOnly cookie, so we pass a placeholder
