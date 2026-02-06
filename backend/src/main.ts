@@ -12,7 +12,7 @@ import * as path from "path";
 import * as express from "express";
 import helmet from "helmet";
 import compression from "compression";
-import * as cookieParser from "cookie-parser";
+import cookieParser from "cookie-parser";
 import { AllExceptionsFilter } from "./common/filters/all-exceptions.filter";
 import { SanitizePipe } from "./common/pipes/sanitize.pipe";
 
