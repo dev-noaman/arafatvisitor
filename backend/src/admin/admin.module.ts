@@ -4,11 +4,13 @@ import { ConfigModule, ConfigService } from "@nestjs/config";
 import { AdminApiController } from "./admin.controller";
 import { PrismaModule } from "../prisma/prisma.module";
 import { NotificationsModule } from "../notifications/notifications.module";
+import { DashboardModule } from "../dashboard/dashboard.module";
 
 @Module({
   imports: [
     PrismaModule,
     NotificationsModule,
+    DashboardModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (config: ConfigService) => ({

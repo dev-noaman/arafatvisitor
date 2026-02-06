@@ -15,7 +15,6 @@ import compression from "compression";
 import * as cookieParser from "cookie-parser";
 import { AllExceptionsFilter } from "./common/filters/all-exceptions.filter";
 import { SanitizePipe } from "./common/pipes/sanitize.pipe";
-import { RequestIdMiddleware } from "./common/middleware/request-id.middleware";
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
