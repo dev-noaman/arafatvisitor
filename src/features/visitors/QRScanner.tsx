@@ -3,17 +3,18 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "sonner"
 import { CheckCircle2, Scan, ArrowRight, ArrowLeft } from "lucide-react"
-import { getVisit, checkoutVisit, getAuthToken } from "@/lib/api"
+import { getVisit, checkinVisit, checkoutVisit, getAuthToken } from "@/lib/api"
 
 type QRScannerMode = "checkin" | "checkout"
 
 // Zebra DS9300 scanner sends input as keyboard events
 // Characters arrive rapidly followed by Enter key
 
-export function QRScanner(props: { mode?: QRScannerMode; onBack?: () => void }) {
+export function QRScanner(props: { mode?: QRScannerMode; onBack?: () => void; onCheckedIn?: (sessionId: string) => void }) {
   const mode = props.mode ?? "checkout"
   const [scanning, setScanning] = useState(true)
   const [result, setResult] = useState<string | null>(null)
+  const [autoProcessing, setAutoProcessing] = useState(false)
 
   // Buffer for scanner input
   const inputBufferRef = useRef("")
@@ -63,6 +64,20 @@ export function QRScanner(props: { mode?: QRScannerMode; onBack?: () => void }) 
       } catch {
         sessionId = raw
       }
+
+      // Auto check-in flow for checkin mode
+      if (mode === "checkin" && props.onCheckedIn && getAuthToken()) {
+        setAutoProcessing(true)
+        try {
+          await checkinVisit(sessionId)
+          props.onCheckedIn(sessionId)
+        } catch {
+          // If check-in API fails, still show the badge with whatever data we have
+          props.onCheckedIn(sessionId)
+        }
+        return
+      }
+
       const configRaw = sessionStorage.getItem("vms_config")
       const config = configRaw ? JSON.parse(configRaw) : {}
       if (config.apiBase && getAuthToken()) {
@@ -79,7 +94,7 @@ export function QRScanner(props: { mode?: QRScannerMode; onBack?: () => void }) 
       setResult(raw)
       toast.success("QR Scanned")
     }
-  }, [])
+  }, [mode, props])
 
   // Process the buffered scanner input
   const processBuffer = useCallback(() => {
@@ -155,7 +170,19 @@ export function QRScanner(props: { mode?: QRScannerMode; onBack?: () => void }) 
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="relative w-full aspect-[3/4] mx-auto overflow-hidden rounded-xl border-2 border-dashed border-muted-foreground/25 bg-muted/50 flex items-center justify-center">
-          {scanning ? (
+          {autoProcessing ? (
+            <div className="text-center p-6 space-y-4">
+              <div className="w-20 h-20 rounded-full bg-blue-50 flex items-center justify-center mx-auto">
+                <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+              </div>
+              <p className="text-lg font-medium text-foreground">
+                Verifying...
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Processing check-in
+              </p>
+            </div>
+          ) : scanning ? (
             <div className="text-center p-6 space-y-4">
               <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto animate-pulse">
                 <Scan className="h-10 w-10 text-primary" />

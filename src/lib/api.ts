@@ -231,6 +231,10 @@ export async function fetchActiveVisits(): Promise<VisitSession[]> {
   return apiFetch('/visits?status=active')
 }
 
+export async function checkinVisit(sessionId: string): Promise<any> {
+  return apiFetch(`/visits/${sessionId}/checkin`, { method: 'POST' })
+}
+
 export async function checkoutVisit(id: string): Promise<void> {
   await apiFetch(`/visits/${id}/checkout`, { method: 'POST' })
 }

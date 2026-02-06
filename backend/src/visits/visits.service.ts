@@ -250,6 +250,36 @@ export class VisitsService {
     };
   }
 
+  async checkin(sessionId: string, userId?: number) {
+    const visit = await this.prisma.visit.findUnique({
+      where: { sessionId },
+      include: { host: true },
+    });
+    if (!visit) throw new NotFoundException("Visit not found");
+    if (visit.status === "CHECKED_IN") {
+      // Already checked in — return current data
+      return this.findBySessionId(sessionId);
+    }
+    if (visit.status !== "APPROVED") {
+      throw new BadRequestException(
+        "Visit must be approved before check-in",
+      );
+    }
+    const now = new Date();
+    await this.prisma.visit.update({
+      where: { id: visit.id },
+      data: { status: "CHECKED_IN", checkInAt: now },
+    });
+    await this.prisma.checkEvent.create({
+      data: {
+        visitId: visit.id,
+        type: "CHECK_IN",
+        userId: userId ?? null,
+      },
+    });
+    return this.findBySessionId(sessionId);
+  }
+
   async checkout(sessionId: string, userId?: number) {
     const visit = await this.prisma.visit.findUnique({
       where: { sessionId },

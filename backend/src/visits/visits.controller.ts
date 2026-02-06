@@ -96,6 +96,16 @@ export class VisitsController {
     return this.visitsService.findBySessionId(sessionId);
   }
 
+  @Post(":sessionId/checkin")
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN, Role.RECEPTION)
+  checkin(
+    @Param("sessionId") sessionId: string,
+    @CurrentUser("sub") userId?: number,
+  ) {
+    return this.visitsService.checkin(sessionId, userId);
+  }
+
   @Post(":sessionId/checkout")
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN, Role.RECEPTION)

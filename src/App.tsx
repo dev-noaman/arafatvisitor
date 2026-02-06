@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { LoginForm } from "@/features/auth/LoginForm"
 import { QRScanner } from "@/features/visitors/QRScanner"
+import { CheckInBadge } from "@/features/visitors/CheckInBadge"
 import { CheckInOptions } from "@/features/visitors/CheckInOptions"
 import { CheckOutOptions } from "@/features/visitors/CheckOutOptions"
 import { VisitorSearch } from "@/features/visitors/VisitorSearch"
@@ -29,6 +30,7 @@ type View =
   | "register"
   | "walkin"
   | "reports"
+  | "checkin-badge"
 
 function App() {
   const isRegisterPage = window.location.pathname === "/register"
@@ -42,6 +44,7 @@ function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [role, setRole] = useState<Role | null>(null)
   const [currentView, setCurrentView] = useState<View>("dashboard")
+  const [badgeSessionId, setBadgeSessionId] = useState<string>("")
   const [showIdleWarning, setShowIdleWarning] = useState(false)
   const [idleWarningSeconds, setIdleWarningSeconds] = useState(30)
 
@@ -89,6 +92,11 @@ function App() {
 
   const navigateHome = () => {
     setCurrentView("dashboard")
+  }
+
+  const navigateToBadge = (sessionId: string) => {
+    setBadgeSessionId(sessionId)
+    setCurrentView("checkin-badge")
   }
 
   const showBackButton = currentView !== "dashboard"
@@ -265,6 +273,7 @@ function App() {
                   <QRScanner
                     mode="checkin"
                     onBack={() => navigateTo("checkin-options")}
+                    onCheckedIn={navigateToBadge}
                   />
                 )}
                 {currentView === "scan-checkout" && (
@@ -288,6 +297,9 @@ function App() {
                 {currentView === "register" && <CheckInRegister />}
                 {currentView === "walkin" && <WalkInForm />}
                 {currentView === "reports" && <ReportsPanel />}
+                {currentView === "checkin-badge" && badgeSessionId && (
+                  <CheckInBadge sessionId={badgeSessionId} onComplete={navigateHome} />
+                )}
               </div>
             )}
           </div>
