@@ -87,38 +87,23 @@ async function bootstrap() {
   const publicPath = path.join(process.cwd(), "public");
   app.useStaticAssets(publicPath, { prefix: "/" });
 
-  // Serve TailAdmin static files from public/admin
+  // Serve admin static files directly on Express (before SPA fallback) to ensure correct ordering
   const adminPath = path.join(publicPath, "admin");
-  app.use("/admin", express.static(adminPath));
-
-  // DEBUG LOGGING: Log all incoming requests to /admin/*
-  expressApp.use("/admin/*", (req: any, res: any, next: any) => {
-    console.log('[DEBUG MAIN] Request to /admin/*:', {
-      method: req.method,
-      path: req.path,
-      url: req.url,
-      headers: {
-        authorization: req.headers?.authorization ? 'Bearer [REDACTED]' : 'MISSING',
-        origin: req.headers?.origin,
-        referer: req.headers?.referer,
-        contentType: req.headers?.['content-type'],
-      }
-    });
-    next();
-  });
+  expressApp.use("/admin", express.static(adminPath));
 
   // SPA fallback for admin routes - serve index.html for client-side routing
   expressApp.get("/admin/*", (req: any, res: any, next: any) => {
     // Don't handle API routes
     if (req.path.startsWith("/admin/api")) {
-      console.log('[DEBUG MAIN] API route detected, passing to NestJS:', req.path);
+      return next();
+    }
+    // Don't handle static file requests (let express.static serve them)
+    if (/\.\w+$/.test(req.path)) {
       return next();
     }
     // Serve the SPA index.html for all other admin routes
-    console.log('[DEBUG MAIN] Serving index.html for route:', req.path);
     res.sendFile(path.join(adminPath, "index.html"), (err: any) => {
       if (err) {
-        // If index.html doesn't exist yet (during development), continue to 404
         next();
       }
     });
