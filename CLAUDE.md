@@ -1,16 +1,18 @@
-﻿# Arafat Visitor Management System Development Guidelines
+# Arafat Visitor Management System Development Guidelines
 
-Last updated: 2026-02-05 (Forgot Password email template upgrade)
+Last updated: 2026-02-06 (007-production-optimization build fixes)
 
 ## Active Technologies
-- TypeScript 5.1 (backend), TypeScript 5.7 (admin), TypeScript 5.9 (kiosk) + NestJS 10, React 18 (admin) / React 19 (kiosk), Prisma 4, socket.io (new), Helmet (new), cache-manager (new) (007-production-optimization)
-- PostgreSQL 16 via Prisma ORM (007-production-optimization)
 
 - **Language**: TypeScript 5.7 (admin), TypeScript 5.1 (backend), ES2022 target
 - **Admin Panel**: React 19, React Router 7, TailwindCSS 4, ApexCharts, Vite 6
 - **Frontend (Reception)**: React 19, TailwindCSS 4.1, Vite 7.2
 - **Forms**: React Hook Form + Zod validation
-- **Backend**: NestJS + Prisma ORM + PostgreSQL 16
+- **Backend**: NestJS 10 + Prisma 4 ORM + PostgreSQL 16
+- **Real-time**: Socket.io (WebSocket gateway for dashboard)
+- **Security**: Helmet (CSP headers), cookie-parser (httpOnly JWT), sanitize-html (XSS prevention)
+- **Performance**: @nestjs/cache-manager (response caching), compression (gzip)
+- **Reliability**: @nestjs/terminus (health checks), @nestjs/schedule (cron cleanup tasks)
 - **Notifications**: Sonner (toast), nodemailer (email), wbiztool API (WhatsApp)
 - **Icons**: Lucide React
 - **Testing**: Vitest + React Testing Library (frontend), Jest (backend)
@@ -23,11 +25,12 @@ Last updated: 2026-02-05 (Forgot Password email template upgrade)
 │   ├── src/
 │   │   ├── components/            # Reusable UI components
 │   │   │   ├── auth/              # SignInForm, etc.
+│   │   │   ├── common/            # ErrorBoundary, ErrorState, RoleGuard
 │   │   │   ├── dashboard/         # KPI cards, charts, visitor lists
 │   │   │   ├── layout/            # Sidebar, Header, AppLayout
 │   │   │   └── ui/                # Buttons, inputs, modals, tables
-│   │   ├── contexts/              # AuthContext, ToastContext
-│   │   ├── hooks/                 # useAuth, useToast, etc.
+│   │   ├── context/               # AuthContext, ThemeContext, SidebarContext
+│   │   ├── hooks/                 # useAuth, useToast, useDashboardSocket, useDebounce
 │   │   ├── pages/                 # Route pages (Dashboard, Visitors, etc.)
 │   │   ├── services/              # API service functions
 │   │   ├── types/                 # TypeScript interfaces
@@ -36,13 +39,20 @@ Last updated: 2026-02-05 (Forgot Password email template upgrade)
 │   └── vite.config.ts
 ├── backend/                       # NestJS API server
 │   ├── prisma/
-│   │   ├── schema.prisma          # Database schema
+│   │   ├── schema.prisma          # Database schema (incl. RefreshToken model)
 │   │   └── seed.ts                # Test data seeding
 │   ├── src/
-│   │   ├── main.ts                # App entry, static file serving
+│   │   ├── main.ts                # App entry, Helmet, compression, cookie-parser
 │   │   ├── admin/
-│   │   │   └── admin.controller.ts # Admin API endpoints
-│   │   ├── auth/                  # JWT authentication
+│   │   │   └── admin.controller.ts # Admin API endpoints (cached, parallelized)
+│   │   ├── auth/                  # JWT auth (httpOnly cookies, refresh tokens)
+│   │   ├── common/
+│   │   │   ├── filters/           # AllExceptionsFilter (global error handler)
+│   │   │   ├── middleware/        # RequestIdMiddleware (UUID per request)
+│   │   │   └── pipes/             # SanitizePipe (HTML/XSS stripping)
+│   │   ├── dashboard/             # DashboardGateway (WebSocket real-time events)
+│   │   ├── health/                # HealthController (DB + email status)
+│   │   ├── tasks/                 # CleanupService (scheduled cron jobs)
 │   │   ├── hosts/                 # Host management
 │   │   ├── visits/                # Visit management
 │   │   ├── deliveries/            # Delivery management
@@ -51,7 +61,12 @@ Last updated: 2026-02-05 (Forgot Password email template upgrade)
 │   │       └── whatsapp.service.ts # WhatsApp via wbiztool (text + images)
 │   └── public/
 │       └── admin/                 # Built admin SPA served here
-└── src/                           # Reception frontend (Vite + React)
+├── src/                           # Reception frontend (Vite + React)
+│   ├── hooks/
+│   │   └── useIdleTimeout.ts      # Kiosk idle timeout with warning countdown
+│   └── lib/
+│       └── api.ts                 # API client with network retry + backoff
+└── specs/                         # Feature specifications (speckit)
 ```
 
 ## Commands
@@ -70,9 +85,12 @@ npm test           # Run all unit tests once (Vitest)
 cd backend
 npm run start      # Start backend server
 npm run start:dev  # Start with watch mode
+npm run build      # Compile TypeScript (nest build)
 npm test           # Run all unit tests once (Jest)
 npm run test:cov   # Run tests with coverage report
 npm run lint       # ESLint
+npx prisma generate  # Regenerate Prisma client after schema changes
+npx prisma migrate dev --name <name>  # Create and apply migration
 ```
 
 ### Frontend (Reception) Commands
@@ -104,7 +122,7 @@ npm test          # Run all unit tests once (Vitest)
 The login page has quick demo login buttons for Admin, Reception, and Host roles.
 
 ### Admin Panel Sections
-- **Dashboard**: KPIs, charts, pending approvals, current visitors
+- **Dashboard**: KPIs, charts, pending approvals, current visitors (real-time via WebSocket)
 - **Visitors**: Manage visitors (APPROVED, CHECKED_IN, CHECKED_OUT)
 - **Pre Register**: Pre-registered visits (PENDING_APPROVAL, REJECTED)
 - **Deliveries**: Package tracking with timeline view
@@ -145,6 +163,97 @@ RECEIVED → PICKED_UP
 | RECEIVED | Package received at reception, awaiting pickup |
 | PICKED_UP | Package collected by recipient |
 
+## Authentication & Security
+
+### Authentication Flow (httpOnly Cookies)
+- Login returns JWT access token (15min) and refresh token (7 days) in httpOnly cookies
+- Access token: `access_token` cookie (httpOnly, Secure, SameSite=Strict)
+- Refresh token: `refresh_token` cookie (httpOnly, Secure, SameSite=Strict, path=/api/auth)
+- On 401 response, client automatically calls `/api/auth/refresh` to get new access token
+- Logout revokes refresh token in database and clears cookies
+- JWT strategy extracts token from cookies first, falls back to Bearer header for backwards compatibility
+
+### Rate Limiting
+- **Default**: 10 requests per 60 seconds (all endpoints)
+- **Login-account**: 5 attempts per 15 minutes per account
+- **Login-IP**: 20 attempts per 15 minutes per IP address
+- Configured via `@nestjs/throttler` v5 with named throttler groups in `app.module.ts`
+- `@Throttle()` decorator uses Record syntax: `@Throttle({ name: { limit, ttl } })`
+
+### Security Headers
+- Helmet with CSP: `defaultSrc: ['self']`, `styleSrc: ['self', 'unsafe-inline']`, `imgSrc: ['self', 'data:']`
+- Response compression via `compression` middleware
+- Input sanitization via `SanitizePipe` (strips HTML tags from all string inputs)
+- Request ID tracking via `RequestIdMiddleware` (X-Request-Id header)
+
+### Global Error Handling
+- `AllExceptionsFilter` catches all errors, logs with request context
+- Returns sanitized error responses (no stack traces or internal details in production)
+- `ErrorBoundary` React component wraps admin panel (prevents white screen of death)
+
+## Caching
+
+- Dashboard KPIs and chart data: 60-second TTL (`@UseInterceptors(CacheInterceptor)`)
+- Lookup tables (purposes, delivery types, couriers, locations): 1-hour TTL
+- Cache is global via `CacheModule.register({ isGlobal: true })`
+- WebSocket `dashboard:refresh` event triggers client-side data refetch
+
+## Real-time WebSocket (Dashboard)
+
+### Gateway
+- Namespace: `/dashboard`
+- Auth: JWT token via `socket.handshake.auth.token`
+- Module: `backend/src/dashboard/dashboard.gateway.ts`
+
+### Events Emitted
+| Event | Trigger |
+|-------|---------|
+| `visitor:checkin` | Visitor checks in |
+| `visitor:approved` | Visit approved by host |
+| `visitor:rejected` | Visit rejected by host |
+| `visitor:checkout` | Visitor checks out |
+| `delivery:received` | New delivery received |
+| `delivery:pickedup` | Delivery picked up |
+| `dashboard:refresh` | General dashboard data refresh |
+
+### Client Hook
+- `admin/src/hooks/useDashboardSocket.ts` - auto-connects on Dashboard mount, disconnects on unmount
+- Reconnection with exponential backoff (1s to 5s, max 5 attempts)
+
+## Scheduled Tasks (Cron)
+
+| Task | Schedule | Description |
+|------|----------|-------------|
+| QR Token Cleanup | Daily 2:00 AM | Deletes QR tokens expired > 30 days |
+| Refresh Token Cleanup | Daily 2:15 AM | Deletes revoked/expired refresh tokens |
+
+Module: `backend/src/tasks/cleanup.service.ts`
+
+## Health Checks
+
+- **Endpoint**: `GET /health` (public, no auth required)
+- Checks: database connectivity (Prisma ping), email service availability
+- Returns: `{ status, info, details }` per @nestjs/terminus format
+
+## Kiosk Features
+
+### Idle Timeout
+- 2-minute inactivity threshold with 30-second warning countdown
+- Tracks: mousedown, keydown, touchstart, click events
+- On timeout: resets to dashboard view
+- Hook: `src/hooks/useIdleTimeout.ts`
+
+### Network Retry
+- Checks `navigator.onLine` before API calls
+- Exponential backoff: 1s, 3s, 5s delays (max 3 retries)
+- Dispatches `networkRetry` custom events for UI notifications
+
+## Code Splitting (Admin)
+
+All admin pages are lazy-loaded via `React.lazy()` with `<Suspense>` fallbacks:
+- Dashboard, Hosts, Visitors, PreRegister, Deliveries, Users, Reports, Settings, Profile
+- `useDebounce` hook (400ms default) for search input optimization
+
 ## Send QR Feature
 
 ### Functionality
@@ -175,13 +284,6 @@ Professional HTML email with:
 - Visitor details table (Host, Company, Purpose)
 - Styled footer with Arafat VMS branding
 
-### API Endpoints
-```
-GET  /admin/api/qr/:visitId     # Get QR code data URL
-POST /admin/api/send-qr         # Send QR via email/whatsapp
-     Body: { visitId: string, method: 'email' | 'whatsapp' }
-```
-
 ## Forgot Password Feature
 
 ### How it Works
@@ -199,14 +301,6 @@ Professional HTML email matching QR email design:
 - Expiry notice (1 hour)
 - Security message for unexpected requests
 - "Powered by Arafat Visitor Management System" footer
-
-### API Endpoints
-```
-POST /api/auth/forgot-password    # Request password reset email
-     Body: { email: string }
-POST /api/auth/reset-password     # Reset password with token
-     Body: { token: string, newPassword: string }
-```
 
 ### Pages
 - `/admin/forgot-password` - Request reset link
@@ -242,6 +336,8 @@ WHATSAPP_API_KEY=<secret>
 - State management via React hooks (useState, useEffect, useMemo) - no external state library
 - Toast notifications via Sonner
 - TailwindCSS for styling with utility-first approach
+- Backend uses `esModuleInterop: true` - use default imports for CJS packages (helmet, compression, sanitize-html)
+- Avoid Lucide icons in React class components (type conflict with React 19) - use inline SVGs instead
 
 ## Test Seed Data
 
@@ -298,22 +394,28 @@ Test data is identified by:
 
 ### Auth API (Public)
 ```
-POST /api/auth/login                      # Login, get JWT token
+POST /api/auth/login                      # Login, returns JWT in httpOnly cookies
+POST /api/auth/refresh                    # Refresh access token using refresh cookie
+POST /api/auth/logout                     # Revoke refresh token, clear cookies
 POST /api/auth/forgot-password            # Request password reset email
 POST /api/auth/reset-password             # Reset password with token
 ```
 
-### Admin API (JWT token-based)
+### Health API (Public)
 ```
-POST /admin/api/login                     # Login, get JWT token (alternative)
-GET  /admin/api/dashboard/kpis            # Dashboard statistics
+GET  /health                              # Database + email service health check
+```
+
+### Admin API (JWT cookie-based)
+```
+GET  /admin/api/dashboard/kpis            # Dashboard statistics (cached 60s)
 GET  /admin/api/dashboard/pending-approvals # Pending visits
 GET  /admin/api/dashboard/received-deliveries # Pending deliveries
-GET  /admin/api/dashboard/charts          # Chart data
-GET  /admin/api/dashboard/current-visitors # Active visitors
-POST /admin/api/dashboard/approve/:id     # Approve visit
-POST /admin/api/dashboard/reject/:id      # Reject visit
-POST /admin/api/dashboard/checkout/:sessionId # Check out visitor
+GET  /admin/api/dashboard/charts          # Chart data (cached 60s)
+GET  /admin/api/dashboard/current-visitors # Active visitors (limit 50)
+POST /admin/api/dashboard/approve/:id     # Approve visit (emits WebSocket)
+POST /admin/api/dashboard/reject/:id      # Reject visit (emits WebSocket)
+POST /admin/api/dashboard/checkout/:sessionId # Check out visitor (emits WebSocket)
 GET  /admin/api/qr/:visitId               # Get QR code
 POST /admin/api/send-qr                   # Send QR email/whatsapp
 POST /admin/api/change-password           # Change user password
@@ -326,10 +428,10 @@ GET  /admin/api/pre-register              # List pre-registered visits
 GET  /admin/api/deliveries                # List deliveries
 GET  /admin/api/hosts                     # List hosts
 GET  /admin/api/users                     # List users (Admin only)
-GET  /admin/api/lookups/purposes          # Purpose of visit dropdown values
-GET  /admin/api/lookups/delivery-types    # Delivery type dropdown values
-GET  /admin/api/lookups/couriers          # Courier dropdown values
-GET  /admin/api/lookups/locations         # Location dropdown values
+GET  /admin/api/lookups/purposes          # Purpose of visit (cached 1h)
+GET  /admin/api/lookups/delivery-types    # Delivery types (cached 1h)
+GET  /admin/api/lookups/couriers          # Couriers (cached 1h)
+GET  /admin/api/lookups/locations         # Locations (cached 1h)
 ```
 
 ### Public API (for Reception Kiosk)
@@ -355,13 +457,19 @@ A **contact person at a company** who can receive visitors or deliveries (NOT in
 - id, sessionId, visitorName, visitorCompany, visitorPhone, visitorEmail
 - hostId, purpose, location, status, expectedDate
 - checkInAt, checkOutAt, approvedAt, rejectedAt
+- **Indexes**: status, hostId, location, checkInAt, expectedDate, composite (status+location)
 
 ### QrToken
 - id, visitId, token, expiresAt, usedAt
 
+### RefreshToken
+- id, userId, token (unique), expiresAt, revokedAt, createdAt
+- **Indexes**: token (unique), userId
+
 ### Delivery
 - id, deliveryType, recipient, hostId, courier, location, status, notes
 - receivedAt, pickedUpAt
+- **Indexes**: status, hostId, location, receivedAt, composite (status+location)
 
 ### Location Enum
 - BARWA_TOWERS, MARINA_50, ELEMENT_MARIOTT
@@ -389,6 +497,8 @@ This includes all enums, tables, indexes, foreign keys, and lookup data INSERT s
 
 **Important**: The seed script (`backend/prisma/seed.ts`) only contains mock/test data for development/testing.
 
+**After schema changes**: Run `npx prisma generate` to regenerate the Prisma client, then `npx prisma migrate dev` to create and apply migration.
+
 ## Dropdown Implementation
 
 ### Purpose of Visit (Admin Panel)
@@ -411,3 +521,4 @@ This includes all enums, tables, indexes, foreign keys, and lookup data INSERT s
 - Controller: `backend/src/lookups/lookups.controller.ts`
 - Module: `backend/src/lookups/lookups.module.ts`
 - Public endpoints (no auth required) for reception kiosk access
+- Cached for 1 hour via `@CacheTTL(3600)`
