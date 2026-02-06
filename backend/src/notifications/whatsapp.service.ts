@@ -182,4 +182,28 @@ export class WhatsAppService {
     const message = `Visitor arrived: ${visitorName} from ${visitorCompany}. Please meet at reception.`;
     return this.send(phone, message);
   }
+
+  async sendVisitorCheckin(
+    phone: string,
+    visitorName: string,
+    visitorCompany: string,
+    purpose: string,
+    location: string,
+    checkInTime: string,
+    badgeId: string,
+  ): Promise<boolean> {
+    const message =
+      `*VISITOR ARRIVAL NOTICE*\n\n` +
+      `*${visitorName}* has checked in and is waiting for you at reception.\n\n` +
+      `*Visitor:* ${visitorName}\n` +
+      `*Company:* ${visitorCompany || "N/A"}\n` +
+      `*Purpose:* ${purpose || "Visit"}\n` +
+      `*Location:* ${location}\n` +
+      `*Check-in:* ${checkInTime}\n` +
+      `*Badge:* #${badgeId}\n\n` +
+      `Please proceed to reception to meet your visitor.\n\n` +
+      `───────────────────\n` +
+      `_Powered by Arafat Visitor Management System_`;
+    return this.send(phone, message);
+  }
 }

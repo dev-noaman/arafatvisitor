@@ -250,6 +250,13 @@ export class VisitsService {
     };
   }
 
+  private formatLocation(loc: string): string {
+    if (loc === "BARWA_TOWERS") return "Barwa Towers";
+    if (loc === "MARINA_50") return "Marina 50";
+    if (loc === "ELEMENT_MARIOTT") return "Element Mariott";
+    return loc;
+  }
+
   async checkin(sessionId: string, userId?: number) {
     const visit = await this.prisma.visit.findUnique({
       where: { sessionId },
@@ -277,6 +284,45 @@ export class VisitsService {
         userId: userId ?? null,
       },
     });
+
+    // Notify host via email and WhatsApp (fire-and-forget)
+    if (visit.host) {
+      const location = this.formatLocation(visit.location);
+      const checkInTime = now.toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+      const badgeId = sessionId.slice(0, 6).toUpperCase();
+
+      if (visit.host.email) {
+        this.emailService
+          .sendVisitorCheckin(
+            visit.host.email,
+            visit.host.name,
+            visit.visitorName,
+            visit.visitorCompany,
+            visit.purpose,
+            location,
+            checkInTime,
+            badgeId,
+          )
+          .catch(() => {});
+      }
+      if (visit.host.phone) {
+        this.whatsappService
+          .sendVisitorCheckin(
+            visit.host.phone,
+            visit.visitorName,
+            visit.visitorCompany,
+            visit.purpose,
+            location,
+            checkInTime,
+            badgeId,
+          )
+          .catch(() => {});
+      }
+    }
+
     return this.findBySessionId(sessionId);
   }
 
