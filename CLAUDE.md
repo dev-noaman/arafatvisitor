@@ -125,8 +125,7 @@ No demo login buttons on the sign-in page — production login only.
 - **Pre Register**: Pre-registered visits (PENDING_APPROVAL, REJECTED)
 - **Deliveries**: Package tracking with timeline view
 - **Hosts**: Manage external companies and host contacts (with Bulk Import button)
-- **Staff**: Manage internal staff members (Admin only, single-add only)
-- **Users**: System user management (Admin only, with Bulk Import for all roles, password edit)
+- **Users**: System user management — create/edit users with roles: Staff, Reception, Administrator. Bulk Import for all roles. Password edit (blank = keep current). HOST role users are auto-created from Hosts page, not from Users.
 - **Reports**: Visit and delivery reports with export
 - **Settings**: SMTP and WhatsApp configuration
 - **Profile**: User profile and password change
@@ -220,7 +219,7 @@ RECEIVED → PICKED_UP
 | **Delete pre-registrations** | Yes | No | No | No |
 | **Approve/Reject pre-regs** | All | All | Own company only | Own company only |
 | **Hosts CRUD** | Full | View only | Company-scoped view | Company-scoped view |
-| **Staff CRUD** | Full | No | No | No |
+| **Staff CRUD** | Full (via Users page) | No | No | No |
 | **Bulk import hosts** | Yes | No | No | No |
 | **Bulk import users** (all roles) | Yes | No | No | No |
 | **Users CRUD** | Yes | No | No | No |
@@ -239,10 +238,12 @@ RECEIVED → PICKED_UP
 - Detail/action endpoints verify ownership: throws `ForbiddenException` if company doesn't match
 - HOST/STAFF creating pre-registrations or visitors: `hostId` is auto-set from their user account
 
-### User Creation with Host/Staff Linking
-- When creating a user with role=HOST or STAFF, a **Linked Host/Company** dropdown appears in the form
+### User Creation with Staff Linking
+- Users form role options: **Staff (Internal)**, **Reception**, **Administrator** — no HOST option (HOST users are auto-created from Hosts page)
+- Default role: STAFF
+- When role=STAFF, a **Linked Host/Company** dropdown appears to link the user to a company
 - The dropdown lists all hosts; the selected host's `id` is saved as `hostId` on the User record
-- This links the HOST/STAFF user to a company, enabling company-scoped data access
+- This links the STAFF user to a company, enabling company-scoped data access
 - Components: `admin/src/components/users/UserForm.tsx`, `UserModal.tsx`, `admin/src/pages/Users.tsx`
 - Backend: `POST /admin/api/users` accepts optional `hostId` field (string, converted to BigInt)
 
@@ -282,8 +283,9 @@ RECEIVED → PICKED_UP
 - Delete buttons hidden for non-ADMIN users (Visitors, Deliveries, Pre-registrations, Hosts)
 - Edit/Delete buttons on Hosts page hidden for non-ADMIN
 - "Add Host" and "Bulk Import" buttons hidden for non-ADMIN on Hosts page
-- Staff page visible to ADMIN only
-- Sidebar navigation: Dashboard/Visitors/Pre-Register visible to all roles; Hosts visible to ADMIN+HOST+RECEPTION; Staff/Users/Settings to ADMIN only; Reports to ADMIN+HOST; Deliveries to ADMIN+HOST+RECEPTION (not STAFF)
+- Staff page still exists at `/admin/staff` (route accessible) but removed from sidebar navigation
+- Sidebar navigation: Dashboard/Visitors/Pre-Register visible to all roles; Hosts visible to ADMIN+HOST+RECEPTION; Users/Settings to ADMIN only; Reports to ADMIN+HOST; Deliveries to ADMIN+HOST+RECEPTION (not STAFF)
+- Staff sidebar item removed — staff users managed via Users page
 - STAFF sees: Dashboard, Visitors, Pre Register, Profile
 - Implemented via `useAuth()` hook checking `user.role === 'ADMIN'`
 
@@ -487,7 +489,7 @@ The Staff page reuses host components with an `entityLabel` prop to customize la
 
 This avoids duplicating components. The `entityLabel` changes form labels ("Staff Name"), button text ("Create Staff"), empty states ("No staff found"), and pagination ("Showing X of Y staff").
 
-**Note**: Bulk import was removed from the Staff page. Staff members are added individually via the Staff page (auto-sets role=STAFF), or bulk imported via the Users page with role=STAFF in the CSV.
+**Note**: Staff sidebar item removed. Staff members are created via the Users page (single-add with role=STAFF, or bulk import with Role=STAFF in CSV). The Staff page route still exists but is not linked in navigation.
 
 ## Bulk User Import (`POST /admin/api/users/import`)
 
