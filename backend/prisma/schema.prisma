@@ -17,6 +17,7 @@ model User {
   password  String
   name      String
   role      Role     @default(RECEPTION)
+  status    String   @default("ACTIVE")
   hostId    BigInt?
   host      Host?    @relation(fields: [hostId], references: [id])
   createdAt DateTime @default(now())

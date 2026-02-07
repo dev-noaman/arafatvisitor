@@ -101,6 +101,10 @@ export class AdminApiController {
       throw new HttpException("Invalid credentials", HttpStatus.UNAUTHORIZED);
     }
 
+    if (user.status === "INACTIVE") {
+      throw new HttpException("Account is deactivated. Contact your administrator.", HttpStatus.FORBIDDEN);
+    }
+
     const payload = { sub: user.id, email: user.email, role: user.role, name: user.name };
     const token = this.jwtService.sign(payload, {
       expiresIn: this.configService.get("JWT_EXPIRES_IN") || "24h",
@@ -3401,6 +3405,7 @@ export class AdminApiController {
     @Query("limit") limit = "10",
     @Query("search") search?: string,
     @Query("role") role?: string,
+    @Query("status") status?: string,
     @Query("sortBy") sortBy = "createdAt",
     @Query("sortOrder") sortOrder: "asc" | "desc" = "desc",
   ) {
@@ -3421,6 +3426,10 @@ export class AdminApiController {
       where.role = role as Prisma.EnumRoleFilter;
     }
 
+    if (status) {
+      where.status = status;
+    }
+
     const [data, total] = await Promise.all([
       this.prisma.user.findMany({
         where,
@@ -3429,6 +3438,7 @@ export class AdminApiController {
           email: true,
           name: true,
           role: true,
+          status: true,
           hostId: true,
           createdAt: true,
           updatedAt: true,
@@ -3459,6 +3469,7 @@ export class AdminApiController {
         email: true,
         name: true,
         role: true,
+        status: true,
         hostId: true,
         host: true,
         createdAt: true,
@@ -3502,6 +3513,7 @@ export class AdminApiController {
         name: body.name,
         password: hashedPassword,
         role: body.role as "ADMIN" | "RECEPTION" | "HOST",
+        status: "ACTIVE",
         hostId: body.hostId ? BigInt(body.hostId) : null,
       },
       select: {
@@ -3509,6 +3521,7 @@ export class AdminApiController {
         email: true,
         name: true,
         role: true,
+        status: true,
         hostId: true,
         createdAt: true,
         updatedAt: true,
@@ -3569,12 +3582,37 @@ export class AdminApiController {
         email: true,
         name: true,
         role: true,
+        status: true,
         hostId: true,
         createdAt: true,
         updatedAt: true,
       },
     });
 
+    return user;
+  }
+
+  @Roles(Role.ADMIN)
+  @Post("users/:id/activate")
+  async activateUser(@Param("id") id: string) {
+    const userId = parseInt(id, 10);
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: { status: "ACTIVE" },
+      select: { id: true, email: true, name: true, role: true, status: true, hostId: true, createdAt: true, updatedAt: true },
+    });
+    return user;
+  }
+
+  @Roles(Role.ADMIN)
+  @Post("users/:id/deactivate")
+  async deactivateUser(@Param("id") id: string) {
+    const userId = parseInt(id, 10);
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: { status: "INACTIVE" },
+      select: { id: true, email: true, name: true, role: true, status: true, hostId: true, createdAt: true, updatedAt: true },
+    });
     return user;
   }
 
