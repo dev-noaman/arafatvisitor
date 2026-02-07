@@ -603,7 +603,7 @@ export class AdminApiController {
               const hashedPassword = await bcrypt.hash(randomPassword, 12);
 
               // Create User with role=HOST and hostId
-              await this.prisma.user.create({
+              const newUser = await this.prisma.user.create({
                 data: {
                   email: userEmail,
                   password: hashedPassword,
@@ -613,6 +613,18 @@ export class AdminApiController {
                 },
               });
               usersCreated += 1;
+
+              // Send welcome email (skip system.local addresses)
+              if (!userEmail.endsWith("@system.local")) {
+                const resetToken = this.jwtService.sign(
+                  { sub: Number(newUser.id), purpose: "reset" },
+                  { expiresIn: "72h" },
+                );
+                const adminUrl =
+                  this.configService.get("ADMIN_URL") || "https://arafatvisitor.cloud/admin";
+                const resetUrl = `${adminUrl}/reset-password?token=${resetToken}`;
+                this.emailService.sendHostWelcome(userEmail, name, resetUrl).catch(() => {});
+              }
             }
           }
         } catch (e) {
@@ -1005,7 +1017,7 @@ export class AdminApiController {
             const hashedPassword = await bcrypt.hash(randomPassword, 12);
 
             // Create User with role=HOST and hostId
-            await this.prisma.user.create({
+            const newUser = await this.prisma.user.create({
               data: {
                 email: userEmail,
                 password: hashedPassword,
@@ -1015,6 +1027,18 @@ export class AdminApiController {
               },
             });
             usersCreated++;
+
+            // Send welcome email (skip system.local addresses)
+            if (!userEmail.endsWith("@system.local")) {
+              const resetToken = this.jwtService.sign(
+                { sub: Number(newUser.id), purpose: "reset" },
+                { expiresIn: "72h" },
+              );
+              const adminUrl =
+                this.configService.get("ADMIN_URL") || "https://arafatvisitor.cloud/admin";
+              const resetUrl = `${adminUrl}/reset-password?token=${resetToken}`;
+              this.emailService.sendHostWelcome(userEmail, name, resetUrl).catch(() => {});
+            }
           }
         }
       } catch (e) {
@@ -2747,7 +2771,46 @@ export class AdminApiController {
       },
     });
 
-    return host;
+    // Auto-create User account for the new Host
+    const userEmail = body.email || `host_${host.id}@system.local`;
+    let userCreated = false;
+
+    const existingUserByEmail = await this.prisma.user.findUnique({
+      where: { email: userEmail },
+    });
+    if (!existingUserByEmail) {
+      const existingUserByHostId = await this.prisma.user.findFirst({
+        where: { hostId: host.id },
+      });
+      if (!existingUserByHostId) {
+        const randomPassword = crypto.randomBytes(16).toString("hex");
+        const hashedPassword = await bcrypt.hash(randomPassword, 12);
+        const newUser = await this.prisma.user.create({
+          data: {
+            email: userEmail,
+            password: hashedPassword,
+            name: body.name,
+            role: "HOST",
+            hostId: host.id,
+          },
+        });
+        userCreated = true;
+
+        // Send welcome email with password reset link (skip system.local addresses)
+        if (!userEmail.endsWith("@system.local")) {
+          const resetToken = this.jwtService.sign(
+            { sub: Number(newUser.id), purpose: "reset" },
+            { expiresIn: "72h" },
+          );
+          const adminUrl =
+            this.configService.get("ADMIN_URL") || "https://arafatvisitor.cloud/admin";
+          const resetUrl = `${adminUrl}/reset-password?token=${resetToken}`;
+          this.emailService.sendHostWelcome(userEmail, body.name, resetUrl).catch(() => {});
+        }
+      }
+    }
+
+    return { ...host, userCreated };
   }
 
   @Roles(Role.ADMIN)
