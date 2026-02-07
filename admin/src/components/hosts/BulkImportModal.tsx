@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, type ReactNode } from 'react'
 import { api } from '@/services/api'
 
 interface ImportResult {
@@ -17,9 +17,11 @@ interface BulkImportModalProps {
   onSuccess: () => void
   importEndpoint?: string
   title?: string
+  expectedColumns?: ReactNode
+  entityLabel?: string
 }
 
-export default function BulkImportModal({ isOpen, onClose, onSuccess, importEndpoint = '/admin/api/hosts/import', title = 'Bulk Import Hosts' }: BulkImportModalProps) {
+export default function BulkImportModal({ isOpen, onClose, onSuccess, importEndpoint = '/admin/api/hosts/import', title = 'Bulk Import Hosts', expectedColumns, entityLabel = 'record' }: BulkImportModalProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [result, setResult] = useState<ImportResult | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -152,18 +154,20 @@ export default function BulkImportModal({ isOpen, onClose, onSuccess, importEndp
               </div>
 
               {/* Expected Format */}
-              <div className="bg-gray-50 rounded-lg p-4 mb-6">
-                <h3 className="text-sm font-semibold text-gray-700 mb-2">Expected Columns:</h3>
-                <div className="text-sm text-gray-600 space-y-1">
-                  <p><span className="font-medium">Name</span> - Host name (required)</p>
-                  <p><span className="font-medium">Company</span> - Company name (required)</p>
-                  <p><span className="font-medium">Email Address</span> - Email (required)</p>
-                  <p><span className="font-medium">Phone Number</span> - Phone (optional)</p>
-                  <p><span className="font-medium">Location</span> - Arafat - Barwa Towers / Arafat - Element Hotel / Arafat - Marina 50 Tower</p>
-                  <p><span className="font-medium">Status</span> - Active / Inactive</p>
-                  <p><span className="font-medium">ID</span> - External ID (optional, for updates)</p>
+              {expectedColumns || (
+                <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-2">Expected Columns:</h3>
+                  <div className="text-sm text-gray-600 space-y-1">
+                    <p><span className="font-medium">Name</span> - Host name (required)</p>
+                    <p><span className="font-medium">Company</span> - Company name (required)</p>
+                    <p><span className="font-medium">Email Address</span> - Email (required)</p>
+                    <p><span className="font-medium">Phone Number</span> - Phone (optional)</p>
+                    <p><span className="font-medium">Location</span> - Arafat - Barwa Towers / Arafat - Element Hotel / Arafat - Marina 50 Tower</p>
+                    <p><span className="font-medium">Status</span> - Active / Inactive</p>
+                    <p><span className="font-medium">ID</span> - External ID (optional, for updates)</p>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Error Message */}
               {error && (
@@ -226,7 +230,7 @@ export default function BulkImportModal({ isOpen, onClose, onSuccess, importEndp
               {result.inserted > 0 && (
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                   <p className="text-green-700">
-                    Successfully imported {result.inserted} host{result.inserted !== 1 ? 's' : ''}!
+                    Successfully imported {result.inserted} {entityLabel}{result.inserted !== 1 ? 's' : ''}!
                   </p>
                 </div>
               )}

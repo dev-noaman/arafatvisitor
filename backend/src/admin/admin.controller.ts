@@ -4107,6 +4107,202 @@ export class AdminApiController {
     return { success: true, message: "Password changed" };
   }
 
+  // ============ USERS BULK IMPORT ============
+
+  @Roles(Role.ADMIN)
+  @Post("users/import")
+  async importUsers(
+    @Body() body: { csvContent?: string; xlsxContent?: string },
+  ) {
+    const { csvContent, xlsxContent } = body || {};
+
+    if (!csvContent && !xlsxContent) {
+      throw new HttpException(
+        "csvContent or xlsxContent is required",
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    // Handle XLSX content
+    if (xlsxContent) {
+      return this.importUsersFromXlsx(xlsxContent);
+    }
+
+    // Handle CSV content
+    if (!csvContent || typeof csvContent !== "string" || !csvContent.trim()) {
+      throw new HttpException("csvContent is required", HttpStatus.BAD_REQUEST);
+    }
+
+    let records: Record<string, unknown>[];
+    try {
+      const csvParseModule = await import("csv-parse/sync");
+      const parse = (csvParseModule as { parse: (input: string, options: unknown) => Record<string, unknown>[] }).parse;
+      records = parse(csvContent, { columns: true, skip_empty_lines: true, trim: true });
+    } catch (e) {
+      throw new HttpException(
+        `Failed to parse CSV: ${e instanceof Error ? e.message : "Unknown error"}`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    return this.processUserRecords(records);
+  }
+
+  private async importUsersFromXlsx(base64: string) {
+    const base64Data = base64.includes(",") ? base64.split(",")[1] : base64;
+    const buffer = Buffer.from(base64Data, "base64");
+    const workbook = XLSX.read(buffer, { type: "buffer" });
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+    const records = XLSX.utils.sheet_to_json(worksheet, { defval: "" }) as Record<string, unknown>[];
+    return this.processUserRecords(records);
+  }
+
+  private async processUserRecords(records: Record<string, unknown>[]) {
+    let totalProcessed = 0;
+    let inserted = 0;
+    let skipped = 0;
+    const rejectedRows: Array<{ rowNumber: number; reason: string }> = [];
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i;
+    const validRoles = ["ADMIN", "RECEPTION", "STAFF", "HOST"];
+
+    const cleanPhone = (value?: string | null) => {
+      if (!value) return "";
+      let v = value.replace(/[\s\-()]/g, "");
+      if (v.startsWith("+")) v = v.slice(1);
+      const isQatar = v.startsWith("974");
+      if (!isQatar && /^\d{6,8}$/.test(v)) v = `974${v}`;
+      return v;
+    };
+
+    for (let index = 0; index < records.length; index++) {
+      const row = records[index];
+      const rowNumber = index + 2;
+      totalProcessed += 1;
+
+      const reasons: string[] = [];
+      const nameRaw = (row["Name"] || row["name"] || "").toString().trim();
+      const emailRaw = (row["Email"] || row["email"] || row["Email Address"] || "").toString().trim();
+      const phoneRaw = (row["Phone"] || row["phone"] || row["Phone Number"] || "").toString().trim();
+      const roleRaw = (row["Role"] || row["role"] || "").toString().trim().toUpperCase();
+
+      const name = nameRaw || "";
+      if (!name) reasons.push("Missing name");
+
+      const email = emailRaw ? emailRaw.toLowerCase() : "";
+      if (!email) reasons.push("Missing email");
+      else if (!emailRegex.test(email)) reasons.push("Invalid email format");
+
+      const phone = cleanPhone(phoneRaw);
+
+      if (!validRoles.includes(roleRaw)) reasons.push(`Invalid role: ${roleRaw || "(empty)"}. Must be ADMIN, RECEPTION, STAFF, or HOST`);
+
+      if (reasons.length > 0) {
+        rejectedRows.push({ rowNumber, reason: reasons.join("; ") });
+        continue;
+      }
+
+      // Skip demo/system accounts
+      if (email.endsWith("@arafatvisitor.cloud") || email.endsWith("@system.local")) {
+        skipped++;
+        continue;
+      }
+
+      // Check for duplicate email
+      const existingUser = await this.prisma.user.findUnique({ where: { email } });
+      if (existingUser) {
+        skipped++;
+        continue;
+      }
+
+      try {
+        let hostId: bigint | null = null;
+
+        // For STAFF role, find existing or create Host record (type=STAFF)
+        if (roleRaw === "STAFF") {
+          const existingHost = await this.prisma.host.findFirst({
+            where: { email, type: "STAFF" },
+          });
+          if (existingHost) {
+            hostId = existingHost.id;
+          } else {
+            const createdHost = await this.prisma.host.create({
+              data: {
+                name,
+                company: "Arafat Group",
+                email,
+                phone,
+                location: "BARWA_TOWERS",
+                status: 1,
+                type: "STAFF",
+              },
+            });
+            hostId = createdHost.id;
+          }
+        }
+
+        // For HOST role, find existing or create Host record (type=EXTERNAL)
+        if (roleRaw === "HOST") {
+          const existingHost = await this.prisma.host.findFirst({
+            where: { email, type: "EXTERNAL" },
+          });
+          if (existingHost) {
+            hostId = existingHost.id;
+          } else {
+            const createdHost = await this.prisma.host.create({
+              data: {
+                name,
+                company: "",
+                email,
+                phone,
+                location: "BARWA_TOWERS",
+                status: 1,
+                type: "EXTERNAL",
+              },
+            });
+            hostId = createdHost.id;
+          }
+        }
+
+        const randomPassword = crypto.randomBytes(16).toString("hex");
+        const hashedPassword = await bcrypt.hash(randomPassword, 12);
+
+        const newUser = await this.prisma.user.create({
+          data: {
+            email,
+            password: hashedPassword,
+            name,
+            role: roleRaw as "ADMIN" | "RECEPTION" | "STAFF" | "HOST",
+            status: "ACTIVE",
+            hostId,
+          },
+        });
+        inserted++;
+
+        // Send welcome email with password reset link
+        const resetToken = this.jwtService.sign(
+          { sub: Number(newUser.id), purpose: "reset" },
+          { expiresIn: "72h" },
+        );
+        const adminUrl = this.configService.get("ADMIN_URL") || "https://arafatvisitor.cloud/admin";
+        const resetUrl = `${adminUrl}/reset-password?token=${resetToken}`;
+        this.emailService.sendHostWelcome(email, name, resetUrl).catch(() => {});
+      } catch (e) {
+        const errorMsg = e instanceof Error ? e.message : "Unknown database error";
+        rejectedRows.push({ rowNumber, reason: `Database error: ${errorMsg}` });
+      }
+    }
+
+    return {
+      totalProcessed,
+      inserted,
+      skipped,
+      rejected: rejectedRows.length,
+      rejectedRows,
+    };
+  }
+
   // ============ LOOKUP TABLES ============
 
   @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST, Role.STAFF)
