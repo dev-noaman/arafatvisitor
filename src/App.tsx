@@ -286,6 +286,7 @@ function App() {
                   <VisitorSearch
                     mode="checkin"
                     onBack={() => navigateTo("checkin-options")}
+                    onCheckin={navigateToBadge}
                   />
                 )}
                 {currentView === "search-checkout" && (

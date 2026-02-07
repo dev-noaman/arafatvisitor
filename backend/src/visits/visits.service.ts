@@ -352,6 +352,36 @@ export class VisitsService {
     return this.findBySessionId(sessionId);
   }
 
+  async searchByContact(query: string) {
+    const q = query.trim();
+    if (!q) return [];
+    const visits = await this.prisma.visit.findMany({
+      where: {
+        status: "APPROVED",
+        OR: [
+          { visitorPhone: { contains: q } },
+          { visitorEmail: { contains: q, mode: "insensitive" } },
+        ],
+      },
+      include: { host: true },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+    });
+    return visits.map((v) => ({
+      id: v.id,
+      sessionId: v.sessionId,
+      visitorName: v.visitorName,
+      visitorCompany: v.visitorCompany,
+      visitorPhone: v.visitorPhone,
+      visitorEmail: v.visitorEmail,
+      host: v.host,
+      purpose: v.purpose,
+      location: v.location,
+      status: v.status,
+      expectedDate: v.expectedDate,
+    }));
+  }
+
   async getActive(location?: string) {
     const where: { status: "CHECKED_IN"; location?: Location } = {
       status: "CHECKED_IN",
@@ -369,6 +399,8 @@ export class VisitsService {
       sessionId: v.sessionId,
       visitorName: v.visitorName,
       visitorCompany: v.visitorCompany,
+      visitorPhone: v.visitorPhone,
+      visitorEmail: v.visitorEmail,
       host: v.host,
       checkInAt: v.checkInAt,
     }));

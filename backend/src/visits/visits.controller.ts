@@ -65,6 +65,13 @@ export class VisitsController {
     return this.visitsService.reject(id, userId, dto.reason);
   }
 
+  @Get("search")
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN, Role.RECEPTION)
+  searchByContact(@Query("q") q: string) {
+    return this.visitsService.searchByContact(q ?? "");
+  }
+
   @Get("active")
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN, Role.RECEPTION)

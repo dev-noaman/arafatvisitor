@@ -230,7 +230,11 @@ export async function getVisit(id: string): Promise<VisitSession> {
 }
 
 export async function fetchActiveVisits(): Promise<VisitSession[]> {
-  return apiFetch('/visits?status=active')
+  return apiFetch('/visits/active')
+}
+
+export async function searchVisitsByContact(query: string): Promise<any[]> {
+  return apiFetch(`/visits/search?q=${encodeURIComponent(query)}`)
 }
 
 export async function checkinVisit(sessionId: string): Promise<any> {
