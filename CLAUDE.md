@@ -1,6 +1,6 @@
 # Arafat Visitor Management System Development Guidelines
 
-Last updated: 2026-02-07 (Production cleanup: removed demo accounts/seed data, bulk user import on Users page, windowed pagination, kiosk→admin auto-login)
+Last updated: 2026-02-07 (Simplified deploy — no init step/seeds, password edit on Users, kiosk debug buttons removed)
 
 ## Active Technologies
 
@@ -126,7 +126,7 @@ No demo login buttons on the sign-in page — production login only.
 - **Deliveries**: Package tracking with timeline view
 - **Hosts**: Manage external companies and host contacts (with Bulk Import button)
 - **Staff**: Manage internal staff members (Admin only, single-add only)
-- **Users**: System user management (Admin only, with Bulk Import for all roles)
+- **Users**: System user management (Admin only, with Bulk Import for all roles, password edit)
 - **Reports**: Visit and delivery reports with export
 - **Settings**: SMTP and WhatsApp configuration
 - **Profile**: User profile and password change
@@ -246,6 +246,13 @@ RECEIVED → PICKED_UP
 - Components: `admin/src/components/users/UserForm.tsx`, `UserModal.tsx`, `admin/src/pages/Users.tsx`
 - Backend: `POST /admin/api/users` accepts optional `hostId` field (string, converted to BigInt)
 
+### User Password Edit (Admin)
+- When editing a user, the password field is visible with label **"New Password"**
+- Placeholder: "Leave blank to keep current password"
+- **Blank** → existing password is unchanged (frontend strips empty value, backend ignores)
+- **Non-empty** → password is hashed (bcrypt 12 rounds) and updated
+- Backend: `PUT /admin/api/users/:id` only updates password when `body.password` is non-empty
+
 ### Auto-Create User on Host/Staff Creation
 - **Single host create** (`POST /admin/api/hosts`): Auto-creates a User with role=HOST, status=ACTIVE, random password, and linked `hostId`
 - **Single staff create** (`POST /admin/api/staff`): Auto-creates a User with role=STAFF, status=ACTIVE, random password, and linked `hostId`
@@ -325,6 +332,11 @@ Module: `backend/src/tasks/cleanup.service.ts`
 - Returns: `{ status, info, details }` per @nestjs/terminus format
 
 ## Kiosk Features
+
+### Login
+- Production login only — no debug/quick-login buttons
+- `VITE_SHOW_DEBUG_LOGIN` set to `"false"` in deploy workflow
+- Debug login constants and buttons removed from `src/features/auth/LoginForm.tsx`
 
 ### Idle Timeout
 - 2-minute inactivity threshold with 30-second warning countdown
@@ -520,7 +532,7 @@ npx prisma studio      # Open database GUI
 ### Seed User
 The seed script only creates one admin user (`admin@arafatvisitor.cloud` / `admin123`). All other users are managed via the admin panel or bulk CSV import.
 
-No test data (hosts, visitors, deliveries, QR tokens) is seeded. The deploy workflow no longer creates demo HOST/STAFF users.
+No test data is seeded. The deploy workflow does not run seeds — it's a simple build-and-deploy flow. Seeds are only used for local development or manual one-time bootstrap.
 
 ## Production Deployment
 
@@ -543,14 +555,16 @@ No test data (hosts, visitors, deliveries, QR tokens) is seeded. The deploy work
 | `WHATSAPP_API_KEY` | wbiztool API key |
 
 ### Deployment Flow
-1. Push to `main` branch triggers deployment
-2. Admin SPA built and uploaded to VPS
-3. Backend uploaded, dependencies installed
-4. Prisma schema sync (`prisma db push`)
+1. Push to `main` branch triggers deployment (or manual via `workflow_dispatch`)
+2. Kiosk frontend and admin SPA built locally in CI
+3. Both uploaded to VPS via rsync
+4. Backend: `npm install` → `prisma generate` → `prisma db push`
 5. Lookup data populated (idempotent INSERT statements)
-6. Backend built and PM2 restarts
+6. Backend built (`nest build`) and PM2 restarts
+7. Nginx config updated and reloaded
+8. Health check verified
 
-**Note**: No demo users are created during deployment. Only the initial setup runs the seed (creates admin user).
+No initial setup step, no seeds, no demo users. Single deploy flow for all pushes.
 
 ### Production URLs
 - **Frontend**: https://arafatvisitor.cloud
