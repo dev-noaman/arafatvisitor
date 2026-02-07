@@ -2,8 +2,9 @@ import { useCallback, useState, useEffect } from 'react'
 import { UsersList, UserModal, DeleteConfirmationDialog } from '@/components/users'
 import ErrorState from '@/components/common/ErrorState'
 import { getUsers, createUser, updateUser, deleteUser, deactivateUser, activateUser } from '@/services/users'
+import { getHosts } from '@/services/hosts'
 import { useToast } from '@/hooks'
-import type { User, UserFormData, UserRole, UserStatus } from '@/types'
+import type { User, UserFormData, UserRole, UserStatus, Host } from '@/types'
 
 export default function Users() {
   const { success, error } = useToast()
@@ -16,6 +17,8 @@ export default function Users() {
   const [userToDelete, setUserToDelete] = useState<User | undefined>()
   const [isDeleting, setIsDeleting] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [hosts, setHosts] = useState<Host[]>([])
+  const [isLoadingHosts, setIsLoadingHosts] = useState(false)
   const [, setIsActioning] = useState(false)
   const [pagination, setPagination] = useState({
     page: 1,
@@ -26,6 +29,19 @@ export default function Users() {
   const [searchQuery, setSearchQuery] = useState('')
   const [roleFilter, setRoleFilter] = useState<UserRole | ''>('')
   const [statusFilter, setStatusFilter] = useState<UserStatus | ''>('')
+
+  // Fetch hosts for HOST role user creation
+  const fetchHosts = useCallback(async () => {
+    setIsLoadingHosts(true)
+    try {
+      const response = await getHosts({ limit: 100 })
+      setHosts(response.data || [])
+    } catch (err) {
+      // Non-critical - hosts dropdown just won't be populated
+    } finally {
+      setIsLoadingHosts(false)
+    }
+  }, [])
 
   // Fetch users
   const fetchUsers = useCallback(async (
@@ -62,8 +78,9 @@ export default function Users() {
   }, [pagination.limit, error])
 
   useEffect(() => {
+    fetchHosts()
     fetchUsers(1, '', '', '')
-  }, [fetchUsers])
+  }, [fetchHosts, fetchUsers])
 
   // Handle search
   const handleSearch = (search: string) => {
@@ -219,6 +236,8 @@ export default function Users() {
         onSubmit={handleFormSubmit}
         userData={selectedUser}
         isLoading={isSubmitting}
+        hosts={hosts}
+        isLoadingHosts={isLoadingHosts}
       />
 
       {/* Delete Confirmation */}

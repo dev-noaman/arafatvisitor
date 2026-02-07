@@ -192,6 +192,7 @@ export interface UserFormData {
   name?: string;
   role: UserRole;
   password?: string;
+  hostId?: string;
 }
 
 export interface VisitFormData {

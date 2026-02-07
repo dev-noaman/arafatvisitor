@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import type { User, UserFormData } from '@/types'
+import type { User, UserFormData, Host } from '@/types'
 
 const userSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -13,15 +13,18 @@ const userSchema = z.object({
     .min(8, 'Password must be at least 8 characters')
     .optional()
     .or(z.literal('')),
+  hostId: z.string().optional(),
 })
 
 interface UserFormProps {
   onSubmit: (data: UserFormData) => Promise<void>
   initialData?: User
   isLoading?: boolean
+  hosts?: Host[]
+  isLoadingHosts?: boolean
 }
 
-export default function UserForm({ onSubmit, initialData, isLoading }: UserFormProps) {
+export default function UserForm({ onSubmit, initialData, isLoading, hosts = [], isLoadingHosts }: UserFormProps) {
   const [showPassword, setShowPassword] = useState(false)
 
   const {
@@ -29,6 +32,7 @@ export default function UserForm({ onSubmit, initialData, isLoading }: UserFormP
     handleSubmit,
     formState: { errors },
     reset,
+    watch,
   } = useForm<UserFormData>({
     resolver: zodResolver(userSchema),
     defaultValues: initialData || {
@@ -36,10 +40,16 @@ export default function UserForm({ onSubmit, initialData, isLoading }: UserFormP
       name: '',
       role: 'HOST',
       password: '',
+      hostId: '',
     },
   })
 
+  const selectedRole = watch('role')
+
   const handleFormSubmit = async (data: UserFormData) => {
+    if (data.role !== 'HOST') {
+      delete data.hostId
+    }
     await onSubmit(data)
     reset()
   }
@@ -95,6 +105,31 @@ export default function UserForm({ onSubmit, initialData, isLoading }: UserFormP
         </select>
         {errors.role && <p className="text-sm text-red-600 mt-1">{errors.role.message}</p>}
       </div>
+
+      {/* Host Selection (only for HOST role) */}
+      {selectedRole === 'HOST' && (
+        <div>
+          <label htmlFor="hostId" className="block text-sm font-medium text-gray-700 mb-1">
+            Linked Host/Company *
+          </label>
+          <select
+            {...register('hostId')}
+            id="hostId"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            disabled={isLoading || isLoadingHosts}
+          >
+            <option value="">Select a host...</option>
+            {hosts.map((host) => (
+              <option key={host.id} value={host.id}>
+                {host.name} — {host.company}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-gray-500 mt-1">
+            HOST users can only see data belonging to their linked company
+          </p>
+        </div>
+      )}
 
       {/* Password Field */}
       {!initialData && (

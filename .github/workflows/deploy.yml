@@ -230,6 +230,23 @@ jobs:
 
           npm run build
 
+          # Create HOST demo user if not exists (idempotent)
+          node -e "
+          const { PrismaClient } = require('@prisma/client');
+          const bcrypt = require('bcrypt');
+          const p = new PrismaClient();
+          (async () => {
+            const email = 'host@arafatvisitor.cloud';
+            const exists = await p.user.findUnique({ where: { email } });
+            if (exists) { console.log('HOST user exists'); return; }
+            const host = await p.host.findFirst({ where: { status: 1 }, orderBy: { id: 'asc' } });
+            if (!host) { console.log('No hosts found'); return; }
+            const hash = await bcrypt.hash('host123', 12);
+            await p.user.create({ data: { id: 999004, email, name: 'Host User', password: hash, role: 'HOST', hostId: host.id } });
+            console.log('Created HOST user linked to ' + host.name);
+          })().catch(e => console.error(e)).finally(() => p.\$disconnect());
+          " || true
+
           pm2 delete arafatvisitor-api 2>/dev/null || true
           pm2 start dist/src/main.js --name arafatvisitor-api --update-env
           pm2 save

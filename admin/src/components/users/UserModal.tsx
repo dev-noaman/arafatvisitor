@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import UserForm from './UserForm'
-import type { User, UserFormData } from '@/types'
+import type { User, UserFormData, Host } from '@/types'
 
 interface UserModalProps {
   isOpen: boolean
@@ -8,6 +8,8 @@ interface UserModalProps {
   onSubmit: (data: UserFormData) => Promise<void>
   userData?: User
   isLoading?: boolean
+  hosts?: Host[]
+  isLoadingHosts?: boolean
 }
 
 export default function UserModal({
@@ -16,6 +18,8 @@ export default function UserModal({
   onSubmit,
   userData,
   isLoading,
+  hosts,
+  isLoadingHosts,
 }: UserModalProps) {
   useEffect(() => {
     if (isOpen) {
@@ -67,7 +71,7 @@ export default function UserModal({
 
           {/* Body */}
           <div className="px-6 py-4">
-            <UserForm onSubmit={onSubmit} initialData={userData} isLoading={isLoading} />
+            <UserForm onSubmit={onSubmit} initialData={userData} isLoading={isLoading} hosts={hosts} isLoadingHosts={isLoadingHosts} />
           </div>
         </div>
       </div>

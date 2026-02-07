@@ -46,6 +46,7 @@ const DEFAULT_USERS = [
   { id: 999001, email: 'admin@arafatvisitor.cloud', password: 'admin123', name: 'Admin User', role: 'ADMIN' as const },
   { id: 999002, email: 'gm@arafatvisitor.cloud', password: 'gm123', name: 'General Manager', role: 'ADMIN' as const },
   { id: 999003, email: 'reception@arafatvisitor.cloud', password: 'reception123', name: 'Reception User', role: 'RECEPTION' as const },
+  // HOST user is created in seedHostUser() after hosts are available
 ];
 
 async function seedDefaultUsers() {
@@ -77,6 +78,41 @@ async function seedDefaultUsers() {
   }
 
   console.log(`Default users: ${created} created, ${existing} already existed`);
+}
+
+async function seedHostUser() {
+  console.log('Seeding HOST demo user...');
+  const email = 'host@arafatvisitor.cloud';
+
+  const existingUser = await prisma.user.findUnique({ where: { email } });
+  if (existingUser) {
+    console.log(`HOST demo user already exists: ${email}`);
+    return;
+  }
+
+  // Find a host to link to — prefer first active host from CSV import
+  const host = await prisma.host.findFirst({
+    where: { status: 1 },
+    orderBy: { id: 'asc' },
+  });
+
+  if (!host) {
+    console.log('No hosts found — skipping HOST demo user creation');
+    return;
+  }
+
+  const hash = await bcrypt.hash('host123', BCRYPT_ROUNDS);
+  await prisma.user.create({
+    data: {
+      id: 999004,
+      email,
+      name: 'Host User',
+      password: hash,
+      role: 'HOST',
+      hostId: host.id,
+    },
+  });
+  console.log(`Created HOST demo user: ${email} linked to host: ${host.name} (${host.company})`);
 }
 
 async function seedUsers() {
@@ -456,6 +492,7 @@ async function main() {
   await seedDefaultUsers();
   await seedUsers();
   await seedHostsFromCsv();
+  await seedHostUser(); // Must run after hosts exist
 
   // Seed test data with QR codes for testing
   const testHosts = await seedTestHosts();
