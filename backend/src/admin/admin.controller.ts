@@ -2155,8 +2155,12 @@ export class AdminApiController {
 
   @Roles(Role.ADMIN)
   @Post("settings/test-whatsapp")
-  async testWhatsapp(@Body() body: { phone: string }) {
-    const { phone } = body;
+  async testWhatsapp(@Body() body: { phone?: string; recipientPhone?: string }) {
+    const phone = body.phone || body.recipientPhone;
+
+    if (!phone) {
+      throw new HttpException("Phone number is required", HttpStatus.BAD_REQUEST);
+    }
 
     if (!process.env.WHATSAPP_API_KEY || !process.env.WHATSAPP_ENDPOINT) {
       throw new HttpException(
