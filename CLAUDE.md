@@ -1,6 +1,6 @@
 # Arafat Visitor Management System Development Guidelines
 
-Last updated: 2026-02-07 (Added STAFF role, HostType EXTERNAL/STAFF, Staff management page)
+Last updated: 2026-02-07 (Added STAFF role, HostType EXTERNAL/STAFF, Staff management page, entityLabel pattern for shared components)
 
 ## Active Technologies
 
@@ -357,7 +357,7 @@ Module: `backend/src/tasks/cleanup.service.ts`
 ## Code Splitting (Admin)
 
 All admin pages are lazy-loaded via `React.lazy()` with `<Suspense>` fallbacks:
-- Dashboard, Hosts, Visitors, PreRegister, Deliveries, Users, Reports, Settings, Profile
+- Dashboard, Hosts, Staff, Visitors, PreRegister, Deliveries, Users, Reports, Settings, Profile
 - `useDebounce` hook (400ms default) for search input optimization
 
 ## Send QR Feature
@@ -442,6 +442,7 @@ WHATSAPP_API_KEY=<secret>
 | Password reset requested | Reset link | — | User |
 | QR code sent from admin | QR email template | QR image + caption | Visitor |
 | Host created (single or bulk import) | Welcome email with 72h reset link | — | Host |
+| Staff created (single or bulk import) | Welcome email with 72h reset link | — | Staff |
 
 ## Admin API Field Aliasing
 
@@ -465,6 +466,20 @@ The admin create endpoints accept frontend field names and map them to database 
 ```typescript
 const expectedDate = body.expectedDate || body.visitDate;
 ```
+
+## Shared Host/Staff Components (entityLabel Pattern)
+
+The Staff page reuses host components with an `entityLabel` prop to customize labels:
+
+| Component | Prop | Default | Staff Page Value |
+|-----------|------|---------|------------------|
+| `HostForm` | `entityLabel` | `'Host'` | `'Staff'` |
+| `HostModal` | `entityLabel` | `'Host'` | `'Staff'` |
+| `HostsList` | `entityLabel` | `'hosts'` | `'staff'` |
+| `DeleteConfirmationDialog` | `entityLabel` | `'Host'` | `'Staff'` |
+| `BulkImportModal` | `importEndpoint`, `title` | hosts defaults | `'/admin/api/staff/import'`, `'Bulk Import Staff'` |
+
+This avoids duplicating components. The `entityLabel` changes form labels ("Staff Name"), button text ("Create Staff"), empty states ("No staff found"), and pagination ("Showing X of Y staff").
 
 ## Code Style
 
@@ -601,14 +616,14 @@ POST /admin/api/visitors                  # Create visitor (ADMIN, RECEPTION, ST
 PUT  /admin/api/visitors/:id              # Update visitor (ADMIN, RECEPTION)
 DELETE /admin/api/visitors/:id            # Delete visitor (ADMIN only)
 
-# Pre-registrations (all roles can view — HOST company-scoped)
+# Pre-registrations (all roles can view — HOST/STAFF company-scoped)
 GET  /admin/api/pre-register              # List pre-registrations
-POST /admin/api/pre-registrations         # Create (ADMIN, RECEPTION, HOST) — notifies host via email+WhatsApp
+POST /admin/api/pre-registrations         # Create (ADMIN, RECEPTION, HOST, STAFF) — notifies host via email+WhatsApp
 PUT  /admin/api/pre-registrations/:id     # Update (ADMIN, RECEPTION)
 DELETE /admin/api/pre-registrations/:id   # Delete (ADMIN only)
-POST /admin/api/pre-registrations/:id/approve    # Approve (all roles, HOST scoped)
-POST /admin/api/pre-registrations/:id/reject     # Reject (all roles, HOST scoped)
-POST /admin/api/pre-registrations/:id/re-approve # Re-approve (all roles, HOST scoped)
+POST /admin/api/pre-registrations/:id/approve    # Approve (all roles, HOST/STAFF scoped)
+POST /admin/api/pre-registrations/:id/reject     # Reject (all roles, HOST/STAFF scoped)
+POST /admin/api/pre-registrations/:id/re-approve # Re-approve (all roles, HOST/STAFF scoped)
 
 # Deliveries (ADMIN, RECEPTION for CRUD — ADMIN only for delete)
 GET  /admin/api/deliveries                # List deliveries
@@ -628,7 +643,7 @@ POST /admin/api/users/:id/deactivate      # Set user status to INACTIVE
 GET  /admin/api/reports/visits            # Visit reports
 GET  /admin/api/reports/deliveries        # Delivery reports
 
-# Lookups (ADMIN, RECEPTION, HOST)
+# Lookups (ADMIN, RECEPTION, HOST, STAFF)
 GET  /admin/api/lookups/purposes          # Purpose of visit (cached 1h)
 GET  /admin/api/lookups/delivery-types    # Delivery types (cached 1h)
 GET  /admin/api/lookups/couriers          # Couriers (cached 1h)
