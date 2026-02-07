@@ -43,6 +43,8 @@ export default function PreRegistrationsList({
 }: PreRegistrationsListProps) {
   const { user } = useAuth()
   const isAdmin = user?.role === 'ADMIN'
+  const canEdit = user?.role === 'ADMIN' || user?.role === 'RECEPTION'
+  const canApproveReject = user?.role !== 'RECEPTION'
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedStatus, setSelectedStatus] = useState<
     'PENDING_APPROVAL' | 'REJECTED' | 'APPROVED' | ''
@@ -184,7 +186,7 @@ export default function PreRegistrationsList({
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm space-x-1">
-                    {canApprove(preReg) && onApprove && (
+                    {canApproveReject && canApprove(preReg) && onApprove && (
                       <button
                         onClick={() => onApprove(preReg)}
                         className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium text-green-600 hover:bg-green-50 transition"
@@ -192,7 +194,7 @@ export default function PreRegistrationsList({
                         Approve
                       </button>
                     )}
-                    {canReject(preReg) && onReject && (
+                    {canApproveReject && canReject(preReg) && onReject && (
                       <button
                         onClick={() => onReject(preReg)}
                         className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium text-red-600 hover:bg-red-50 transition"
@@ -200,7 +202,7 @@ export default function PreRegistrationsList({
                         Reject
                       </button>
                     )}
-                    {canReApprove(preReg) && onReApprove && (
+                    {canApproveReject && canReApprove(preReg) && onReApprove && (
                       <button
                         onClick={() => onReApprove(preReg)}
                         className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium text-white bg-blue-500 hover:bg-blue-600 transition"
@@ -210,13 +212,15 @@ export default function PreRegistrationsList({
                         Re-Approve
                       </button>
                     )}
-                    <button
-                      onClick={() => onEdit(preReg)}
-                      className="inline-flex items-center p-1.5 rounded-md text-blue-600 hover:bg-blue-50 transition"
-                      title="Edit"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                    </button>
+                    {canEdit && (
+                      <button
+                        onClick={() => onEdit(preReg)}
+                        className="inline-flex items-center p-1.5 rounded-md text-blue-600 hover:bg-blue-50 transition"
+                        title="Edit"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                      </button>
+                    )}
                     {isAdmin && (
                       <button
                         onClick={() => onDelete(preReg)}

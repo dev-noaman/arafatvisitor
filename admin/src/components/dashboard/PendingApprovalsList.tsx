@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useToast } from '@/hooks/useToast'
+import { useAuth } from '@/hooks/useAuth'
 import { PendingApproval } from '@/services/dashboard'
 import * as dashboardService from '@/services/dashboard'
 import { formatDate } from '@/utils'
@@ -16,6 +17,8 @@ export function PendingApprovalsList({
   onApprovalAction,
 }: PendingApprovalsListProps) {
   const { success: showSuccess, error: showError } = useToast()
+  const { user } = useAuth()
+  const canApproveReject = user?.role !== 'RECEPTION'
   const [actioningId, setActioningId] = useState<string | null>(null)
 
   const handleApprove = async (visitId: string) => {
@@ -102,22 +105,24 @@ export function PendingApprovalsList({
                     Expected: {formatDate(approval.expectedDate, 'MMM DD, YYYY HH:mm')}
                   </p>
                 </div>
-                <div className="flex gap-2 ml-4 flex-shrink-0">
-                  <button
-                    onClick={() => handleApprove(approval.id)}
-                    disabled={actioningId === approval.id}
-                    className="px-3 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700 disabled:bg-gray-400 transition"
-                  >
-                    {actioningId === approval.id ? 'Processing...' : 'Approve'}
-                  </button>
-                  <button
-                    onClick={() => handleReject(approval.id)}
-                    disabled={actioningId === approval.id}
-                    className="px-3 py-2 bg-red-600 text-white text-sm rounded hover:bg-red-700 disabled:bg-gray-400 transition"
-                  >
-                    {actioningId === approval.id ? 'Processing...' : 'Reject'}
-                  </button>
-                </div>
+                {canApproveReject && (
+                  <div className="flex gap-2 ml-4 flex-shrink-0">
+                    <button
+                      onClick={() => handleApprove(approval.id)}
+                      disabled={actioningId === approval.id}
+                      className="px-3 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700 disabled:bg-gray-400 transition"
+                    >
+                      {actioningId === approval.id ? 'Processing...' : 'Approve'}
+                    </button>
+                    <button
+                      onClick={() => handleReject(approval.id)}
+                      disabled={actioningId === approval.id}
+                      className="px-3 py-2 bg-red-600 text-white text-sm rounded hover:bg-red-700 disabled:bg-gray-400 transition"
+                    >
+                      {actioningId === approval.id ? 'Processing...' : 'Reject'}
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           ))}

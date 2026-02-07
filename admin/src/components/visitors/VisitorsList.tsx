@@ -39,6 +39,7 @@ export default function VisitorsList({
 }: VisitorsListProps) {
   const { user } = useAuth()
   const isAdmin = user?.role === 'ADMIN'
+  const canApproveReject = user?.role !== 'RECEPTION'
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedStatus, setSelectedStatus] = useState<VisitStatus | ''>('')
 
@@ -160,7 +161,7 @@ export default function VisitorsList({
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm space-x-1">
-                    {canApprove(visitor) && onApprove && (
+                    {canApproveReject && canApprove(visitor) && onApprove && (
                       <button
                         onClick={() => onApprove(visitor)}
                         className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium text-green-600 hover:bg-green-50 transition"
@@ -168,7 +169,7 @@ export default function VisitorsList({
                         Approve
                       </button>
                     )}
-                    {canReject(visitor) && onReject && (
+                    {canApproveReject && canReject(visitor) && onReject && (
                       <button
                         onClick={() => onReject(visitor)}
                         className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium text-red-600 hover:bg-red-50 transition"

@@ -35,6 +35,7 @@ export default function DeliveriesList({
 }: DeliveriesListProps) {
   const { user } = useAuth()
   const isAdmin = user?.role === 'ADMIN'
+  const canEdit = user?.role === 'ADMIN' || user?.role === 'RECEPTION'
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedStatus, setSelectedStatus] = useState<DeliveryStatus | ''>('')
 
@@ -170,13 +171,15 @@ export default function DeliveriesList({
                         Mark Picked Up
                       </button>
                     )}
-                    <button
-                      onClick={() => onEdit(delivery)}
-                      className="inline-flex items-center p-1.5 rounded-md text-blue-600 hover:bg-blue-50 transition"
-                      title="Edit"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                    </button>
+                    {canEdit && (
+                      <button
+                        onClick={() => onEdit(delivery)}
+                        className="inline-flex items-center p-1.5 rounded-md text-blue-600 hover:bg-blue-50 transition"
+                        title="Edit"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                      </button>
+                    )}
                     {isAdmin && (
                       <button
                         onClick={() => onDelete(delivery)}

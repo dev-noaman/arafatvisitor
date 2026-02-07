@@ -1,6 +1,6 @@
 # Arafat Visitor Management System Development Guidelines
 
-Last updated: 2026-02-07 (Simplified deploy — no init step/seeds, password edit on Users, kiosk debug buttons removed)
+Last updated: 2026-02-07 (Role permission overhaul: HOST full visitor CRUD, pre-reg create ADMIN/RECEPTION only, HOST/STAFF delivery pickup)
 
 ## Active Technologies
 
@@ -120,7 +120,7 @@ This is the only seed user. All other users are created via the admin panel or b
 No demo login buttons on the sign-in page — production login only.
 
 ### Admin Panel Sections
-- **Dashboard**: KPIs, charts, pending approvals, current visitors (real-time via WebSocket)
+- **Dashboard**: KPIs, charts, pending approvals, current visitors (real-time via WebSocket). Total Hosts KPI counts only `type=EXTERNAL` hosts (not STAFF host records).
 - **Visitors**: Manage visitors (APPROVED, CHECKED_IN, CHECKED_OUT)
 - **Pre Register**: Pre-registered visits (PENDING_APPROVAL, REJECTED)
 - **Deliveries**: Package tracking with timeline view
@@ -205,19 +205,19 @@ RECEIVED → PICKED_UP
 | Feature | ADMIN | RECEPTION | HOST | STAFF |
 |---------|-------|-----------|------|-------|
 | **Dashboard** (KPIs, charts, lists) | Full | Full | Company-scoped | Company-scoped |
-| **Approve/Reject visits** | All | All | Own company only | Own company only |
+| **Approve/Reject visits** | All | No | Own company only | Own company only |
 | **Checkout visitors** | Yes | Yes | No | No |
-| **Create visitors** | Yes | Yes | No | Yes (auto-sets hostId) |
-| **Update visitors** | Yes | Yes | No | No |
+| **Create visitors** | Yes | Yes | Yes (auto-sets hostId) | Yes (auto-sets hostId, company-scoped) |
+| **Update visitors** | Yes | Yes | Yes (company-scoped) | Yes (company-scoped) |
 | **Delete visitors** | Yes | No | No | No |
 | **Create/Update deliveries** | Yes | Yes | No | No |
-| **Mark delivery picked up** | Yes | Yes | No | No |
+| **Mark delivery picked up** | Yes | Yes | Yes (company-scoped) | Yes (company-scoped) |
 | **Delete deliveries** | Yes | No | No | No |
-| **Deliveries list** | Yes | Yes | Yes | No |
-| **Create pre-registrations** | Yes | Yes | Yes (auto-sets hostId) | Yes (auto-sets hostId) |
+| **Deliveries list** | Yes | Yes | Yes | Yes (company-scoped) |
+| **Create pre-registrations** | Yes | Yes | No | No |
 | **Update pre-registrations** | Yes | Yes | No | No |
 | **Delete pre-registrations** | Yes | No | No | No |
-| **Approve/Reject pre-regs** | All | All | Own company only | Own company only |
+| **Approve/Reject pre-regs** | All | No | Own company only | Own company only |
 | **Hosts CRUD** | Full | View only | Company-scoped view | Company-scoped view |
 | **Staff CRUD** | Full (via Users page) | No | No | No |
 | **Bulk import hosts** | Yes | No | No | No |
@@ -284,9 +284,12 @@ RECEIVED → PICKED_UP
 - Edit/Delete buttons on Hosts page hidden for non-ADMIN
 - "Add Host" and "Bulk Import" buttons hidden for non-ADMIN on Hosts page
 - Staff page still exists at `/admin/staff` (route accessible) but removed from sidebar navigation
-- Sidebar navigation: Dashboard/Visitors/Pre-Register visible to all roles; Hosts visible to ADMIN+HOST+RECEPTION; Users/Settings to ADMIN only; Reports to ADMIN+HOST; Deliveries to ADMIN+HOST+RECEPTION (not STAFF)
+- Sidebar navigation: Dashboard/Visitors/Pre-Register/Deliveries visible to all roles; Hosts visible to ADMIN+HOST+RECEPTION; Users/Settings to ADMIN only; Reports to ADMIN+HOST
 - Staff sidebar item removed — staff users managed via Users page
-- STAFF sees: Dashboard, Visitors, Pre Register, Profile
+- STAFF sees: Dashboard, Visitors, Pre Register, Deliveries, Profile
+- "Add Pre-Registration" button hidden for HOST/STAFF (create is ADMIN/RECEPTION only)
+- "Record Delivery" and "Edit" buttons on Deliveries hidden for HOST/STAFF (they only see "Mark Picked Up")
+- "Edit" button on Pre-Registrations hidden for HOST/STAFF (update is ADMIN/RECEPTION only)
 - Implemented via `useAuth()` hook checking `user.role === 'ADMIN'`
 
 ## Caching
@@ -597,8 +600,8 @@ GET  /admin/api/dashboard/pending-approvals # Pending visits
 GET  /admin/api/dashboard/received-deliveries # Pending deliveries
 GET  /admin/api/dashboard/charts          # Chart data (cached 60s)
 GET  /admin/api/dashboard/current-visitors # Active visitors (limit 50)
-POST /admin/api/dashboard/approve/:id     # Approve visit (ADMIN, RECEPTION, HOST)
-POST /admin/api/dashboard/reject/:id      # Reject visit (ADMIN, RECEPTION, HOST)
+POST /admin/api/dashboard/approve/:id     # Approve visit (ADMIN, HOST, STAFF — not RECEPTION)
+POST /admin/api/dashboard/reject/:id      # Reject visit (ADMIN, HOST, STAFF — not RECEPTION)
 POST /admin/api/dashboard/checkout/:sessionId # Checkout (ADMIN, RECEPTION only)
 
 # Token Login (Public — used by kiosk auto-login)
@@ -629,26 +632,27 @@ POST /admin/api/staff                     # Create staff — auto-creates STAFF 
 PUT  /admin/api/staff/:id                 # Update staff member
 DELETE /admin/api/staff/:id               # Delete staff member
 
-# Visitors (ADMIN, RECEPTION, STAFF for create — ADMIN only for delete)
+# Visitors (ADMIN, RECEPTION, HOST, STAFF for create — ADMIN only for delete)
 GET  /admin/api/visitors                  # List visitors
-POST /admin/api/visitors                  # Create visitor (ADMIN, RECEPTION, STAFF — STAFF auto-sets hostId)
-PUT  /admin/api/visitors/:id              # Update visitor (ADMIN, RECEPTION)
+POST /admin/api/visitors                  # Create visitor (ADMIN, RECEPTION, HOST, STAFF — HOST/STAFF auto-set hostId)
+PUT  /admin/api/visitors/:id              # Update visitor (ADMIN, RECEPTION, HOST — HOST company-scoped)
 DELETE /admin/api/visitors/:id            # Delete visitor (ADMIN only)
 
 # Pre-registrations (all roles can view — HOST/STAFF company-scoped)
 GET  /admin/api/pre-register              # List pre-registrations
-POST /admin/api/pre-registrations         # Create (ADMIN, RECEPTION, HOST, STAFF) — notifies host via email+WhatsApp
+POST /admin/api/pre-registrations         # Create (ADMIN, RECEPTION only) — notifies host via email+WhatsApp
 PUT  /admin/api/pre-registrations/:id     # Update (ADMIN, RECEPTION)
 DELETE /admin/api/pre-registrations/:id   # Delete (ADMIN only)
-POST /admin/api/pre-registrations/:id/approve    # Approve (all roles, HOST/STAFF scoped)
-POST /admin/api/pre-registrations/:id/reject     # Reject (all roles, HOST/STAFF scoped)
-POST /admin/api/pre-registrations/:id/re-approve # Re-approve (all roles, HOST/STAFF scoped)
+POST /admin/api/pre-registrations/:id/approve    # Approve (ADMIN, HOST, STAFF — not RECEPTION)
+POST /admin/api/pre-registrations/:id/reject     # Reject (ADMIN, HOST, STAFF — not RECEPTION)
+POST /admin/api/pre-registrations/:id/re-approve # Re-approve (ADMIN, HOST, STAFF — not RECEPTION)
 
-# Deliveries (ADMIN, RECEPTION for CRUD — ADMIN only for delete)
-GET  /admin/api/deliveries                # List deliveries
+# Deliveries (ADMIN, RECEPTION for CRUD — HOST/STAFF can view + mark picked up)
+GET  /admin/api/deliveries                # List deliveries (ADMIN, RECEPTION, HOST, STAFF — HOST/STAFF company-scoped)
 POST /admin/api/deliveries                # Create delivery (ADMIN, RECEPTION)
 PUT  /admin/api/deliveries/:id            # Update delivery (ADMIN, RECEPTION)
 DELETE /admin/api/deliveries/:id          # Delete delivery (ADMIN only)
+POST /admin/api/deliveries/:id/mark-picked-up  # Mark picked up (ADMIN, RECEPTION, HOST, STAFF — HOST/STAFF company-scoped)
 
 # Users (ADMIN only)
 GET  /admin/api/users                     # List users (supports ?status=ACTIVE|INACTIVE filter)

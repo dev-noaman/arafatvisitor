@@ -2,11 +2,13 @@ import { useCallback, useState, useEffect } from 'react'
 import { DeliveriesList, DeliveryModal, DeleteConfirmationDialog } from '@/components/deliveries'
 import ErrorState from '@/components/common/ErrorState'
 import { getDeliveries, createDelivery, updateDelivery, deleteDelivery, markAsPickedUp } from '@/services/deliveries'
-import { useToast } from '@/hooks'
+import { useToast, useAuth } from '@/hooks'
 import type { Delivery, DeliveryFormData, DeliveryStatus } from '@/types'
 
 export default function Deliveries() {
   const { success, error } = useToast()
+  const { user } = useAuth()
+  const canCreateEdit = user?.role === 'ADMIN' || user?.role === 'RECEPTION'
   const [deliveries, setDeliveries] = useState<Delivery[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -157,20 +159,22 @@ export default function Deliveries() {
           <h1 className="text-3xl font-bold text-gray-900">Deliveries Management</h1>
           <p className="text-gray-600 mt-1">Track and manage package deliveries</p>
         </div>
-        <button
-          onClick={() => {
-            setSelectedDelivery(undefined)
-            setIsModalOpen(true)
-          }}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition"
-        >
-          <span className="inline-flex items-center gap-2">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Record Delivery
-          </span>
-        </button>
+        {canCreateEdit && (
+          <button
+            onClick={() => {
+              setSelectedDelivery(undefined)
+              setIsModalOpen(true)
+            }}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition"
+          >
+            <span className="inline-flex items-center gap-2">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Record Delivery
+            </span>
+          </button>
+        )}
       </div>
 
       {/* Error State */}

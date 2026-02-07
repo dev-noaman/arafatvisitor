@@ -1319,7 +1319,7 @@ export class AdminApiController {
 
   // ============ APPROVE / REJECT ACTIONS ============
 
-  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST, Role.STAFF)
+  @Roles(Role.ADMIN, Role.HOST, Role.STAFF)
   @Post("dashboard/approve/:id")
   async approveVisit(@Param("id") id: string, @Req() req: any) {
     const visit = await this.prisma.visit.findUnique({
@@ -1368,7 +1368,7 @@ export class AdminApiController {
     return { success: true, message: "Visit approved" };
   }
 
-  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST, Role.STAFF)
+  @Roles(Role.ADMIN, Role.HOST, Role.STAFF)
   @Post("dashboard/reject/:id")
   async rejectVisit(@Param("id") id: string, @Req() req: any) {
     const visit = await this.prisma.visit.findUnique({
@@ -2475,7 +2475,7 @@ export class AdminApiController {
     return visit;
   }
 
-  @Roles(Role.ADMIN, Role.RECEPTION, Role.STAFF)
+  @Roles(Role.ADMIN, Role.RECEPTION, Role.STAFF, Role.HOST)
   @Post("visitors")
   async createVisitor(
     @Req() req: any,
@@ -2493,8 +2493,8 @@ export class AdminApiController {
       notes?: string;
     },
   ) {
-    // STAFF auto-sets hostId from their user account
-    if (req.user?.role === 'STAFF' && req.user?.hostId) {
+    // HOST/STAFF auto-sets hostId from their user account
+    if ((req.user?.role === 'STAFF' || req.user?.role === 'HOST') && req.user?.hostId) {
       body.hostId = String(req.user.hostId);
     }
 
@@ -2528,10 +2528,11 @@ export class AdminApiController {
     return visit;
   }
 
-  @Roles(Role.ADMIN, Role.RECEPTION)
+  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST, Role.STAFF)
   @Put("visitors/:id")
   async updateVisitor(
     @Param("id") id: string,
+    @Req() req: any,
     @Body()
     body: {
       visitorName?: string;
@@ -2544,9 +2545,18 @@ export class AdminApiController {
       status?: string;
     },
   ) {
-    const existing = await this.prisma.visit.findUnique({ where: { id } });
+    const existing = await this.prisma.visit.findUnique({
+      where: { id },
+      include: { host: true },
+    });
     if (!existing) {
       throw new HttpException("Visitor not found", HttpStatus.NOT_FOUND);
+    }
+
+    // HOST can only update visitors belonging to their company
+    const hostScope = await this.getHostScope(req);
+    if (hostScope && existing.host?.company !== hostScope.company) {
+      throw new ForbiddenException("Access denied");
     }
 
     const updateData: Prisma.VisitUpdateInput = {};
@@ -3342,7 +3352,7 @@ export class AdminApiController {
 
   // ============ DELIVERIES CRUD ============
 
-  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST)
+  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST, Role.STAFF)
   @Get("deliveries")
   async getDeliveries(
     @Req() req: any,
@@ -3401,7 +3411,7 @@ export class AdminApiController {
     };
   }
 
-  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST)
+  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST, Role.STAFF)
   @Get("deliveries/:id")
   async getDelivery(@Param("id") id: string, @Req() req: any) {
     const delivery = await this.prisma.delivery.findUnique({
@@ -3513,12 +3523,21 @@ export class AdminApiController {
     return { success: true, message: "Delivery deleted" };
   }
 
-  @Roles(Role.ADMIN, Role.RECEPTION)
+  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST, Role.STAFF)
   @Post("deliveries/:id/mark-picked-up")
-  async markDeliveryPickedUp(@Param("id") id: string) {
-    const delivery = await this.prisma.delivery.findUnique({ where: { id } });
+  async markDeliveryPickedUp(@Param("id") id: string, @Req() req: any) {
+    const delivery = await this.prisma.delivery.findUnique({
+      where: { id },
+      include: { host: true },
+    });
     if (!delivery) {
       throw new HttpException("Delivery not found", HttpStatus.NOT_FOUND);
+    }
+
+    // HOST/STAFF can only mark deliveries for their company
+    const hostScope = await this.getHostScope(req);
+    if (hostScope && delivery.host?.company !== hostScope.company) {
+      throw new ForbiddenException("Access denied");
     }
 
     if (delivery.status === "PICKED_UP") {
@@ -3620,7 +3639,7 @@ export class AdminApiController {
     return visit;
   }
 
-  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST, Role.STAFF)
+  @Roles(Role.ADMIN, Role.RECEPTION)
   @Post("pre-registrations")
   async createPreRegistration(
     @Req() req: any,
@@ -3638,10 +3657,6 @@ export class AdminApiController {
       notes?: string;
     },
   ) {
-    // HOST/STAFF can only create pre-registrations for their own host
-    if ((req.user?.role === 'HOST' || req.user?.role === 'STAFF') && req.user?.hostId) {
-      body.hostId = String(req.user.hostId);
-    }
 
     // Resolve location from host if not provided
     let location = body.location;
@@ -3749,7 +3764,7 @@ export class AdminApiController {
     return { success: true, message: "Pre-registration deleted" };
   }
 
-  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST, Role.STAFF)
+  @Roles(Role.ADMIN, Role.HOST, Role.STAFF)
   @Post("pre-registrations/:id/approve")
   async approvePreRegistration(@Param("id") id: string, @Req() req: any) {
     const visit = await this.prisma.visit.findUnique({
@@ -3779,7 +3794,7 @@ export class AdminApiController {
     return { success: true, message: "Pre-registration approved" };
   }
 
-  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST, Role.STAFF)
+  @Roles(Role.ADMIN, Role.HOST, Role.STAFF)
   @Post("pre-registrations/:id/reject")
   async rejectPreRegistration(
     @Param("id") id: string,
@@ -3812,7 +3827,7 @@ export class AdminApiController {
     return { success: true, message: "Pre-registration rejected" };
   }
 
-  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST, Role.STAFF)
+  @Roles(Role.ADMIN, Role.HOST, Role.STAFF)
   @Post("pre-registrations/:id/re-approve")
   async reApprovePreRegistration(@Param("id") id: string, @Req() req: any) {
     const visit = await this.prisma.visit.findUnique({
