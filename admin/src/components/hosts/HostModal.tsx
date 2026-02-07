@@ -69,7 +69,7 @@ export default function HostModal({
 
           {/* Body */}
           <div className="px-6 py-4">
-            <HostForm onSubmit={onSubmit} initialData={hostData} isLoading={isLoading} />
+            <HostForm onSubmit={onSubmit} initialData={hostData} isLoading={isLoading} entityLabel={entityLabel} />
           </div>
         </div>
       </div>
