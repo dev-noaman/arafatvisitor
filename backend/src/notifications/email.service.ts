@@ -109,29 +109,29 @@ export class EmailService {
   ): Promise<boolean> {
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <div style="background: linear-gradient(135deg, #059669, #10B981); padding: 30px; text-align: center;">
-          <h1 style="color: white; margin: 0; font-size: 28px;">VISITOR ARRIVAL</h1>
-          <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0;">Arafat Visitor Management System</p>
+        <div style="background: linear-gradient(135deg, #1E3A8A, #3B82F6); padding: 20px; text-align: center;">
+          <h1 style="color: white; margin: 0;">VISITOR ARRIVAL</h1>
+          <p style="color: rgba(255,255,255,0.9); margin: 5px 0 0 0;">Arafat Group</p>
         </div>
-        <div style="padding: 40px 30px; background: #f9fafb;">
-          <p style="color: #374151; font-size: 16px; margin-top: 0;">You have a visitor waiting at reception.</p>
-          <table style="width: 100%; border-collapse: collapse; margin: 24px 0; background: white; border-radius: 8px; overflow: hidden; border: 1px solid #e5e7eb;">
-            <tr style="border-bottom: 1px solid #e5e7eb;">
-              <td style="padding: 12px 16px; color: #6b7280; font-size: 12px; font-weight: bold; text-transform: uppercase; width: 120px;">Visitor</td>
-              <td style="padding: 12px 16px; color: #111827; font-weight: 600;">${visitorName}</td>
-            </tr>
-            <tr style="border-bottom: 1px solid #e5e7eb;">
-              <td style="padding: 12px 16px; color: #6b7280; font-size: 12px; font-weight: bold; text-transform: uppercase;">Company</td>
-              <td style="padding: 12px 16px; color: #111827;">${visitorCompany || "N/A"}</td>
+        <div style="padding: 30px; background: #f9fafb;">
+          <p>You have a visitor waiting at reception.</p>
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 10px 0; border-bottom: 1px solid #e5e7eb;"><strong>Visitor:</strong></td>
+              <td style="padding: 10px 0; border-bottom: 1px solid #e5e7eb;">${visitorName}</td>
             </tr>
             <tr>
-              <td style="padding: 12px 16px; color: #6b7280; font-size: 12px; font-weight: bold; text-transform: uppercase;">Purpose</td>
-              <td style="padding: 12px 16px; color: #111827;">${purpose || "Visit"}</td>
+              <td style="padding: 10px 0; border-bottom: 1px solid #e5e7eb;"><strong>Company:</strong></td>
+              <td style="padding: 10px 0; border-bottom: 1px solid #e5e7eb;">${visitorCompany || "N/A"}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 0;"><strong>Purpose:</strong></td>
+              <td style="padding: 10px 0;">${purpose || "Visit"}</td>
             </tr>
           </table>
-          <p style="color: #374151; line-height: 1.6;">Please proceed to reception to meet your visitor at your earliest convenience.</p>
+          <p style="margin-top: 20px; color: #6b7280; font-size: 14px;">Please proceed to reception to meet your visitor.</p>
         </div>
-        <div style="padding: 20px; text-align: center; background: #1E3A8A; color: rgba(255,255,255,0.8); font-size: 13px;">
+        <div style="padding: 15px; text-align: center; background: #1E3A8A; color: rgba(255,255,255,0.7); font-size: 12px;">
           Powered by Arafat Visitor Management System
         </div>
       </div>
@@ -155,42 +155,42 @@ export class EmailService {
   ): Promise<boolean> {
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <div style="background: linear-gradient(135deg, #059669, #10B981); padding: 30px; text-align: center;">
-          <h1 style="color: white; margin: 0; font-size: 28px;">VISITOR ARRIVAL</h1>
-          <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0;">Arafat Visitor Management System</p>
+        <div style="background: linear-gradient(135deg, #1E3A8A, #3B82F6); padding: 20px; text-align: center;">
+          <h1 style="color: white; margin: 0;">VISITOR CHECK-IN</h1>
+          <p style="color: rgba(255,255,255,0.9); margin: 5px 0 0 0;">Arafat Group</p>
         </div>
-        <div style="padding: 40px 30px; background: #f9fafb;">
-          <h2 style="color: #1E3A8A; margin-top: 0;">Hello ${hostName},</h2>
-          <p style="color: #374151; line-height: 1.6;">Your visitor has arrived and is waiting at reception.</p>
-          <table style="width: 100%; border-collapse: collapse; margin: 24px 0; background: white; border-radius: 8px; overflow: hidden; border: 1px solid #e5e7eb;">
-            <tr style="border-bottom: 1px solid #e5e7eb;">
-              <td style="padding: 12px 16px; color: #6b7280; font-size: 12px; font-weight: bold; text-transform: uppercase; width: 120px;">Visitor</td>
-              <td style="padding: 12px 16px; color: #111827; font-weight: 600;">${visitorName}</td>
-            </tr>
-            <tr style="border-bottom: 1px solid #e5e7eb;">
-              <td style="padding: 12px 16px; color: #6b7280; font-size: 12px; font-weight: bold; text-transform: uppercase;">Company</td>
-              <td style="padding: 12px 16px; color: #111827;">${visitorCompany || "N/A"}</td>
-            </tr>
-            <tr style="border-bottom: 1px solid #e5e7eb;">
-              <td style="padding: 12px 16px; color: #6b7280; font-size: 12px; font-weight: bold; text-transform: uppercase;">Purpose</td>
-              <td style="padding: 12px 16px; color: #111827;">${purpose || "Visit"}</td>
-            </tr>
-            <tr style="border-bottom: 1px solid #e5e7eb;">
-              <td style="padding: 12px 16px; color: #6b7280; font-size: 12px; font-weight: bold; text-transform: uppercase;">Location</td>
-              <td style="padding: 12px 16px; color: #111827;">${location}</td>
-            </tr>
-            <tr style="border-bottom: 1px solid #e5e7eb;">
-              <td style="padding: 12px 16px; color: #6b7280; font-size: 12px; font-weight: bold; text-transform: uppercase;">Check-in</td>
-              <td style="padding: 12px 16px; color: #111827;">${checkInTime}</td>
+        <div style="padding: 30px; background: #f9fafb;">
+          <h2 style="color: #1E3A8A; margin-top: 0;">Hello ${hostName}!</h2>
+          <p>Your visitor has checked in and is waiting at reception.</p>
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 10px 0; border-bottom: 1px solid #e5e7eb;"><strong>Visitor:</strong></td>
+              <td style="padding: 10px 0; border-bottom: 1px solid #e5e7eb;">${visitorName}</td>
             </tr>
             <tr>
-              <td style="padding: 12px 16px; color: #6b7280; font-size: 12px; font-weight: bold; text-transform: uppercase;">Badge ID</td>
-              <td style="padding: 12px 16px; color: #1E3A8A; font-weight: 600;">#${badgeId}</td>
+              <td style="padding: 10px 0; border-bottom: 1px solid #e5e7eb;"><strong>Company:</strong></td>
+              <td style="padding: 10px 0; border-bottom: 1px solid #e5e7eb;">${visitorCompany || "N/A"}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 0; border-bottom: 1px solid #e5e7eb;"><strong>Purpose:</strong></td>
+              <td style="padding: 10px 0; border-bottom: 1px solid #e5e7eb;">${purpose || "Visit"}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 0; border-bottom: 1px solid #e5e7eb;"><strong>Location:</strong></td>
+              <td style="padding: 10px 0; border-bottom: 1px solid #e5e7eb;">${location}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 0; border-bottom: 1px solid #e5e7eb;"><strong>Check-in:</strong></td>
+              <td style="padding: 10px 0; border-bottom: 1px solid #e5e7eb;">${checkInTime}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 0;"><strong>Badge ID:</strong></td>
+              <td style="padding: 10px 0;">#${badgeId}</td>
             </tr>
           </table>
-          <p style="color: #374151; line-height: 1.6;">Please proceed to reception to meet your visitor at your earliest convenience.</p>
+          <p style="margin-top: 20px; color: #6b7280; font-size: 14px;">Please proceed to reception to meet your visitor.</p>
         </div>
-        <div style="padding: 20px; text-align: center; background: #1E3A8A; color: rgba(255,255,255,0.8); font-size: 13px;">
+        <div style="padding: 15px; text-align: center; background: #1E3A8A; color: rgba(255,255,255,0.7); font-size: 12px;">
           Powered by Arafat Visitor Management System
         </div>
       </div>
