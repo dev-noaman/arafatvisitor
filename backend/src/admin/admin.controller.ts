@@ -2965,7 +2965,7 @@ export class AdminApiController {
     @Body()
     body: {
       name: string;
-      company: string;
+      company?: string;
       email?: string;
       phone?: string;
       location?: string;
@@ -2976,7 +2976,7 @@ export class AdminApiController {
     const staff = await this.prisma.host.create({
       data: {
         name: body.name,
-        company: body.company,
+        company: body.company || "Arafat Group",
         email: body.email,
         phone: body.phone,
         location: body.location as "BARWA_TOWERS" | "MARINA_50" | "ELEMENT_MARIOTT" | undefined,
@@ -3217,7 +3217,7 @@ export class AdminApiController {
           data: {
             externalId,
             name,
-            company: company ?? "",
+            company: company || "Arafat Group",
             email,
             phone,
             location: location as "BARWA_TOWERS" | "ELEMENT_MARIOTT" | "MARINA_50" | null,

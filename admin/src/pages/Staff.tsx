@@ -170,6 +170,7 @@ export default function Staff() {
           onEdit={handleEdit}
           onDelete={handleDeleteClick}
           entityLabel="staff"
+          hideCompany
         />
       )}
 
@@ -181,6 +182,7 @@ export default function Staff() {
         hostData={selectedStaff}
         isLoading={isSubmitting}
         entityLabel="Staff"
+        hideCompany
       />
 
       {/* Delete Confirmation */}

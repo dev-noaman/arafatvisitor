@@ -16,6 +16,7 @@ interface HostsListProps {
   onEdit: (host: Host) => void
   onDelete: (host: Host) => void
   entityLabel?: string
+  hideCompany?: boolean
 }
 
 export default function HostsList({
@@ -27,6 +28,7 @@ export default function HostsList({
   onEdit,
   onDelete,
   entityLabel = 'hosts',
+  hideCompany,
 }: HostsListProps) {
   const { user } = useAuth()
   const isAdmin = user?.role === 'ADMIN'
@@ -69,7 +71,7 @@ export default function HostsList({
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
               <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Name</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Company</th>
+              {!hideCompany && <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Company</th>}
               <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Email</th>
               <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Phone</th>
               <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Location</th>
@@ -79,7 +81,7 @@ export default function HostsList({
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                <td colSpan={hideCompany ? 5 : 6} className="px-6 py-8 text-center text-gray-500">
                   <div className="flex items-center justify-center">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
                   </div>
@@ -87,7 +89,7 @@ export default function HostsList({
               </tr>
             ) : hosts.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                <td colSpan={hideCompany ? 5 : 6} className="px-6 py-8 text-center text-gray-500">
                   No {entityLabel} found. Create your first to get started.
                 </td>
               </tr>
@@ -95,7 +97,7 @@ export default function HostsList({
               hosts.map((host) => (
                 <tr key={host.id} className="border-b border-gray-200 hover:bg-gray-50 transition">
                   <td className="px-6 py-4 text-sm text-gray-900 font-medium">{host.name}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{host.company}</td>
+                  {!hideCompany && <td className="px-6 py-4 text-sm text-gray-600">{host.company}</td>}
                   <td className="px-6 py-4 text-sm text-gray-600">{host.email}</td>
                   <td className="px-6 py-4 text-sm text-gray-600">{host.phone || '—'}</td>
                   <td className="px-6 py-4 text-sm text-gray-600">

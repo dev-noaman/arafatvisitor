@@ -7,8 +7,12 @@ const hostSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Invalid email address'),
   phone: z.string().optional(),
-  company: z.string().min(1, 'Company is required'),
+  company: z.string().optional(),
   location: z.enum(['BARWA_TOWERS', 'MARINA_50', 'ELEMENT_MARIOTT']).optional(),
+})
+
+const hostWithCompanySchema = hostSchema.extend({
+  company: z.string().min(1, 'Company is required'),
 })
 
 interface HostFormProps {
@@ -16,16 +20,17 @@ interface HostFormProps {
   initialData?: Host
   isLoading?: boolean
   entityLabel?: string
+  hideCompany?: boolean
 }
 
-export default function HostForm({ onSubmit, initialData, isLoading, entityLabel = 'Host' }: HostFormProps) {
+export default function HostForm({ onSubmit, initialData, isLoading, entityLabel = 'Host', hideCompany }: HostFormProps) {
   const {
     register,
     handleSubmit,
     formState: { errors },
     reset,
   } = useForm<HostFormData>({
-    resolver: zodResolver(hostSchema),
+    resolver: zodResolver(hideCompany ? hostSchema : hostWithCompanySchema),
     defaultValues: initialData || {
       name: '',
       email: '',
@@ -59,20 +64,22 @@ export default function HostForm({ onSubmit, initialData, isLoading, entityLabel
       </div>
 
       {/* Company Field */}
-      <div>
-        <label htmlFor="company" className="block text-sm font-medium text-gray-700 mb-1">
-          Company *
-        </label>
-        <input
-          {...register('company')}
-          type="text"
-          id="company"
-          placeholder="Enter company name"
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          disabled={isLoading}
-        />
-        {errors.company && <p className="text-sm text-red-600 mt-1">{errors.company.message}</p>}
-      </div>
+      {!hideCompany && (
+        <div>
+          <label htmlFor="company" className="block text-sm font-medium text-gray-700 mb-1">
+            Company *
+          </label>
+          <input
+            {...register('company')}
+            type="text"
+            id="company"
+            placeholder="Enter company name"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            disabled={isLoading}
+          />
+          {errors.company && <p className="text-sm text-red-600 mt-1">{errors.company.message}</p>}
+        </div>
+      )}
 
       {/* Email Field */}
       <div>

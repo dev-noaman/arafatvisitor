@@ -9,6 +9,7 @@ interface HostModalProps {
   hostData?: Host
   isLoading?: boolean
   entityLabel?: string
+  hideCompany?: boolean
 }
 
 export default function HostModal({
@@ -18,6 +19,7 @@ export default function HostModal({
   hostData,
   isLoading,
   entityLabel = 'Host',
+  hideCompany,
 }: HostModalProps) {
   useEffect(() => {
     if (isOpen) {
@@ -69,7 +71,7 @@ export default function HostModal({
 
           {/* Body */}
           <div className="px-6 py-4">
-            <HostForm onSubmit={onSubmit} initialData={hostData} isLoading={isLoading} entityLabel={entityLabel} />
+            <HostForm onSubmit={onSubmit} initialData={hostData} isLoading={isLoading} entityLabel={entityLabel} hideCompany={hideCompany} />
           </div>
         </div>
       </div>
