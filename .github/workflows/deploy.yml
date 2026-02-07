@@ -196,18 +196,6 @@ jobs:
           npx prisma generate
           npx prisma db push --accept-data-loss
 
-          # ONE-TIME CLEANUP: Remove all test/demo data, keep only admin user
-          # TODO: Remove this block after first successful deploy
-          npx prisma db execute --stdin << 'EOCLEAN'
-          DELETE FROM "QrToken";
-          DELETE FROM "Visit";
-          DELETE FROM "Delivery";
-          DELETE FROM "RefreshToken";
-          UPDATE "User" SET "hostId" = NULL WHERE email != 'admin@arafatvisitor.cloud';
-          DELETE FROM "User" WHERE email != 'admin@arafatvisitor.cloud';
-          DELETE FROM "Host";
-          EOCLEAN
-
           # Populate lookup tables (idempotent)
           npx prisma db execute --stdin << 'EOSQL'
           INSERT INTO "LookupPurpose" (code, label, active, "sortOrder", "updatedAt") VALUES
