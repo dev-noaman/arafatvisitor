@@ -1,6 +1,6 @@
 # Arafat Visitor Management System Development Guidelines
 
-Last updated: 2026-02-06 (RBAC role-based access control)
+Last updated: 2026-02-07 (Pre-registration host notifications, WhatsApp test fix)
 
 ## Active Technologies
 
@@ -213,7 +213,7 @@ RECEIVED → PICKED_UP
 | **Create/Update deliveries** | Yes | Yes | No |
 | **Mark delivery picked up** | Yes | Yes | No |
 | **Delete deliveries** | Yes | No | No |
-| **Create pre-registrations** | Yes | Yes | Yes (auto-sets hostId) |
+| **Create pre-registrations** | Yes | Yes | Yes (auto-sets hostId, notifies host) |
 | **Update pre-registrations** | Yes | Yes | No |
 | **Delete pre-registrations** | Yes | No | No |
 | **Approve/Reject pre-regs** | All | All | Own company only |
@@ -392,6 +392,7 @@ WHATSAPP_API_KEY=<secret>
 | Event | Email | WhatsApp | Recipient |
 |-------|-------|----------|-----------|
 | Walk-in visit created | Visitor arrival | Visitor arrival | Host |
+| Pre-registration created | Visitor arrival | Visitor arrival | Host |
 | QR check-in (APPROVED → CHECKED_IN) | Visitor arrival with details | Visitor arrival with details | Host |
 | Password reset requested | Reset link | — | User |
 | QR code sent from admin | QR email template | QR image + caption | Visitor |
@@ -497,7 +498,7 @@ POST /admin/api/change-password           # Change user password
 # Settings (ADMIN only)
 GET  /admin/api/settings                  # Get system settings
 POST /admin/api/settings/test-email       # Test SMTP
-POST /admin/api/settings/test-whatsapp    # Test WhatsApp
+POST /admin/api/settings/test-whatsapp    # Test WhatsApp (accepts {phone} or {recipientPhone})
 
 # Hosts (ADMIN for CRUD, all roles can view — HOST company-scoped)
 POST /admin/api/hosts/import              # Bulk import (ADMIN only)
@@ -514,7 +515,7 @@ DELETE /admin/api/visitors/:id            # Delete visitor (ADMIN only)
 
 # Pre-registrations (all roles can view — HOST company-scoped)
 GET  /admin/api/pre-register              # List pre-registrations
-POST /admin/api/pre-registrations         # Create (ADMIN, RECEPTION, HOST)
+POST /admin/api/pre-registrations         # Create (ADMIN, RECEPTION, HOST) — notifies host via email+WhatsApp
 PUT  /admin/api/pre-registrations/:id     # Update (ADMIN, RECEPTION)
 DELETE /admin/api/pre-registrations/:id   # Delete (ADMIN only)
 POST /admin/api/pre-registrations/:id/approve    # Approve (all roles, HOST scoped)
