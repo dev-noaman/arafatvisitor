@@ -22,12 +22,6 @@ export const NAV_ITEMS: NavItem[] = [
     roles: ['ADMIN', 'HOST', 'RECEPTION'],
   },
   {
-    path: '/admin/staff',
-    label: 'Staff',
-    icon: 'Briefcase',
-    roles: ['ADMIN'],
-  },
-  {
     path: '/admin/visitors',
     label: 'Visitors',
     icon: 'UserCheck',

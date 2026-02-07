@@ -38,7 +38,7 @@ export default function UserForm({ onSubmit, initialData, isLoading, hosts = [],
     defaultValues: initialData || {
       email: '',
       name: '',
-      role: 'HOST',
+      role: 'STAFF',
       password: '',
       hostId: '',
     },
@@ -47,7 +47,7 @@ export default function UserForm({ onSubmit, initialData, isLoading, hosts = [],
   const selectedRole = watch('role')
 
   const handleFormSubmit = async (data: UserFormData) => {
-    if (data.role !== 'HOST' && data.role !== 'STAFF') {
+    if (data.role !== 'STAFF') {
       delete data.hostId
     }
     // Don't send empty password on edit (keeps current password)
@@ -103,7 +103,6 @@ export default function UserForm({ onSubmit, initialData, isLoading, hosts = [],
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           disabled={isLoading}
         >
-          <option value="HOST">Host (External)</option>
           <option value="STAFF">Staff (Internal)</option>
           <option value="RECEPTION">Reception</option>
           <option value="ADMIN">Administrator</option>
@@ -111,8 +110,8 @@ export default function UserForm({ onSubmit, initialData, isLoading, hosts = [],
         {errors.role && <p className="text-sm text-red-600 mt-1">{errors.role.message}</p>}
       </div>
 
-      {/* Host/Staff Selection (for HOST or STAFF role) */}
-      {(selectedRole === 'HOST' || selectedRole === 'STAFF') && (
+      {/* Staff Company Linking (for STAFF role) */}
+      {selectedRole === 'STAFF' && (
         <div>
           <label htmlFor="hostId" className="block text-sm font-medium text-gray-700 mb-1">
             Linked Host/Company *
@@ -131,7 +130,7 @@ export default function UserForm({ onSubmit, initialData, isLoading, hosts = [],
             ))}
           </select>
           <p className="text-xs text-gray-500 mt-1">
-            HOST/STAFF users can only see data belonging to their linked company
+            Staff users can only see data belonging to their linked company
           </p>
         </div>
       )}
