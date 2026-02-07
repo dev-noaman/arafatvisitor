@@ -3101,8 +3101,10 @@ export class AdminApiController {
       visitorEmail?: string;
       hostId: string;
       purpose: string;
-      location: string;
+      location?: string;
       expectedDate?: string;
+      scheduledDate?: string;
+      notes?: string;
     },
   ) {
     // HOST can only create pre-registrations for their own host
@@ -3110,7 +3112,15 @@ export class AdminApiController {
       body.hostId = String(req.user.hostId);
     }
 
+    // Resolve location from host if not provided
+    let location = body.location;
+    if (!location) {
+      const host = await this.prisma.host.findUnique({ where: { id: BigInt(body.hostId) } });
+      location = host?.location || "BARWA_TOWERS";
+    }
+
     const sessionId = crypto.randomUUID();
+    const expectedDate = body.expectedDate || body.scheduledDate;
 
     const visit = await this.prisma.visit.create({
       data: {
@@ -3120,10 +3130,10 @@ export class AdminApiController {
         visitorPhone: body.visitorPhone,
         visitorEmail: body.visitorEmail,
         hostId: BigInt(body.hostId),
-        purpose: body.purpose,
-        location: body.location as "BARWA_TOWERS" | "MARINA_50" | "ELEMENT_MARIOTT",
+        purpose: body.purpose || "",
+        location: location as "BARWA_TOWERS" | "MARINA_50" | "ELEMENT_MARIOTT",
         status: "PENDING_APPROVAL",
-        expectedDate: body.expectedDate ? new Date(body.expectedDate) : null,
+        expectedDate: expectedDate ? new Date(expectedDate) : null,
       },
       include: { host: true },
     });
