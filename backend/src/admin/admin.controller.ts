@@ -2395,12 +2395,22 @@ export class AdminApiController {
       visitorPhone: string;
       visitorEmail?: string;
       hostId: string;
-      purpose: string;
-      location: string;
+      purpose?: string;
+      location?: string;
       expectedDate?: string;
+      visitDate?: string;
+      notes?: string;
     },
   ) {
+    // Resolve location from host if not provided
+    let location = body.location;
+    if (!location) {
+      const host = await this.prisma.host.findUnique({ where: { id: BigInt(body.hostId) } });
+      location = host?.location || "BARWA_TOWERS";
+    }
+
     const sessionId = crypto.randomUUID();
+    const expectedDate = body.expectedDate || body.visitDate;
 
     const visit = await this.prisma.visit.create({
       data: {
@@ -2410,10 +2420,10 @@ export class AdminApiController {
         visitorPhone: body.visitorPhone,
         visitorEmail: body.visitorEmail,
         hostId: BigInt(body.hostId),
-        purpose: body.purpose,
-        location: body.location as "BARWA_TOWERS" | "MARINA_50" | "ELEMENT_MARIOTT",
+        purpose: body.purpose || "",
+        location: location as "BARWA_TOWERS" | "MARINA_50" | "ELEMENT_MARIOTT",
         status: "APPROVED",
-        expectedDate: body.expectedDate ? new Date(body.expectedDate) : null,
+        expectedDate: expectedDate ? new Date(expectedDate) : null,
         approvedAt: new Date(),
       },
       include: { host: true },
