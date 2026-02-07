@@ -1,6 +1,6 @@
 # Arafat Visitor Management System Development Guidelines
 
-Last updated: 2026-02-07 (HOST demo user, host selector in user form, field aliasing fixes)
+Last updated: 2026-02-07 (Auto-create HOST user on host creation, user status ACTIVE/INACTIVE, welcome email)
 
 ## Active Technologies
 
@@ -243,6 +243,22 @@ RECEIVED → PICKED_UP
 - Components: `admin/src/components/users/UserForm.tsx`, `UserModal.tsx`, `admin/src/pages/Users.tsx`
 - Backend: `POST /admin/api/users` accepts optional `hostId` field (string, converted to BigInt)
 
+### Auto-Create HOST User on Host Creation
+- **Single host create** (`POST /admin/api/hosts`): Auto-creates a User with role=HOST, status=ACTIVE, random password, and linked `hostId`
+- **Bulk import** (CSV/XLSX): Same auto-creation logic per imported host
+- If host has a real email (not `@system.local`), a **welcome email** is sent with a 72h password reset link
+- Welcome email: `emailService.sendHostWelcome()` — "Welcome to Arafat VMS" template with "Set Password" button
+- Hosts without email get a fallback `host_{id}@system.local` user (no email sent)
+- Duplicate checks: skips if email already exists or hostId already linked to a user
+
+### User Status (ACTIVE/INACTIVE)
+- User model has `status` field (default: `ACTIVE`)
+- **INACTIVE users are blocked from login** — returns "Account is deactivated" error
+- Admin can activate/deactivate users via `POST /admin/api/users/:id/activate` and `/deactivate`
+- Users page: **Activate button only shown for INACTIVE users**; hidden for ACTIVE users
+- Status filter (Active/Inactive) available on Users list page
+- All auto-created HOST users default to ACTIVE
+
 ### Frontend Role-Based UI
 - Delete buttons hidden for non-ADMIN users (Visitors, Deliveries, Pre-registrations, Hosts)
 - Edit/Delete buttons on Hosts page hidden for non-ADMIN
@@ -405,6 +421,7 @@ WHATSAPP_API_KEY=<secret>
 | QR check-in (APPROVED → CHECKED_IN) | Visitor arrival with details | Visitor arrival with details | Host |
 | Password reset requested | Reset link | — | User |
 | QR code sent from admin | QR email template | QR image + caption | Visitor |
+| Host created (single or bulk import) | Welcome email with 72h reset link | — | Host |
 
 ## Admin API Field Aliasing
 
@@ -545,7 +562,7 @@ POST /admin/api/settings/test-whatsapp    # Test WhatsApp (accepts {phone} or {r
 # Hosts (ADMIN for CRUD, all roles can view — HOST company-scoped)
 POST /admin/api/hosts/import              # Bulk import (ADMIN only)
 GET  /admin/api/hosts                     # List hosts
-POST /admin/api/hosts                     # Create host (ADMIN only)
+POST /admin/api/hosts                     # Create host (ADMIN only) — auto-creates HOST user + welcome email
 PUT  /admin/api/hosts/:id                 # Update host (ADMIN only)
 DELETE /admin/api/hosts/:id               # Delete host (ADMIN only)
 
@@ -571,10 +588,12 @@ PUT  /admin/api/deliveries/:id            # Update delivery (ADMIN, RECEPTION)
 DELETE /admin/api/deliveries/:id          # Delete delivery (ADMIN only)
 
 # Users (ADMIN only)
-GET  /admin/api/users                     # List users
-POST /admin/api/users                     # Create user
+GET  /admin/api/users                     # List users (supports ?status=ACTIVE|INACTIVE filter)
+POST /admin/api/users                     # Create user (status defaults to ACTIVE)
 PUT  /admin/api/users/:id                 # Update user
 DELETE /admin/api/users/:id               # Delete user
+POST /admin/api/users/:id/activate        # Set user status to ACTIVE
+POST /admin/api/users/:id/deactivate      # Set user status to INACTIVE
 
 # Reports (ADMIN, HOST — HOST company-scoped)
 GET  /admin/api/reports/visits            # Visit reports
@@ -607,7 +626,7 @@ GET  /lookups/locations                   # Location dropdown values
 ## Database Schema (Key Models)
 
 ### User
-- id, email, password, name, role (ADMIN/RECEPTION/HOST), hostId
+- id, email, password, name, role (ADMIN/RECEPTION/HOST), status (ACTIVE/INACTIVE), hostId
 
 ### Host
 A **contact person at a company** who can receive visitors or deliveries (NOT internal employees).
