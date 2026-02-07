@@ -1,6 +1,6 @@
 # Arafat Visitor Management System Development Guidelines
 
-Last updated: 2026-02-07 (Added STAFF role, HostType EXTERNAL/STAFF, Staff management page, entityLabel pattern for shared components)
+Last updated: 2026-02-07 (Production cleanup: removed demo accounts/seed data, bulk user import on Users page, windowed pagination, kiosk→admin auto-login)
 
 ## Active Technologies
 
@@ -40,7 +40,7 @@ Last updated: 2026-02-07 (Added STAFF role, HostType EXTERNAL/STAFF, Staff manag
 ├── backend/                       # NestJS API server
 │   ├── prisma/
 │   │   ├── schema.prisma          # Database schema (incl. RefreshToken model)
-│   │   └── seed.ts                # Test data seeding
+│   │   └── seed.ts                # Production seed (admin user only)
 │   ├── src/
 │   │   ├── main.ts                # App entry, Helmet, compression, cookie-parser
 │   │   ├── admin/
@@ -109,22 +109,15 @@ npm test          # Run all unit tests once (Vitest)
 - **Production**: https://arafatvisitor.cloud/admin
 - **Local Dev**: http://localhost:5174 (proxies API to backend)
 - **Login**: /admin/login
-- **Auto-Login**: /admin/auto-login?token=JWT_TOKEN
+- **Auto-Login**: /admin/auto-login?token=JWT_TOKEN (exchanges kiosk 15-min token for 24h admin session via `POST /admin/api/token-login`)
 
-### Test Login Credentials
-| Role | Email | Password | Notes |
-|------|-------|----------|-------|
-| Admin | admin@arafatvisitor.cloud | admin123 | Full access |
-| Reception | reception@arafatvisitor.cloud | reception123 | No Reports/Users/Settings |
-| Host | host@arafatvisitor.cloud | host123 | Company-scoped (linked to first active host) |
-| Staff | staff@arafatvisitor.cloud | staff123 | Company-scoped (linked to staff host record) |
+### Default Admin Account
+| Email | Password | Role |
+|-------|----------|------|
+| admin@arafatvisitor.cloud | admin123 | ADMIN |
 
-### Quick Demo Login
-The login page has quick demo login buttons for Admin, Reception, Host, and Staff roles.
-
-**HOST user setup**: The HOST demo user requires a `hostId` linking to an existing Host record. Created in `seed.ts` (`seedHostUser()`) and idempotently in `deploy.yml`. The user is linked to the first active host in the database, and all data is scoped to that host's company.
-
-**STAFF user setup**: The STAFF demo user requires a `hostId` linking to a Host record with `type=STAFF`. Created in `seed.ts` (`seedStaffUser()`) and idempotently in `deploy.yml`. If no staff host exists, one is auto-created with company "Arafat Group".
+This is the only seed user. All other users are created via the admin panel or bulk import.
+No demo login buttons on the sign-in page — production login only.
 
 ### Admin Panel Sections
 - **Dashboard**: KPIs, charts, pending approvals, current visitors (real-time via WebSocket)
@@ -132,8 +125,8 @@ The login page has quick demo login buttons for Admin, Reception, Host, and Staf
 - **Pre Register**: Pre-registered visits (PENDING_APPROVAL, REJECTED)
 - **Deliveries**: Package tracking with timeline view
 - **Hosts**: Manage external companies and host contacts (with Bulk Import button)
-- **Staff**: Manage internal staff members (Admin only, with Bulk Import button)
-- **Users**: System user management (Admin only)
+- **Staff**: Manage internal staff members (Admin only, single-add only)
+- **Users**: System user management (Admin only, with Bulk Import for all roles)
 - **Reports**: Visit and delivery reports with export
 - **Settings**: SMTP and WhatsApp configuration
 - **Profile**: User profile and password change
@@ -178,6 +171,7 @@ RECEIVED → PICKED_UP
 - On 401 response, client automatically calls `/api/auth/refresh` to get new access token
 - Logout revokes refresh token in database and clears cookies
 - JWT strategy extracts token from cookies first, falls back to Bearer header for backwards compatibility
+- **Kiosk → Admin auto-login**: Kiosk login generates 15-min token stored in `sessionStorage`. Admin button opens `/admin/auto-login?token=JWT`. The auto-login page calls `POST /admin/api/token-login` to exchange it for a new 24h admin token with httpOnly cookie. Falls back to client-side JWT decode if endpoint unavailable.
 
 ### Rate Limiting
 - **Default**: 10 requests per 60 seconds (all endpoints)
@@ -228,7 +222,7 @@ RECEIVED → PICKED_UP
 | **Hosts CRUD** | Full | View only | Company-scoped view | Company-scoped view |
 | **Staff CRUD** | Full | No | No | No |
 | **Bulk import hosts** | Yes | No | No | No |
-| **Bulk import staff** | Yes | No | No | No |
+| **Bulk import users** (all roles) | Yes | No | No | No |
 | **Users CRUD** | Yes | No | No | No |
 | **Settings** | Yes | No | No | No |
 | **Reports** | Yes | No | Yes (company-scoped) | No |
@@ -477,9 +471,30 @@ The Staff page reuses host components with an `entityLabel` prop to customize la
 | `HostModal` | `entityLabel` | `'Host'` | `'Staff'` |
 | `HostsList` | `entityLabel` | `'hosts'` | `'staff'` |
 | `DeleteConfirmationDialog` | `entityLabel` | `'Host'` | `'Staff'` |
-| `BulkImportModal` | `importEndpoint`, `title` | hosts defaults | `'/admin/api/staff/import'`, `'Bulk Import Staff'` |
+| `BulkImportModal` | `importEndpoint`, `title`, `expectedColumns`, `entityLabel` | hosts defaults | Users page: `'/admin/api/users/import'`, `'Bulk Import Users'` |
 
 This avoids duplicating components. The `entityLabel` changes form labels ("Staff Name"), button text ("Create Staff"), empty states ("No staff found"), and pagination ("Showing X of Y staff").
+
+**Note**: Bulk import was removed from the Staff page. Staff members are added individually via the Staff page (auto-sets role=STAFF), or bulk imported via the Users page with role=STAFF in the CSV.
+
+## Bulk User Import (`POST /admin/api/users/import`)
+
+CSV/XLSX import on the Users page supporting all roles (ADMIN, RECEPTION, STAFF, HOST).
+
+**Expected CSV columns**: Name, Email, Phone, Role
+- `id` column is ignored if present (IDs are auto-generated)
+- Passwords are auto-generated; welcome email with 72h reset link sent to each user
+- Demo accounts (`@arafatvisitor.cloud`) and duplicate emails are automatically skipped
+- STAFF users get an auto-created Host record (type=STAFF, company="Arafat Group") linked via `hostId`
+- HOST users get an auto-created Host record (type=EXTERNAL) linked via `hostId`
+- Existing Host records are reused if email matches (no duplicates)
+
+## Windowed Pagination
+
+All 5 list components (Hosts, Visitors, Deliveries, PreRegistrations, Users) use windowed pagination:
+- Shows: `Previous [1] ... [4] [5] [6] ... [68] Next`
+- If 7 or fewer total pages, shows all page numbers without ellipsis
+- Always shows first page, last page, and a 3-page window around the current page
 
 ## Code Style
 
@@ -493,35 +508,19 @@ This avoids duplicating components. The `entityLabel` changes form labels ("Staf
 - Backend uses `esModuleInterop: true` - use default imports for CJS packages (helmet, compression, sanitize-html)
 - Avoid Lucide icons in React class components (type conflict with React 19) - use inline SVGs instead
 
-## Test Seed Data
+## Seed Data (Production)
 
 ### Seeding Commands
 ```bash
 cd backend
-npx prisma db seed     # Run seed script (clears and recreates test data)
+npx prisma db seed     # Creates admin user if not exists (idempotent)
 npx prisma studio      # Open database GUI
 ```
 
-### Test Data Details
-All test data uses:
-- **Phone**: +97450707317 (for WhatsApp testing)
-- **Email**: adel.noaman@arafatgroup.com (for email testing)
+### Seed User
+The seed script only creates one admin user (`admin@arafatvisitor.cloud` / `admin123`). All other users are managed via the admin panel or bulk CSV import.
 
-Test data is identified by:
-- Hosts: `externalId` starting with `TEST-`
-- Visitors: `visitorPhone` = +97450707317
-
-### Default Users (created by seed + deploy)
-| ID | Email | Password | Role | hostId |
-|----|-------|----------|------|--------|
-| 999001 | admin@arafatvisitor.cloud | admin123 | ADMIN | — |
-| 999002 | gm@arafatvisitor.cloud | gm123 | ADMIN | — |
-| 999003 | reception@arafatvisitor.cloud | reception123 | RECEPTION | — |
-| 999004 | host@arafatvisitor.cloud | host123 | HOST | First active host |
-| 999005 | staff@arafatvisitor.cloud | staff123 | STAFF | First active staff host |
-
-The HOST user is created by `seedHostUser()` in seed.ts and idempotently by a Node.js script in `deploy.yml`. It links to the first active host in the database.
-The STAFF user is created by `seedStaffUser()` in seed.ts and idempotently by a Node.js script in `deploy.yml`. It links to the first active staff host record (type=STAFF).
+No test data (hosts, visitors, deliveries, QR tokens) is seeded. The deploy workflow no longer creates demo HOST/STAFF users.
 
 ## Production Deployment
 
@@ -550,6 +549,8 @@ The STAFF user is created by `seedStaffUser()` in seed.ts and idempotently by a 
 4. Prisma schema sync (`prisma db push`)
 5. Lookup data populated (idempotent INSERT statements)
 6. Backend built and PM2 restarts
+
+**Note**: No demo users are created during deployment. Only the initial setup runs the seed (creates admin user).
 
 ### Production URLs
 - **Frontend**: https://arafatvisitor.cloud
@@ -584,6 +585,9 @@ POST /admin/api/dashboard/approve/:id     # Approve visit (ADMIN, RECEPTION, HOS
 POST /admin/api/dashboard/reject/:id      # Reject visit (ADMIN, RECEPTION, HOST)
 POST /admin/api/dashboard/checkout/:sessionId # Checkout (ADMIN, RECEPTION only)
 
+# Token Login (Public — used by kiosk auto-login)
+POST /admin/api/token-login               # Exchange valid JWT for new 24h admin token + httpOnly cookie
+
 # QR & Notifications (ADMIN, RECEPTION)
 GET  /admin/api/qr/:visitId               # Get QR code
 POST /admin/api/send-qr                   # Send QR email/whatsapp
@@ -608,7 +612,6 @@ GET  /admin/api/staff                     # List staff members
 POST /admin/api/staff                     # Create staff — auto-creates STAFF user + welcome email
 PUT  /admin/api/staff/:id                 # Update staff member
 DELETE /admin/api/staff/:id               # Delete staff member
-POST /admin/api/staff/import              # Bulk import staff from CSV/XLSX
 
 # Visitors (ADMIN, RECEPTION, STAFF for create — ADMIN only for delete)
 GET  /admin/api/visitors                  # List visitors
@@ -634,6 +637,7 @@ DELETE /admin/api/deliveries/:id          # Delete delivery (ADMIN only)
 # Users (ADMIN only)
 GET  /admin/api/users                     # List users (supports ?status=ACTIVE|INACTIVE filter)
 POST /admin/api/users                     # Create user (status defaults to ACTIVE)
+POST /admin/api/users/import              # Bulk import users from CSV/XLSX (all roles)
 PUT  /admin/api/users/:id                 # Update user
 DELETE /admin/api/users/:id               # Delete user
 POST /admin/api/users/:id/activate        # Set user status to ACTIVE
@@ -677,7 +681,7 @@ A **contact person at a company** (external host or internal staff) who can rece
 - id, externalId, name, company, email, phone, location, status, **type** (EXTERNAL/STAFF)
 - `type` field distinguishes external hosts from internal staff members (default: EXTERNAL)
 - Each host belongs to one location; a company can have hosts across multiple locations
-- Bulk Import: CSV/XLSX upload via "Bulk Add" button on /admin/hosts (external) or /admin/staff (staff)
+- Bulk Import: CSV/XLSX upload via "Bulk Import" button on /admin/hosts (external hosts only)
 
 ### Visit
 - id, sessionId, visitorName, visitorCompany, visitorPhone, visitorEmail
@@ -721,7 +725,7 @@ backend/prisma/migrations/20260205000000_init/migration.sql
 
 This includes all enums, tables, indexes, foreign keys, and lookup data INSERT statements.
 
-**Important**: The seed script (`backend/prisma/seed.ts`) only contains mock/test data for development/testing.
+**Important**: The seed script (`backend/prisma/seed.ts`) only creates the initial admin user for production bootstrap.
 
 **After schema changes**: Run `npx prisma generate` to regenerate the Prisma client, then `npx prisma migrate dev` to create and apply migration.
 
