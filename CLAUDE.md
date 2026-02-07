@@ -1,6 +1,6 @@
 # Arafat Visitor Management System Development Guidelines
 
-Last updated: 2026-02-07 (Pre-registration host notifications, field aliasing fixes)
+Last updated: 2026-02-07 (HOST demo user, host selector in user form, field aliasing fixes)
 
 ## Active Technologies
 
@@ -112,14 +112,16 @@ npm test          # Run all unit tests once (Vitest)
 - **Auto-Login**: /admin/auto-login?token=JWT_TOKEN
 
 ### Test Login Credentials
-| Role | Email | Password |
-|------|-------|----------|
-| Admin | admin@arafatvisitor.cloud | admin123 |
-| Reception | reception@arafatvisitor.cloud | reception123 |
-| Host | host@arafatvisitor.cloud | host123 |
+| Role | Email | Password | Notes |
+|------|-------|----------|-------|
+| Admin | admin@arafatvisitor.cloud | admin123 | Full access |
+| Reception | reception@arafatvisitor.cloud | reception123 | No Reports/Users/Settings |
+| Host | host@arafatvisitor.cloud | host123 | Company-scoped (linked to first active host) |
 
 ### Quick Demo Login
 The login page has quick demo login buttons for Admin, Reception, and Host roles.
+
+**HOST user setup**: The HOST demo user requires a `hostId` linking to an existing Host record. Created in `seed.ts` (`seedHostUser()`) and idempotently in `deploy.yml`. The user is linked to the first active host in the database, and all data is scoped to that host's company.
 
 ### Admin Panel Sections
 - **Dashboard**: KPIs, charts, pending approvals, current visitors (real-time via WebSocket)
@@ -233,6 +235,13 @@ RECEIVED → PICKED_UP
 - Filters all list queries by `host.company` match
 - Detail/action endpoints verify ownership: throws `ForbiddenException` if company doesn't match
 - HOST creating pre-registrations: `hostId` is auto-set from their user account
+
+### User Creation with Host Linking
+- When creating a user with role=HOST, a **Linked Host/Company** dropdown appears in the form
+- The dropdown lists all hosts; the selected host's `id` is saved as `hostId` on the User record
+- This links the HOST user to a company, enabling company-scoped data access
+- Components: `admin/src/components/users/UserForm.tsx`, `UserModal.tsx`, `admin/src/pages/Users.tsx`
+- Backend: `POST /admin/api/users` accepts optional `hostId` field (string, converted to BigInt)
 
 ### Frontend Role-Based UI
 - Delete buttons hidden for non-ADMIN users (Visitors, Deliveries, Pre-registrations, Hosts)
@@ -449,6 +458,16 @@ All test data uses:
 Test data is identified by:
 - Hosts: `externalId` starting with `TEST-`
 - Visitors: `visitorPhone` = +97450707317
+
+### Default Users (created by seed + deploy)
+| ID | Email | Password | Role | hostId |
+|----|-------|----------|------|--------|
+| 999001 | admin@arafatvisitor.cloud | admin123 | ADMIN | — |
+| 999002 | gm@arafatvisitor.cloud | gm123 | ADMIN | — |
+| 999003 | reception@arafatvisitor.cloud | reception123 | RECEPTION | — |
+| 999004 | host@arafatvisitor.cloud | host123 | HOST | First active host |
+
+The HOST user is created by `seedHostUser()` in seed.ts and idempotently by a Node.js script in `deploy.yml`. It links to the first active host in the database.
 
 ## Production Deployment
 
