@@ -250,7 +250,7 @@ function App() {
               <div className="w-full flex flex-col items-center animate-in fade-in slide-in-from-right-4 duration-500">
                 {showBackButton && (
                   <div className="w-full flex justify-start mb-6">
-                    <Button variant="outline" onClick={navigateHome} className="gap-2">
+                    <Button onClick={navigateHome} className="gap-2 shadow-md font-semibold px-6">
                       <ArrowLeft className="h-4 w-4" /> Back to Dashboard
                     </Button>
                   </div>
