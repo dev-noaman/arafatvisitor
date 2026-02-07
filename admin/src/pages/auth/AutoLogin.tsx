@@ -23,11 +23,35 @@ export default function AutoLogin() {
 
     const performAutoLogin = async () => {
       try {
+        // Exchange the short-lived kiosk token for a proper 24h admin session
+        const res = await fetch('/admin/api/token-login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ token }),
+        })
+
+        if (res.ok) {
+          const data = await res.json()
+          if (data.user && data.token) {
+            // Store the new 24h token + user in context & localStorage
+            await autoLogin(data.token)
+            navigate('/admin', { replace: true })
+            return
+          }
+        }
+
+        // Fallback: decode original token client-side
         await autoLogin(token)
-        // Redirect to dashboard after successful login
         navigate('/admin', { replace: true })
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Auto-login failed')
+      } catch {
+        // Fallback: try client-side JWT decode
+        try {
+          await autoLogin(token)
+          navigate('/admin', { replace: true })
+        } catch (err) {
+          setError(err instanceof Error ? err.message : 'Auto-login failed')
+        }
       }
     }
 

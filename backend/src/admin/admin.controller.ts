@@ -133,6 +133,68 @@ export class AdminApiController {
   }
 
   @Public()
+  @Post("token-login")
+  async tokenLogin(
+    @Body() body: { token: string },
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { token: incomingToken } = body;
+
+    if (!incomingToken) {
+      throw new HttpException("Token is required", HttpStatus.BAD_REQUEST);
+    }
+
+    // Verify the incoming JWT
+    let decoded: { sub: number; email: string; role: string };
+    try {
+      decoded = this.jwtService.verify(incomingToken);
+    } catch {
+      throw new HttpException("Invalid or expired token", HttpStatus.UNAUTHORIZED);
+    }
+
+    // Look up the user
+    const user = await this.prisma.user.findUnique({
+      where: { id: decoded.sub },
+      include: { host: true },
+    });
+
+    if (!user) {
+      throw new HttpException("User not found", HttpStatus.UNAUTHORIZED);
+    }
+
+    if (user.status === "INACTIVE") {
+      throw new HttpException("Account is deactivated.", HttpStatus.FORBIDDEN);
+    }
+
+    // Issue a new 24h admin token
+    const payload = { sub: user.id, email: user.email, role: user.role, name: user.name };
+    const newToken = this.jwtService.sign(payload, {
+      expiresIn: this.configService.get("JWT_EXPIRES_IN") || "24h",
+    });
+
+    // Set httpOnly cookie
+    const isProduction = this.configService.get("NODE_ENV") === "production";
+    res.cookie("access_token", newToken, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: "strict",
+      path: "/",
+      maxAge: 24 * 60 * 60 * 1000,
+    });
+
+    return {
+      token: newToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        hostId: user.hostId,
+      },
+    };
+  }
+
+  @Public()
   @Post("forgot-password")
   async forgotPassword(@Body() body: { email: string }) {
     const user = await this.prisma.user.findUnique({
