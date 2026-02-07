@@ -38,7 +38,7 @@ jobs:
           npm run build
         env:
           VITE_API_BASE: https://${{ secrets.VPS_DOMAIN }}
-          VITE_SHOW_DEBUG_LOGIN: "true"
+          VITE_SHOW_DEBUG_LOGIN: "false"
 
       - name: Build admin
         run: |

@@ -7,19 +7,13 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "sonner"
-import { Lock, User, ArrowLeft, Mail, ShieldCheck, Crown, Users } from "lucide-react"
+import { Lock, User, ArrowLeft, Mail } from "lucide-react"
 import { login as apiLogin, forgotPassword as apiForgotPassword, setAuthToken, getAdminUrl } from "@/lib/api"
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Invalid email address" }),
   password: z.string().min(6, { message: "Password must be at least 6 characters" }),
 })
-
-const QUICK_ADMIN = { email: "admin@arafatvisitor.cloud", password: "admin123" }
-const QUICK_GM = { email: "gm@arafatvisitor.cloud", password: "gm123" }
-const QUICK_RECEPTION = { email: "reception@arafatvisitor.cloud", password: "reception123" }
-
-const showDebugLogin = import.meta.env.VITE_SHOW_DEBUG_LOGIN === "true"
 
 const forgotSchema = z.object({
   email: z.string().email({ message: "Invalid email address" }),
@@ -198,40 +192,6 @@ export function LoginForm(props: { onLoginSuccess?: (role: "admin" | "reception"
           <Button type="submit" className="w-full h-12 text-base" disabled={isSubmitting}>
             {isSubmitting ? "Signing in..." : "Sign In"}
           </Button>
-          {showDebugLogin && (
-            <div className="grid grid-cols-3 gap-2 pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="gap-1 touch-manipulation text-xs"
-                disabled={isSubmitting}
-                onClick={() => onSubmit(QUICK_ADMIN)}
-              >
-                <ShieldCheck className="h-3.5 w-3.5" /> Admin
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="gap-1 touch-manipulation text-xs"
-                disabled={isSubmitting}
-                onClick={() => onSubmit(QUICK_GM)}
-              >
-                <Crown className="h-3.5 w-3.5" /> GM
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="gap-1 touch-manipulation text-xs"
-                disabled={isSubmitting}
-                onClick={() => onSubmit(QUICK_RECEPTION)}
-              >
-                <Users className="h-3.5 w-3.5" /> Reception
-              </Button>
-            </div>
-          )}
         </form>
       </CardContent>
       <CardFooter className="flex justify-center">
