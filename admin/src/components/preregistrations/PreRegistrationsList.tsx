@@ -251,19 +251,37 @@ export default function PreRegistrationsList({
               Previous
             </button>
             <div className="flex items-center gap-1">
-              {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((page) => (
-                <button
-                  key={page}
-                  onClick={() => onPageChange(page)}
-                  className={`px-3 py-1 rounded-lg text-sm font-medium transition ${
-                    page === pagination.page
-                      ? 'bg-blue-600 text-white'
-                      : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  {page}
-                </button>
-              ))}
+              {(() => {
+                const current = pagination.page
+                const total = pagination.totalPages
+                const pages: (number | '...')[] = []
+                if (total <= 7) {
+                  for (let i = 1; i <= total; i++) pages.push(i)
+                } else {
+                  pages.push(1)
+                  if (current > 3) pages.push('...')
+                  for (let i = Math.max(2, current - 1); i <= Math.min(total - 1, current + 1); i++) pages.push(i)
+                  if (current < total - 2) pages.push('...')
+                  pages.push(total)
+                }
+                return pages.map((page, idx) =>
+                  page === '...' ? (
+                    <span key={`dots-${idx}`} className="px-2 py-1 text-sm text-gray-500">...</span>
+                  ) : (
+                    <button
+                      key={page}
+                      onClick={() => onPageChange(page)}
+                      className={`px-3 py-1 rounded-lg text-sm font-medium transition ${
+                        page === current
+                          ? 'bg-blue-600 text-white'
+                          : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  )
+                )
+              })()}
             </div>
             <button
               onClick={handleNext}
