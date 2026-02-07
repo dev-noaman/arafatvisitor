@@ -252,7 +252,7 @@ export class AdminApiController {
     today.setHours(0, 0, 0, 0);
 
     const [totalHosts, visitsToday, deliveriesToday] = await Promise.all([
-      this.prisma.host.count({ where: { status: 1 } }),
+      this.prisma.host.count({ where: { status: 1, type: "EXTERNAL" } }),
       this.prisma.visit.count({
         where: {
           checkInAt: { gte: today },
