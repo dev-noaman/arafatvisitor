@@ -108,11 +108,33 @@ export class EmailService {
     purpose: string,
   ): Promise<boolean> {
     const html = `
-      <h2>Visitor Arrival</h2>
-      <p><strong>Visitor:</strong> ${visitorName}</p>
-      <p><strong>Company:</strong> ${visitorCompany}</p>
-      <p><strong>Purpose:</strong> ${purpose}</p>
-      <p>Please meet your visitor at reception.</p>
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: linear-gradient(135deg, #059669, #10B981); padding: 30px; text-align: center;">
+          <h1 style="color: white; margin: 0; font-size: 28px;">VISITOR ARRIVAL</h1>
+          <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0;">Arafat Visitor Management System</p>
+        </div>
+        <div style="padding: 40px 30px; background: #f9fafb;">
+          <p style="color: #374151; font-size: 16px; margin-top: 0;">You have a visitor waiting at reception.</p>
+          <table style="width: 100%; border-collapse: collapse; margin: 24px 0; background: white; border-radius: 8px; overflow: hidden; border: 1px solid #e5e7eb;">
+            <tr style="border-bottom: 1px solid #e5e7eb;">
+              <td style="padding: 12px 16px; color: #6b7280; font-size: 12px; font-weight: bold; text-transform: uppercase; width: 120px;">Visitor</td>
+              <td style="padding: 12px 16px; color: #111827; font-weight: 600;">${visitorName}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #e5e7eb;">
+              <td style="padding: 12px 16px; color: #6b7280; font-size: 12px; font-weight: bold; text-transform: uppercase;">Company</td>
+              <td style="padding: 12px 16px; color: #111827;">${visitorCompany || "N/A"}</td>
+            </tr>
+            <tr>
+              <td style="padding: 12px 16px; color: #6b7280; font-size: 12px; font-weight: bold; text-transform: uppercase;">Purpose</td>
+              <td style="padding: 12px 16px; color: #111827;">${purpose || "Visit"}</td>
+            </tr>
+          </table>
+          <p style="color: #374151; line-height: 1.6;">Please proceed to reception to meet your visitor at your earliest convenience.</p>
+        </div>
+        <div style="padding: 20px; text-align: center; background: #1E3A8A; color: rgba(255,255,255,0.8); font-size: 13px;">
+          Powered by Arafat Visitor Management System
+        </div>
+      </div>
     `;
     return this.send({
       to,

@@ -177,8 +177,9 @@ export class AuthService {
     if (!user) {
       return { message: "If an account exists, a reset link has been sent." };
     }
+    // Include password hash tail so token is invalidated after password change (one-time use)
     const resetToken = this.jwtService.sign(
-      { sub: user.id, purpose: "reset" },
+      { sub: user.id, purpose: "reset", ph: user.password.slice(-10) },
       { expiresIn: "1h" },
     );
     const adminUrl =
@@ -191,24 +192,37 @@ export class AuthService {
   }
 
   async resetPassword(dto: ResetPasswordDto) {
+    let payload: { sub: number; purpose: string; ph?: string };
     try {
-      const payload = this.jwtService.verify<{ sub: number; purpose: string }>(
-        dto.token,
-      );
-      if (payload.purpose !== "reset") {
-        throw new BadRequestException("Invalid token");
-      }
-      const hash = await bcrypt.hash(dto.newPassword, BCRYPT_ROUNDS);
-      await this.prisma.user.update({
-        where: { id: payload.sub },
-        data: { password: hash },
-      });
-      // Revoke all refresh tokens for this user (security best practice)
-      await this.revokeRefreshToken(payload.sub);
-      return { message: "Password reset successfully" };
+      payload = this.jwtService.verify(dto.token);
     } catch {
       throw new BadRequestException("Invalid or expired reset token");
     }
+
+    if (payload.purpose !== "reset") {
+      throw new BadRequestException("Invalid token");
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: payload.sub },
+    });
+    if (!user) {
+      throw new BadRequestException("Invalid or expired reset token");
+    }
+
+    // One-time use: if password hash tail doesn't match, token was already used
+    if (payload.ph && user.password.slice(-10) !== payload.ph) {
+      throw new BadRequestException("This reset link has already been used. Please request a new one.");
+    }
+
+    const hash = await bcrypt.hash(dto.newPassword, BCRYPT_ROUNDS);
+    await this.prisma.user.update({
+      where: { id: payload.sub },
+      data: { password: hash },
+    });
+    // Revoke all refresh tokens for this user (security best practice)
+    await this.revokeRefreshToken(payload.sub);
+    return { message: "Password reset successfully" };
   }
 
   async hashPassword(password: string): Promise<string> {
