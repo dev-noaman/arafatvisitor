@@ -1,6 +1,6 @@
 # Arafat Visitor Management System Development Guidelines
 
-Last updated: 2026-02-07 (Role permission overhaul: HOST full visitor CRUD, pre-reg create ADMIN/RECEPTION only, HOST/STAFF delivery pickup)
+Last updated: 2026-02-07 (One-time reset tokens, min 6 char passwords, unified email templates matching QR style)
 
 ## Active Technologies
 
@@ -408,7 +408,19 @@ Professional HTML email with:
 2. Enter email address and click "Send Reset Link"
 3. System sends password reset email with secure token (expires in 1 hour)
 4. User clicks link in email to access reset password page
-5. User enters new password and submits
+5. User enters new password (minimum 6 characters) and submits
+6. On success, redirects to `/admin/login` after 2 seconds
+
+### One-Time Reset Token
+- JWT includes a tail of the current password hash (`ph` claim)
+- On reset, backend verifies `ph` matches current password hash
+- If password was already changed (token reused), returns "This reset link has already been used"
+- No database schema change needed — password hash change invalidates the token
+
+### Password Validation
+- **Frontend**: Zod schema `z.string().min(6)` — shows error below field
+- **Backend**: DTO `@MinLength(6)` — returns 400 if too short
+- Confirm password field must match (Zod `.refine()`)
 
 ### Password Reset Email Template
 Professional HTML email matching QR email design:
@@ -444,13 +456,20 @@ WHATSAPP_CLIENT=5219
 WHATSAPP_API_KEY=<secret>
 ```
 
+### Email Template Style (Unified)
+All emails use the same branded layout matching the QR VISITOR PASS email:
+- Blue gradient header (`#1E3A8A → #3B82F6`) with title + "Arafat Group"
+- Compact body (`30px` padding) with simple table (`10px` row padding, bottom borders)
+- Small gray footer (`15px` padding, `12px` font) — "Powered by Arafat Visitor Management System"
+- Templates: `sendVisitorArrival`, `sendVisitorCheckin`, `sendHostWelcome`, `sendPasswordReset`, QR email (inline in controller)
+
 ### Notification Triggers
 | Event | Email | WhatsApp | Recipient |
 |-------|-------|----------|-----------|
 | Walk-in visit created | Visitor arrival | Visitor arrival | Host |
 | Pre-registration created | Visitor arrival | Visitor arrival | Host |
-| QR check-in (APPROVED → CHECKED_IN) | Visitor arrival with details | Visitor arrival with details | Host |
-| Password reset requested | Reset link | — | User |
+| QR check-in (APPROVED → CHECKED_IN) | Visitor check-in with details | Visitor arrival with details | Host |
+| Password reset requested | Reset link (one-time token) | — | User |
 | QR code sent from admin | QR email template | QR image + caption | Visitor |
 | Host created (single or bulk import) | Welcome email with 72h reset link | — | Host |
 | Staff created (single or bulk import) | Welcome email with 72h reset link | — | Staff |
