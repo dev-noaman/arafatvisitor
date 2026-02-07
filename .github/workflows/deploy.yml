@@ -206,10 +206,6 @@ jobs:
           UPDATE "User" SET "hostId" = NULL WHERE email != 'admin@arafatvisitor.cloud';
           DELETE FROM "User" WHERE email != 'admin@arafatvisitor.cloud';
           DELETE FROM "Host";
-          ALTER SEQUENCE "Visit_id_seq" RESTART WITH 1;
-          ALTER SEQUENCE "Delivery_id_seq" RESTART WITH 1;
-          ALTER SEQUENCE "Host_id_seq" RESTART WITH 1;
-          ALTER SEQUENCE "QrToken_id_seq" RESTART WITH 1;
           EOCLEAN
 
           # Populate lookup tables (idempotent)
