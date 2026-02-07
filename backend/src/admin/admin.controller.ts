@@ -3128,6 +3128,27 @@ export class AdminApiController {
       include: { host: true },
     });
 
+    // Notify host about new pre-registration
+    if (visit.host?.email) {
+      this.emailService
+        .sendVisitorArrival(
+          visit.host.email,
+          visit.visitorName,
+          visit.visitorCompany,
+          visit.purpose,
+        )
+        .catch(() => {});
+    }
+    if (visit.host?.phone) {
+      this.whatsappService
+        .sendVisitorArrival(
+          visit.host.phone,
+          visit.visitorName,
+          visit.visitorCompany,
+        )
+        .catch(() => {});
+    }
+
     return visit;
   }
 
