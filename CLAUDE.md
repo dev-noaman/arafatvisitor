@@ -1,6 +1,6 @@
 # Arafat Visitor Management System Development Guidelines
 
-Last updated: 2026-02-07 (Pre-registration host notifications, WhatsApp test fix)
+Last updated: 2026-02-07 (Pre-registration host notifications, field aliasing fixes)
 
 ## Active Technologies
 
@@ -396,6 +396,29 @@ WHATSAPP_API_KEY=<secret>
 | QR check-in (APPROVED → CHECKED_IN) | Visitor arrival with details | Visitor arrival with details | Host |
 | Password reset requested | Reset link | — | User |
 | QR code sent from admin | QR email template | QR image + caption | Visitor |
+
+## Admin API Field Aliasing
+
+The admin create endpoints accept frontend field names and map them to database column names. This prevents 500 errors when frontend forms use different field names than the Prisma schema.
+
+### Create Visitor (`POST /admin/api/visitors`)
+- Accepts `visitDate` → mapped to `expectedDate` (DB column)
+- `location` is optional — derived from host record if not provided (falls back to `BARWA_TOWERS`)
+- `purpose` is optional
+
+### Create Pre-Registration (`POST /admin/api/pre-registrations`)
+- Accepts `scheduledDate` → mapped to `expectedDate` (DB column)
+- `location` is optional — derived from host record if not provided (falls back to `BARWA_TOWERS`)
+- `purpose` is optional
+- Fire-and-forget host notification (email + WhatsApp) after creation
+
+### Test WhatsApp (`POST /admin/api/settings/test-whatsapp`)
+- Accepts both `{ phone }` and `{ recipientPhone }` field names
+
+**Pattern**: When frontend sends a field alias (e.g., `visitDate`), the backend resolves it:
+```typescript
+const expectedDate = body.expectedDate || body.visitDate;
+```
 
 ## Code Style
 
