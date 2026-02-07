@@ -4017,7 +4017,7 @@ export class AdminApiController {
     if (body.email !== undefined) updateData.email = body.email;
     if (body.name !== undefined) updateData.name = body.name;
     if (body.role !== undefined) updateData.role = body.role as "ADMIN" | "RECEPTION" | "HOST";
-    if (body.password !== undefined) {
+    if (body.password && body.password.trim() !== '') {
       updateData.password = await bcrypt.hash(body.password, 12);
     }
     if (body.hostId !== undefined) {
