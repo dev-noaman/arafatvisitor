@@ -159,13 +159,14 @@ export function VisitorSearch({ mode, onBack, onCheckin }: VisitorSearchProps) {
             <Button
               onClick={handleSearch}
               disabled={searching || query.trim().length < 2}
-              className="h-12 px-6 bg-blue-600 hover:bg-blue-700 text-white touch-manipulation"
+              className="h-12 px-8 bg-blue-600 hover:bg-blue-700 text-white touch-manipulation text-base font-semibold gap-2"
             >
               {searching ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
               ) : (
                 <Search className="h-5 w-5" />
               )}
+              Search
             </Button>
           </div>
         </div>
