@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import svgr from 'vite-plugin-svgr'
+import path from 'path'
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -15,18 +16,18 @@ export default defineConfig({
   base: '/admin/',
   resolve: {
     alias: {
-      '@': '/src',
-      '@/components': '/src/components',
-      '@/pages': '/src/pages',
-      '@/services': '/src/services',
-      '@/hooks': '/src/hooks',
-      '@/context': '/src/context',
-      '@/utils': '/src/utils',
-      '@/types': '/src/types',
-      '@/config': '/src/config',
-      '@/icons': '/src/icons',
-      '@/assets': '/src/assets',
-      '@/layout': '/src/layout',
+      '@': path.resolve(__dirname, './src'),
+      '@/components': path.resolve(__dirname, './src/components'),
+      '@/pages': path.resolve(__dirname, './src/pages'),
+      '@/services': path.resolve(__dirname, './src/services'),
+      '@/hooks': path.resolve(__dirname, './src/hooks'),
+      '@/context': path.resolve(__dirname, './src/context'),
+      '@/utils': path.resolve(__dirname, './src/utils'),
+      '@/types': path.resolve(__dirname, './src/types'),
+      '@/config': path.resolve(__dirname, './src/config'),
+      '@/icons': path.resolve(__dirname, './src/icons'),
+      '@/assets': path.resolve(__dirname, './src/assets'),
+      '@/layout': path.resolve(__dirname, './src/layout'),
     },
   },
   build: {

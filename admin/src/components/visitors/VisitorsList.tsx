@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { Visit, VisitStatus } from '@/types'
 import { getStatusBadgeColor, getStatusLabel } from '@/services/visitors'
+import { useAuth } from '@/hooks/useAuth'
 
 interface VisitorsListProps {
   visitors: Visit[]
@@ -36,6 +37,8 @@ export default function VisitorsList({
   onReject,
   onCheckout,
 }: VisitorsListProps) {
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'ADMIN'
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedStatus, setSelectedStatus] = useState<VisitStatus | ''>('')
 
@@ -187,12 +190,14 @@ export default function VisitorsList({
                     >
                       Edit
                     </button>
-                    <button
-                      onClick={() => onDelete(visitor)}
-                      className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium text-red-600 hover:bg-red-50 transition"
-                    >
-                      Delete
-                    </button>
+                    {isAdmin && (
+                      <button
+                        onClick={() => onDelete(visitor)}
+                        className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium text-red-600 hover:bg-red-50 transition"
+                      >
+                        Delete
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { Delivery, DeliveryStatus } from '@/types'
 import { getStatusBadgeColor, getStatusLabel } from '@/services/deliveries'
+import { useAuth } from '@/hooks/useAuth'
 
 interface DeliveriesListProps {
   deliveries: Delivery[]
@@ -32,6 +33,8 @@ export default function DeliveriesList({
   onDelete,
   onMarkPickedUp,
 }: DeliveriesListProps) {
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'ADMIN'
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedStatus, setSelectedStatus] = useState<DeliveryStatus | ''>('')
 
@@ -173,12 +176,14 @@ export default function DeliveriesList({
                     >
                       Edit
                     </button>
-                    <button
-                      onClick={() => onDelete(delivery)}
-                      className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium text-red-600 hover:bg-red-50 transition"
-                    >
-                      Delete
-                    </button>
+                    {isAdmin && (
+                      <button
+                        onClick={() => onDelete(delivery)}
+                        className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium text-red-600 hover:bg-red-50 transition"
+                      >
+                        Delete
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))

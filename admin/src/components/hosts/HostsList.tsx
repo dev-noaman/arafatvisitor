@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Host } from '@/types'
+import { useAuth } from '@/hooks/useAuth'
 
 interface HostsListProps {
   hosts: Host[]
@@ -25,6 +26,8 @@ export default function HostsList({
   onEdit,
   onDelete,
 }: HostsListProps) {
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'ADMIN'
   const [searchQuery, setSearchQuery] = useState('')
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -97,18 +100,22 @@ export default function HostsList({
                     {host.location ? host.location.replace(/_/g, ' ') : '—'}
                   </td>
                   <td className="px-6 py-4 text-sm space-x-2">
-                    <button
-                      onClick={() => onEdit(host)}
-                      className="inline-flex items-center px-3 py-1 rounded-md text-sm font-medium text-blue-600 hover:bg-blue-50 transition"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => onDelete(host)}
-                      className="inline-flex items-center px-3 py-1 rounded-md text-sm font-medium text-red-600 hover:bg-red-50 transition"
-                    >
-                      Delete
-                    </button>
+                    {isAdmin && (
+                      <>
+                        <button
+                          onClick={() => onEdit(host)}
+                          className="inline-flex items-center px-3 py-1 rounded-md text-sm font-medium text-blue-600 hover:bg-blue-50 transition"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => onDelete(host)}
+                          className="inline-flex items-center px-3 py-1 rounded-md text-sm font-medium text-red-600 hover:bg-red-50 transition"
+                        >
+                          Delete
+                        </button>
+                      </>
+                    )}
                   </td>
                 </tr>
               ))

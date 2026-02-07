@@ -1,6 +1,6 @@
 # Arafat Visitor Management System Development Guidelines
 
-Last updated: 2026-02-06 (007-production-optimization build fixes)
+Last updated: 2026-02-06 (RBAC role-based access control)
 
 ## Active Technologies
 
@@ -190,6 +190,56 @@ RECEIVED → PICKED_UP
 - `AllExceptionsFilter` catches all errors, logs with request context
 - Returns sanitized error responses (no stack traces or internal details in production)
 - `ErrorBoundary` React component wraps admin panel (prevents white screen of death)
+
+## Role-Based Access Control (RBAC)
+
+### Architecture
+- Global `RolesGuard` registered as `APP_GUARD` in `app.module.ts`
+- Guard execution order: `JwtAuthGuard` → `RolesGuard` → `ThrottlerGuard`
+- Endpoints use `@Roles(Role.ADMIN, Role.RECEPTION, Role.HOST)` decorator
+- Endpoints without `@Roles()` are accessible to any authenticated user
+- Guard source: `backend/src/common/guards/roles.guard.ts`
+- Decorator source: `backend/src/common/decorators/roles.decorator.ts`
+
+### Role Permissions Matrix
+
+| Feature | ADMIN | RECEPTION | HOST |
+|---------|-------|-----------|------|
+| **Dashboard** (KPIs, charts, lists) | Full | Full | Company-scoped |
+| **Approve/Reject visits** | All | All | Own company only |
+| **Checkout visitors** | Yes | Yes | No |
+| **Create/Update visitors** | Yes | Yes | No |
+| **Delete visitors** | Yes | No | No |
+| **Create/Update deliveries** | Yes | Yes | No |
+| **Mark delivery picked up** | Yes | Yes | No |
+| **Delete deliveries** | Yes | No | No |
+| **Create pre-registrations** | Yes | Yes | Yes (auto-sets hostId) |
+| **Update pre-registrations** | Yes | Yes | No |
+| **Delete pre-registrations** | Yes | No | No |
+| **Approve/Reject pre-regs** | All | All | Own company only |
+| **Hosts CRUD** | Full | View only | Company-scoped view |
+| **Bulk import hosts** | Yes | No | No |
+| **Users CRUD** | Yes | No | No |
+| **Settings** | Yes | No | No |
+| **Reports** | Yes | No | Yes (company-scoped) |
+| **Send QR** | Yes | Yes | No |
+| **Profile/Change password** | Yes | Yes | Yes |
+| **Lookups** | Yes | Yes | Yes |
+
+### HOST Company Scoping
+- HOST users only see data belonging to their company
+- Implemented via `getHostScope()` helper in `admin.controller.ts`
+- Looks up HOST user's company from `req.user.hostId` → host record → `company` field
+- Filters all list queries by `host.company` match
+- Detail/action endpoints verify ownership: throws `ForbiddenException` if company doesn't match
+- HOST creating pre-registrations: `hostId` is auto-set from their user account
+
+### Frontend Role-Based UI
+- Delete buttons hidden for non-ADMIN users (Visitors, Deliveries, Pre-registrations, Hosts)
+- Edit/Delete buttons on Hosts page hidden for non-ADMIN
+- "Add Host" and "Bulk Import" buttons hidden for non-ADMIN on Hosts page
+- Sidebar navigation: Reports visible to ADMIN+HOST, Users/Settings to ADMIN only
+- Implemented via `useAuth()` hook checking `user.role === 'ADMIN'`
 
 ## Caching
 
@@ -425,28 +475,69 @@ POST /api/auth/reset-password             # Reset password with token
 GET  /health                              # Database + email service health check
 ```
 
-### Admin API (JWT cookie-based)
+### Admin API (JWT cookie-based, role-enforced)
 ```
+# Dashboard (ADMIN, RECEPTION, HOST — HOST is company-scoped)
 GET  /admin/api/dashboard/kpis            # Dashboard statistics (cached 60s)
 GET  /admin/api/dashboard/pending-approvals # Pending visits
 GET  /admin/api/dashboard/received-deliveries # Pending deliveries
 GET  /admin/api/dashboard/charts          # Chart data (cached 60s)
 GET  /admin/api/dashboard/current-visitors # Active visitors (limit 50)
-POST /admin/api/dashboard/approve/:id     # Approve visit (emits WebSocket)
-POST /admin/api/dashboard/reject/:id      # Reject visit (emits WebSocket)
-POST /admin/api/dashboard/checkout/:sessionId # Check out visitor (emits WebSocket)
+POST /admin/api/dashboard/approve/:id     # Approve visit (ADMIN, RECEPTION, HOST)
+POST /admin/api/dashboard/reject/:id      # Reject visit (ADMIN, RECEPTION, HOST)
+POST /admin/api/dashboard/checkout/:sessionId # Checkout (ADMIN, RECEPTION only)
+
+# QR & Notifications (ADMIN, RECEPTION)
 GET  /admin/api/qr/:visitId               # Get QR code
 POST /admin/api/send-qr                   # Send QR email/whatsapp
+
+# Profile (ADMIN, RECEPTION, HOST)
 POST /admin/api/change-password           # Change user password
+
+# Settings (ADMIN only)
 GET  /admin/api/settings                  # Get system settings
 POST /admin/api/settings/test-email       # Test SMTP
 POST /admin/api/settings/test-whatsapp    # Test WhatsApp
-POST /admin/api/hosts/import              # Bulk import hosts (CSV/XLSX)
-GET  /admin/api/visitors                  # List visitors with filters
-GET  /admin/api/pre-register              # List pre-registered visits
-GET  /admin/api/deliveries                # List deliveries
+
+# Hosts (ADMIN for CRUD, all roles can view — HOST company-scoped)
+POST /admin/api/hosts/import              # Bulk import (ADMIN only)
 GET  /admin/api/hosts                     # List hosts
-GET  /admin/api/users                     # List users (Admin only)
+POST /admin/api/hosts                     # Create host (ADMIN only)
+PUT  /admin/api/hosts/:id                 # Update host (ADMIN only)
+DELETE /admin/api/hosts/:id               # Delete host (ADMIN only)
+
+# Visitors (ADMIN, RECEPTION for CRUD — ADMIN only for delete)
+GET  /admin/api/visitors                  # List visitors
+POST /admin/api/visitors                  # Create visitor (ADMIN, RECEPTION)
+PUT  /admin/api/visitors/:id              # Update visitor (ADMIN, RECEPTION)
+DELETE /admin/api/visitors/:id            # Delete visitor (ADMIN only)
+
+# Pre-registrations (all roles can view — HOST company-scoped)
+GET  /admin/api/pre-register              # List pre-registrations
+POST /admin/api/pre-registrations         # Create (ADMIN, RECEPTION, HOST)
+PUT  /admin/api/pre-registrations/:id     # Update (ADMIN, RECEPTION)
+DELETE /admin/api/pre-registrations/:id   # Delete (ADMIN only)
+POST /admin/api/pre-registrations/:id/approve    # Approve (all roles, HOST scoped)
+POST /admin/api/pre-registrations/:id/reject     # Reject (all roles, HOST scoped)
+POST /admin/api/pre-registrations/:id/re-approve # Re-approve (all roles, HOST scoped)
+
+# Deliveries (ADMIN, RECEPTION for CRUD — ADMIN only for delete)
+GET  /admin/api/deliveries                # List deliveries
+POST /admin/api/deliveries                # Create delivery (ADMIN, RECEPTION)
+PUT  /admin/api/deliveries/:id            # Update delivery (ADMIN, RECEPTION)
+DELETE /admin/api/deliveries/:id          # Delete delivery (ADMIN only)
+
+# Users (ADMIN only)
+GET  /admin/api/users                     # List users
+POST /admin/api/users                     # Create user
+PUT  /admin/api/users/:id                 # Update user
+DELETE /admin/api/users/:id               # Delete user
+
+# Reports (ADMIN, HOST — HOST company-scoped)
+GET  /admin/api/reports/visits            # Visit reports
+GET  /admin/api/reports/deliveries        # Delivery reports
+
+# Lookups (ADMIN, RECEPTION, HOST)
 GET  /admin/api/lookups/purposes          # Purpose of visit (cached 1h)
 GET  /admin/api/lookups/delivery-types    # Delivery types (cached 1h)
 GET  /admin/api/lookups/couriers          # Couriers (cached 1h)

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { PreRegistration } from '@/types'
 import { getStatusBadgeColor, getStatusLabel } from '@/services/preregistrations'
+import { useAuth } from '@/hooks/useAuth'
 
 interface PreRegistrationsListProps {
   preRegistrations: PreRegistration[]
@@ -40,6 +41,8 @@ export default function PreRegistrationsList({
   onReject,
   onReApprove,
 }: PreRegistrationsListProps) {
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'ADMIN'
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedStatus, setSelectedStatus] = useState<
     'PENDING_APPROVAL' | 'REJECTED' | 'APPROVED' | ''
@@ -211,12 +214,14 @@ export default function PreRegistrationsList({
                     >
                       Edit
                     </button>
-                    <button
-                      onClick={() => onDelete(preReg)}
-                      className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium text-red-600 hover:bg-red-50 transition"
-                    >
-                      Delete
-                    </button>
+                    {isAdmin && (
+                      <button
+                        onClick={() => onDelete(preReg)}
+                        className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium text-red-600 hover:bg-red-50 transition"
+                      >
+                        Delete
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))

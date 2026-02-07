@@ -1,5 +1,5 @@
 {
-  "exclude": ["src/admin/components/**/*.tsx"],
+  "exclude": ["src/admin/components/**/*.tsx", "dist"],
   "compilerOptions": {
     "module": "commonjs",
     "moduleResolution": "node",
