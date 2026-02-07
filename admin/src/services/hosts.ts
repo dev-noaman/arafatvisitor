@@ -7,6 +7,7 @@ interface GetHostsParams {
   search?: string
   sortBy?: string
   sortOrder?: 'asc' | 'desc'
+  type?: string
 }
 
 export const getHosts = async (params?: GetHostsParams) => {
@@ -16,6 +17,7 @@ export const getHosts = async (params?: GetHostsParams) => {
   if (params?.search) queryString.append('search', params.search)
   if (params?.sortBy) queryString.append('sortBy', params.sortBy)
   if (params?.sortOrder) queryString.append('sortOrder', params.sortOrder)
+  if (params?.type) queryString.append('type', params.type)
 
   const query = queryString.toString()
   const url = `/admin/api/hosts${query ? `?${query}` : ''}`

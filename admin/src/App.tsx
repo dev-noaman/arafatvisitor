@@ -22,6 +22,7 @@ import AutoLogin from '@/pages/auth/AutoLogin'
 // Pages - Main (lazy loaded for code splitting)
 const Dashboard = lazy(() => import('@/pages/Dashboard'))
 const Hosts = lazy(() => import('@/pages/Hosts'))
+const Staff = lazy(() => import('@/pages/Staff'))
 const Visitors = lazy(() => import('@/pages/Visitors'))
 const PreRegister = lazy(() => import('@/pages/PreRegister'))
 const Deliveries = lazy(() => import('@/pages/Deliveries'))
@@ -71,6 +72,16 @@ export default function App() {
                 >
                   <Route index element={<Suspense fallback={<PageLoader />}><Dashboard /></Suspense>} />
                   <Route path="hosts" element={<Suspense fallback={<PageLoader />}><Hosts /></Suspense>} />
+                  <Route
+                    path="staff"
+                    element={
+                      <Suspense fallback={<PageLoader />}>
+                        <RoleGuard allowedRoles={['ADMIN']}>
+                          <Staff />
+                        </RoleGuard>
+                      </Suspense>
+                    }
+                  />
                   <Route path="visitors" element={<Suspense fallback={<PageLoader />}><Visitors /></Suspense>} />
                   <Route path="pre-register" element={<Suspense fallback={<PageLoader />}><PreRegister /></Suspense>} />
                   <Route path="deliveries" element={<Suspense fallback={<PageLoader />}><Deliveries /></Suspense>} />

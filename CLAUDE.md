@@ -1,6 +1,6 @@
 # Arafat Visitor Management System Development Guidelines
 
-Last updated: 2026-02-07 (Auto-create HOST user on host creation, user status ACTIVE/INACTIVE, welcome email)
+Last updated: 2026-02-07 (Added STAFF role, HostType EXTERNAL/STAFF, Staff management page)
 
 ## Active Technologies
 
@@ -117,18 +117,22 @@ npm test          # Run all unit tests once (Vitest)
 | Admin | admin@arafatvisitor.cloud | admin123 | Full access |
 | Reception | reception@arafatvisitor.cloud | reception123 | No Reports/Users/Settings |
 | Host | host@arafatvisitor.cloud | host123 | Company-scoped (linked to first active host) |
+| Staff | staff@arafatvisitor.cloud | staff123 | Company-scoped (linked to staff host record) |
 
 ### Quick Demo Login
-The login page has quick demo login buttons for Admin, Reception, and Host roles.
+The login page has quick demo login buttons for Admin, Reception, Host, and Staff roles.
 
 **HOST user setup**: The HOST demo user requires a `hostId` linking to an existing Host record. Created in `seed.ts` (`seedHostUser()`) and idempotently in `deploy.yml`. The user is linked to the first active host in the database, and all data is scoped to that host's company.
+
+**STAFF user setup**: The STAFF demo user requires a `hostId` linking to a Host record with `type=STAFF`. Created in `seed.ts` (`seedStaffUser()`) and idempotently in `deploy.yml`. If no staff host exists, one is auto-created with company "Arafat Group".
 
 ### Admin Panel Sections
 - **Dashboard**: KPIs, charts, pending approvals, current visitors (real-time via WebSocket)
 - **Visitors**: Manage visitors (APPROVED, CHECKED_IN, CHECKED_OUT)
 - **Pre Register**: Pre-registered visits (PENDING_APPROVAL, REJECTED)
 - **Deliveries**: Package tracking with timeline view
-- **Hosts**: Manage companies and host contacts (with Bulk Import button)
+- **Hosts**: Manage external companies and host contacts (with Bulk Import button)
+- **Staff**: Manage internal staff members (Admin only, with Bulk Import button)
 - **Users**: System user management (Admin only)
 - **Reports**: Visit and delivery reports with export
 - **Settings**: SMTP and WhatsApp configuration
@@ -205,51 +209,65 @@ RECEIVED → PICKED_UP
 
 ### Role Permissions Matrix
 
-| Feature | ADMIN | RECEPTION | HOST |
-|---------|-------|-----------|------|
-| **Dashboard** (KPIs, charts, lists) | Full | Full | Company-scoped |
-| **Approve/Reject visits** | All | All | Own company only |
-| **Checkout visitors** | Yes | Yes | No |
-| **Create/Update visitors** | Yes | Yes | No |
-| **Delete visitors** | Yes | No | No |
-| **Create/Update deliveries** | Yes | Yes | No |
-| **Mark delivery picked up** | Yes | Yes | No |
-| **Delete deliveries** | Yes | No | No |
-| **Create pre-registrations** | Yes | Yes | Yes (auto-sets hostId, notifies host) |
-| **Update pre-registrations** | Yes | Yes | No |
-| **Delete pre-registrations** | Yes | No | No |
-| **Approve/Reject pre-regs** | All | All | Own company only |
-| **Hosts CRUD** | Full | View only | Company-scoped view |
-| **Bulk import hosts** | Yes | No | No |
-| **Users CRUD** | Yes | No | No |
-| **Settings** | Yes | No | No |
-| **Reports** | Yes | No | Yes (company-scoped) |
-| **Send QR** | Yes | Yes | No |
-| **Profile/Change password** | Yes | Yes | Yes |
-| **Lookups** | Yes | Yes | Yes |
+| Feature | ADMIN | RECEPTION | HOST | STAFF |
+|---------|-------|-----------|------|-------|
+| **Dashboard** (KPIs, charts, lists) | Full | Full | Company-scoped | Company-scoped |
+| **Approve/Reject visits** | All | All | Own company only | Own company only |
+| **Checkout visitors** | Yes | Yes | No | No |
+| **Create visitors** | Yes | Yes | No | Yes (auto-sets hostId) |
+| **Update visitors** | Yes | Yes | No | No |
+| **Delete visitors** | Yes | No | No | No |
+| **Create/Update deliveries** | Yes | Yes | No | No |
+| **Mark delivery picked up** | Yes | Yes | No | No |
+| **Delete deliveries** | Yes | No | No | No |
+| **Deliveries list** | Yes | Yes | Yes | No |
+| **Create pre-registrations** | Yes | Yes | Yes (auto-sets hostId) | Yes (auto-sets hostId) |
+| **Update pre-registrations** | Yes | Yes | No | No |
+| **Delete pre-registrations** | Yes | No | No | No |
+| **Approve/Reject pre-regs** | All | All | Own company only | Own company only |
+| **Hosts CRUD** | Full | View only | Company-scoped view | Company-scoped view |
+| **Staff CRUD** | Full | No | No | No |
+| **Bulk import hosts** | Yes | No | No | No |
+| **Bulk import staff** | Yes | No | No | No |
+| **Users CRUD** | Yes | No | No | No |
+| **Settings** | Yes | No | No | No |
+| **Reports** | Yes | No | Yes (company-scoped) | No |
+| **Send QR** | Yes | Yes | No | No |
+| **Profile/Change password** | Yes | Yes | Yes | Yes |
+| **Lookups** | Yes | Yes | Yes | Yes |
 
-### HOST Company Scoping
-- HOST users only see data belonging to their company
+### HOST/STAFF Company Scoping
+- HOST and STAFF users only see data belonging to their company
 - Implemented via `getHostScope()` helper in `admin.controller.ts`
-- Looks up HOST user's company from `req.user.hostId` → host record → `company` field
+- Checks `req.user?.role !== 'HOST' && req.user?.role !== 'STAFF'` to determine scoping
+- Looks up user's company from `req.user.hostId` → host record → `company` field
 - Filters all list queries by `host.company` match
 - Detail/action endpoints verify ownership: throws `ForbiddenException` if company doesn't match
-- HOST creating pre-registrations: `hostId` is auto-set from their user account
+- HOST/STAFF creating pre-registrations or visitors: `hostId` is auto-set from their user account
 
-### User Creation with Host Linking
-- When creating a user with role=HOST, a **Linked Host/Company** dropdown appears in the form
+### User Creation with Host/Staff Linking
+- When creating a user with role=HOST or STAFF, a **Linked Host/Company** dropdown appears in the form
 - The dropdown lists all hosts; the selected host's `id` is saved as `hostId` on the User record
-- This links the HOST user to a company, enabling company-scoped data access
+- This links the HOST/STAFF user to a company, enabling company-scoped data access
 - Components: `admin/src/components/users/UserForm.tsx`, `UserModal.tsx`, `admin/src/pages/Users.tsx`
 - Backend: `POST /admin/api/users` accepts optional `hostId` field (string, converted to BigInt)
 
-### Auto-Create HOST User on Host Creation
+### Auto-Create User on Host/Staff Creation
 - **Single host create** (`POST /admin/api/hosts`): Auto-creates a User with role=HOST, status=ACTIVE, random password, and linked `hostId`
-- **Bulk import** (CSV/XLSX): Same auto-creation logic per imported host
-- If host has a real email (not `@system.local`), a **welcome email** is sent with a 72h password reset link
+- **Single staff create** (`POST /admin/api/staff`): Auto-creates a User with role=STAFF, status=ACTIVE, random password, and linked `hostId`
+- **Bulk import** (CSV/XLSX for hosts or staff): Same auto-creation logic per imported record
+- If record has a real email (not `@system.local`), a **welcome email** is sent with a 72h password reset link
 - Welcome email: `emailService.sendHostWelcome()` — "Welcome to Arafat VMS" template with "Set Password" button
-- Hosts without email get a fallback `host_{id}@system.local` user (no email sent)
+- Records without email get a fallback `host_{id}@system.local` or `staff_{id}@system.local` user (no email sent)
 - Duplicate checks: skips if email already exists or hostId already linked to a user
+
+### Host Type (EXTERNAL/STAFF)
+- Host model has `type` field (enum: `EXTERNAL` | `STAFF`, default: `EXTERNAL`)
+- **EXTERNAL**: Traditional external host/contact person at a company
+- **STAFF**: Internal staff member (sales rep, etc.) who can receive visitors
+- Hosts page filters by `type=EXTERNAL`; Staff page filters by `type=STAFF`
+- Host dropdowns in visitor/pre-registration forms show both types; staff prefixed with `[Staff]`
+- Staff CRUD endpoints mirror hosts but with `type: 'STAFF'`
 
 ### User Status (ACTIVE/INACTIVE)
 - User model has `status` field (default: `ACTIVE`)
@@ -263,7 +281,9 @@ RECEIVED → PICKED_UP
 - Delete buttons hidden for non-ADMIN users (Visitors, Deliveries, Pre-registrations, Hosts)
 - Edit/Delete buttons on Hosts page hidden for non-ADMIN
 - "Add Host" and "Bulk Import" buttons hidden for non-ADMIN on Hosts page
-- Sidebar navigation: Reports visible to ADMIN+HOST, Users/Settings to ADMIN only
+- Staff page visible to ADMIN only
+- Sidebar navigation: Dashboard/Visitors/Pre-Register visible to all roles; Hosts visible to ADMIN+HOST+RECEPTION; Staff/Users/Settings to ADMIN only; Reports to ADMIN+HOST; Deliveries to ADMIN+HOST+RECEPTION (not STAFF)
+- STAFF sees: Dashboard, Visitors, Pre Register, Profile
 - Implemented via `useAuth()` hook checking `user.role === 'ADMIN'`
 
 ## Caching
@@ -483,8 +503,10 @@ Test data is identified by:
 | 999002 | gm@arafatvisitor.cloud | gm123 | ADMIN | — |
 | 999003 | reception@arafatvisitor.cloud | reception123 | RECEPTION | — |
 | 999004 | host@arafatvisitor.cloud | host123 | HOST | First active host |
+| 999005 | staff@arafatvisitor.cloud | staff123 | STAFF | First active staff host |
 
 The HOST user is created by `seedHostUser()` in seed.ts and idempotently by a Node.js script in `deploy.yml`. It links to the first active host in the database.
+The STAFF user is created by `seedStaffUser()` in seed.ts and idempotently by a Node.js script in `deploy.yml`. It links to the first active staff host record (type=STAFF).
 
 ## Production Deployment
 
@@ -559,16 +581,23 @@ GET  /admin/api/settings                  # Get system settings
 POST /admin/api/settings/test-email       # Test SMTP
 POST /admin/api/settings/test-whatsapp    # Test WhatsApp (accepts {phone} or {recipientPhone})
 
-# Hosts (ADMIN for CRUD, all roles can view — HOST company-scoped)
+# Hosts (ADMIN for CRUD, all roles can view — HOST/STAFF company-scoped)
 POST /admin/api/hosts/import              # Bulk import (ADMIN only)
-GET  /admin/api/hosts                     # List hosts
+GET  /admin/api/hosts                     # List hosts (supports ?type=EXTERNAL|STAFF filter)
 POST /admin/api/hosts                     # Create host (ADMIN only) — auto-creates HOST user + welcome email
 PUT  /admin/api/hosts/:id                 # Update host (ADMIN only)
 DELETE /admin/api/hosts/:id               # Delete host (ADMIN only)
 
-# Visitors (ADMIN, RECEPTION for CRUD — ADMIN only for delete)
+# Staff (ADMIN only — uses Host model with type=STAFF)
+GET  /admin/api/staff                     # List staff members
+POST /admin/api/staff                     # Create staff — auto-creates STAFF user + welcome email
+PUT  /admin/api/staff/:id                 # Update staff member
+DELETE /admin/api/staff/:id               # Delete staff member
+POST /admin/api/staff/import              # Bulk import staff from CSV/XLSX
+
+# Visitors (ADMIN, RECEPTION, STAFF for create — ADMIN only for delete)
 GET  /admin/api/visitors                  # List visitors
-POST /admin/api/visitors                  # Create visitor (ADMIN, RECEPTION)
+POST /admin/api/visitors                  # Create visitor (ADMIN, RECEPTION, STAFF — STAFF auto-sets hostId)
 PUT  /admin/api/visitors/:id              # Update visitor (ADMIN, RECEPTION)
 DELETE /admin/api/visitors/:id            # Delete visitor (ADMIN only)
 
@@ -626,13 +655,14 @@ GET  /lookups/locations                   # Location dropdown values
 ## Database Schema (Key Models)
 
 ### User
-- id, email, password, name, role (ADMIN/RECEPTION/HOST), status (ACTIVE/INACTIVE), hostId
+- id, email, password, name, role (ADMIN/RECEPTION/HOST/STAFF), status (ACTIVE/INACTIVE), hostId
 
 ### Host
-A **contact person at a company** who can receive visitors or deliveries (NOT internal employees).
-- id, externalId, name, company, email, phone, location, status
+A **contact person at a company** (external host or internal staff) who can receive visitors or deliveries.
+- id, externalId, name, company, email, phone, location, status, **type** (EXTERNAL/STAFF)
+- `type` field distinguishes external hosts from internal staff members (default: EXTERNAL)
 - Each host belongs to one location; a company can have hosts across multiple locations
-- Bulk Import: CSV/XLSX upload via "Bulk Add" button on /admin/hosts
+- Bulk Import: CSV/XLSX upload via "Bulk Add" button on /admin/hosts (external) or /admin/staff (staff)
 
 ### Visit
 - id, sessionId, visitorName, visitorCompany, visitorPhone, visitorEmail

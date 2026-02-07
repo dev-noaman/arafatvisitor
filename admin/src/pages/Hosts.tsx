@@ -37,6 +37,7 @@ export default function Hosts() {
         page,
         limit: pagination.limit,
         search,
+        type: 'EXTERNAL',
       })
       setHosts(response.data || [])
       setPagination({

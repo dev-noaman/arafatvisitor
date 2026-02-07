@@ -62,7 +62,7 @@ export class AdminApiController {
    * Returns host scope for HOST users (hostId + company). Null for ADMIN/RECEPTION.
    */
   private async getHostScope(req: any): Promise<{ hostId: bigint; company: string } | null> {
-    if (req.user?.role !== 'HOST' || !req.user?.hostId) return null;
+    if ((req.user?.role !== 'HOST' && req.user?.role !== 'STAFF') || !req.user?.hostId) return null;
     const host = await this.prisma.host.findUnique({
       where: { id: req.user.hostId },
       select: { id: true, company: true },
@@ -180,7 +180,7 @@ export class AdminApiController {
 
   // ============ DASHBOARD KPIs ============
 
-  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST)
+  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST, Role.STAFF)
   @Get("dashboard/kpis")
   @UseInterceptors(CacheInterceptor)
   @CacheKey("dashboard:kpis")
@@ -206,7 +206,7 @@ export class AdminApiController {
     return { totalHosts, visitsToday, deliveriesToday };
   }
 
-  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST)
+  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST, Role.STAFF)
   @Get("profile")
   async getProfile(@Req() req: any, @Query("email") email?: string) {
     // DEBUG LOGGING
@@ -255,7 +255,7 @@ export class AdminApiController {
     return { id: user.id, name: user.name, email: user.email, role: user.role, createdAt: user.createdAt, updatedAt: user.updatedAt };
   }
 
-  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST)
+  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST, Role.STAFF)
   @Get("profile/preferences")
   async getPreferences(@Req() req: any) {
     // DEBUG LOGGING
@@ -294,7 +294,7 @@ export class AdminApiController {
     }
   }
 
-  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST)
+  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST, Role.STAFF)
   @Put("profile/preferences")
   async updatePreferences(@Req() req: any, @Body() body: any) {
     // Get user from JWT token
@@ -312,7 +312,7 @@ export class AdminApiController {
     }
   }
 
-  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST)
+  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST, Role.STAFF)
   @Post("profile/update")
   async updateProfile(@Body() body: { email: string; name?: string }) {
     const { email, name } = body ?? { email: "", name: undefined };
@@ -1075,7 +1075,7 @@ export class AdminApiController {
 
   // ============ PENDING APPROVALS ============
 
-  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST)
+  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST, Role.STAFF)
   @Get("dashboard/pending-approvals")
   async getPendingApprovals(@Req() req: any) {
     // Dashboard only shows PENDING_APPROVAL (clean view)
@@ -1104,7 +1104,7 @@ export class AdminApiController {
 
   // ============ RECEIVED DELIVERIES ============
 
-  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST)
+  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST, Role.STAFF)
   @Get("dashboard/received-deliveries")
   async getReceivedDeliveries(@Req() req: any) {
     const where: Prisma.DeliveryWhereInput = { status: "RECEIVED" };
@@ -1131,7 +1131,7 @@ export class AdminApiController {
 
   // ============ CHART DATA ============
 
-  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST)
+  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST, Role.STAFF)
   @Get("dashboard/charts")
   @UseInterceptors(CacheInterceptor)
   @CacheKey("dashboard:charts")
@@ -1203,7 +1203,7 @@ export class AdminApiController {
 
   // ============ CURRENT VISITORS (for card view) ============
 
-  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST)
+  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST, Role.STAFF)
   @Get("dashboard/current-visitors")
   async getCurrentVisitors(@Req() req: any) {
     const where: Prisma.VisitWhereInput = { status: "CHECKED_IN" };
@@ -1257,7 +1257,7 @@ export class AdminApiController {
 
   // ============ APPROVE / REJECT ACTIONS ============
 
-  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST)
+  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST, Role.STAFF)
   @Post("dashboard/approve/:id")
   async approveVisit(@Param("id") id: string, @Req() req: any) {
     const visit = await this.prisma.visit.findUnique({
@@ -1306,7 +1306,7 @@ export class AdminApiController {
     return { success: true, message: "Visit approved" };
   }
 
-  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST)
+  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST, Role.STAFF)
   @Post("dashboard/reject/:id")
   async rejectVisit(@Param("id") id: string, @Req() req: any) {
     const visit = await this.prisma.visit.findUnique({
@@ -1604,7 +1604,7 @@ export class AdminApiController {
 
   // ============ CHANGE PASSWORD ============
 
-  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST)
+  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST, Role.STAFF)
   @Post("change-password")
   async changePassword(
     @Body()
@@ -1653,7 +1653,7 @@ export class AdminApiController {
 
   // ============ REPORTS ============
 
-  @Roles(Role.ADMIN, Role.HOST)
+  @Roles(Role.ADMIN, Role.HOST, Role.STAFF)
   @Get("reports")
   async getReportsSummary(
     @Req() req: any,
@@ -1800,7 +1800,7 @@ export class AdminApiController {
     };
   }
 
-  @Roles(Role.ADMIN, Role.HOST)
+  @Roles(Role.ADMIN, Role.HOST, Role.STAFF)
   @Get("reports/visitors")
   async getVisitorsReport(
     @Req() req: any,
@@ -1851,7 +1851,7 @@ export class AdminApiController {
     return filtered;
   }
 
-  @Roles(Role.ADMIN, Role.HOST)
+  @Roles(Role.ADMIN, Role.HOST, Role.STAFF)
   @Get("reports/visitors/export")
   async exportVisitorsReport(
     @Req() req: any,
@@ -1924,7 +1924,7 @@ export class AdminApiController {
     }
   }
 
-  @Roles(Role.ADMIN, Role.HOST)
+  @Roles(Role.ADMIN, Role.HOST, Role.STAFF)
   @Get("reports/deliveries")
   async getDeliveriesReport(
     @Req() req: any,
@@ -1975,7 +1975,7 @@ export class AdminApiController {
     return filtered;
   }
 
-  @Roles(Role.ADMIN, Role.HOST)
+  @Roles(Role.ADMIN, Role.HOST, Role.STAFF)
   @Get("reports/deliveries/export")
   async exportDeliveriesReport(
     @Req() req: any,
@@ -2331,7 +2331,7 @@ export class AdminApiController {
 
   // ============ VISITORS CRUD ============
 
-  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST)
+  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST, Role.STAFF)
   @Get("visitors")
   async getVisitors(
     @Req() req: any,
@@ -2392,7 +2392,7 @@ export class AdminApiController {
     };
   }
 
-  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST)
+  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST, Role.STAFF)
   @Get("visitors/:id")
   async getVisitor(@Param("id") id: string, @Req() req: any) {
     const visit = await this.prisma.visit.findUnique({
@@ -2413,9 +2413,10 @@ export class AdminApiController {
     return visit;
   }
 
-  @Roles(Role.ADMIN, Role.RECEPTION)
+  @Roles(Role.ADMIN, Role.RECEPTION, Role.STAFF)
   @Post("visitors")
   async createVisitor(
+    @Req() req: any,
     @Body()
     body: {
       visitorName: string;
@@ -2430,6 +2431,11 @@ export class AdminApiController {
       notes?: string;
     },
   ) {
+    // STAFF auto-sets hostId from their user account
+    if (req.user?.role === 'STAFF' && req.user?.hostId) {
+      body.hostId = String(req.user.hostId);
+    }
+
     // Resolve location from host if not provided
     let location = body.location;
     if (!location) {
@@ -2668,7 +2674,7 @@ export class AdminApiController {
 
   // ============ HOSTS CRUD ============
 
-  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST)
+  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST, Role.STAFF)
   @Get("hosts")
   async getHosts(
     @Req() req: any,
@@ -2677,6 +2683,7 @@ export class AdminApiController {
     @Query("search") search?: string,
     @Query("location") location?: string,
     @Query("status") status?: string,
+    @Query("type") type?: string,
     @Query("sortBy") sortBy = "createdAt",
     @Query("sortOrder") sortOrder: "asc" | "desc" = "desc",
   ) {
@@ -2688,6 +2695,10 @@ export class AdminApiController {
     const where: Prisma.HostWhereInput = {
       deletedAt: null,
     };
+
+    if (type) {
+      where.type = type as "EXTERNAL" | "STAFF";
+    }
 
     if (search) {
       where.OR = [
@@ -2729,7 +2740,7 @@ export class AdminApiController {
     };
   }
 
-  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST)
+  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST, Role.STAFF)
   @Get("hosts/:id")
   async getHost(@Param("id") id: string, @Req() req: any) {
     const host = await this.prisma.host.findUnique({
@@ -2888,6 +2899,383 @@ export class AdminApiController {
     });
 
     return { success: true, message: `${ids.length} hosts deleted` };
+  }
+
+  // ============ STAFF CRUD ============
+
+  @Roles(Role.ADMIN)
+  @Get("staff")
+  async getStaff(
+    @Query("page") page = "1",
+    @Query("limit") limit = "10",
+    @Query("search") search?: string,
+    @Query("location") location?: string,
+    @Query("status") status?: string,
+    @Query("sortBy") sortBy = "createdAt",
+    @Query("sortOrder") sortOrder: "asc" | "desc" = "desc",
+  ) {
+    const pageNum = parseInt(page, 10);
+    const limitNum = parseInt(limit, 10);
+    const skip = (pageNum - 1) * limitNum;
+
+    const where: Prisma.HostWhereInput = {
+      deletedAt: null,
+      type: "STAFF",
+    };
+
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: "insensitive" } },
+        { company: { contains: search, mode: "insensitive" } },
+        { email: { contains: search, mode: "insensitive" } },
+        { phone: { contains: search, mode: "insensitive" } },
+      ];
+    }
+
+    if (location) {
+      where.location = location as Prisma.EnumLocationFilter;
+    }
+
+    if (status !== undefined) {
+      where.status = parseInt(status, 10);
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.host.findMany({
+        where,
+        skip,
+        take: limitNum,
+        orderBy: { [sortBy]: sortOrder },
+      }),
+      this.prisma.host.count({ where }),
+    ]);
+
+    return {
+      data,
+      total,
+      page: pageNum,
+      limit: limitNum,
+      totalPages: Math.ceil(total / limitNum),
+    };
+  }
+
+  @Roles(Role.ADMIN)
+  @Post("staff")
+  async createStaff(
+    @Body()
+    body: {
+      name: string;
+      company: string;
+      email?: string;
+      phone?: string;
+      location?: string;
+      status?: number;
+      externalId?: string;
+    },
+  ) {
+    const staff = await this.prisma.host.create({
+      data: {
+        name: body.name,
+        company: body.company,
+        email: body.email,
+        phone: body.phone,
+        location: body.location as "BARWA_TOWERS" | "MARINA_50" | "ELEMENT_MARIOTT" | undefined,
+        status: body.status ?? 1,
+        externalId: body.externalId,
+        type: "STAFF",
+      },
+    });
+
+    // Auto-create User account for the new Staff member
+    const userEmail = body.email || `staff_${staff.id}@system.local`;
+    let userCreated = false;
+
+    const existingUserByEmail = await this.prisma.user.findUnique({
+      where: { email: userEmail },
+    });
+    if (!existingUserByEmail) {
+      const existingUserByHostId = await this.prisma.user.findFirst({
+        where: { hostId: staff.id },
+      });
+      if (!existingUserByHostId) {
+        const randomPassword = crypto.randomBytes(16).toString("hex");
+        const hashedPassword = await bcrypt.hash(randomPassword, 12);
+        const newUser = await this.prisma.user.create({
+          data: {
+            email: userEmail,
+            password: hashedPassword,
+            name: body.name,
+            role: "STAFF",
+            hostId: staff.id,
+          },
+        });
+        userCreated = true;
+
+        // Send welcome email with password reset link (skip system.local addresses)
+        if (!userEmail.endsWith("@system.local")) {
+          const resetToken = this.jwtService.sign(
+            { sub: Number(newUser.id), purpose: "reset" },
+            { expiresIn: "72h" },
+          );
+          const adminUrl =
+            this.configService.get("ADMIN_URL") || "https://arafatvisitor.cloud/admin";
+          const resetUrl = `${adminUrl}/reset-password?token=${resetToken}`;
+          this.emailService.sendHostWelcome(userEmail, body.name, resetUrl).catch(() => {});
+        }
+      }
+    }
+
+    return { ...staff, userCreated };
+  }
+
+  @Roles(Role.ADMIN)
+  @Put("staff/:id")
+  async updateStaff(
+    @Param("id") id: string,
+    @Body()
+    body: {
+      name?: string;
+      company?: string;
+      email?: string;
+      phone?: string;
+      location?: string;
+      status?: number;
+    },
+  ) {
+    const existing = await this.prisma.host.findUnique({
+      where: { id: BigInt(id) },
+    });
+
+    if (!existing || existing.type !== "STAFF") {
+      throw new HttpException("Staff member not found", HttpStatus.NOT_FOUND);
+    }
+
+    const staff = await this.prisma.host.update({
+      where: { id: BigInt(id) },
+      data: {
+        name: body.name,
+        company: body.company,
+        email: body.email,
+        phone: body.phone,
+        location: body.location as "BARWA_TOWERS" | "MARINA_50" | "ELEMENT_MARIOTT" | undefined,
+        status: body.status,
+      },
+    });
+
+    return staff;
+  }
+
+  @Roles(Role.ADMIN)
+  @Delete("staff/:id")
+  async deleteStaff(@Param("id") id: string) {
+    const existing = await this.prisma.host.findUnique({
+      where: { id: BigInt(id) },
+    });
+
+    if (!existing || existing.type !== "STAFF") {
+      throw new HttpException("Staff member not found", HttpStatus.NOT_FOUND);
+    }
+
+    // Soft delete
+    await this.prisma.host.update({
+      where: { id: BigInt(id) },
+      data: { deletedAt: new Date(), status: 0 },
+    });
+
+    return { success: true, message: "Staff member deleted" };
+  }
+
+  @Roles(Role.ADMIN)
+  @Post("staff/import")
+  async importStaff(
+    @Body() body: { csvContent?: string; xlsxContent?: string },
+  ) {
+    const { csvContent, xlsxContent } = body || {};
+
+    if (!csvContent && !xlsxContent) {
+      throw new HttpException(
+        "csvContent or xlsxContent is required",
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    // Handle XLSX content
+    if (xlsxContent) {
+      return this.importStaffFromXlsx(xlsxContent);
+    }
+
+    // Handle CSV content
+    if (!csvContent || typeof csvContent !== "string" || !csvContent.trim()) {
+      throw new HttpException("csvContent is required", HttpStatus.BAD_REQUEST);
+    }
+
+    let records: Record<string, unknown>[];
+    try {
+      const csvParseModule = await import("csv-parse/sync");
+      const parse = (csvParseModule as { parse: (input: string, options: unknown) => Record<string, unknown>[] }).parse;
+      records = parse(csvContent, { columns: true, skip_empty_lines: true, trim: true });
+    } catch (e) {
+      throw new HttpException(
+        `Failed to parse CSV: ${e instanceof Error ? e.message : "Unknown error"}`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    return this.processStaffRecords(records);
+  }
+
+  private async importStaffFromXlsx(base64: string) {
+    const base64Data = base64.includes(",") ? base64.split(",")[1] : base64;
+    const buffer = Buffer.from(base64Data, "base64");
+    const workbook = XLSX.read(buffer, { type: "buffer" });
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+    const records = XLSX.utils.sheet_to_json(worksheet, { defval: "" }) as Record<string, unknown>[];
+    return this.processStaffRecords(records);
+  }
+
+  private async processStaffRecords(records: Record<string, unknown>[]) {
+    let totalProcessed = 0;
+    let inserted = 0;
+    let skipped = 0;
+    let usersCreated = 0;
+    let usersSkipped = 0;
+    const rejectedRows: Array<{ rowNumber: number; reason: string }> = [];
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i;
+
+    const mapLocation = (value?: string | null) => {
+      if (!value) return null;
+      const v = value.trim();
+      if (v === "Arafat - Barwa Towers") return "BARWA_TOWERS";
+      if (v === "Arafat - Element Hotel") return "ELEMENT_MARIOTT";
+      if (v === "Arafat - Marina 50 Tower") return "MARINA_50";
+      return null;
+    };
+
+    const mapStatus = (value?: string | null) => {
+      if (!value) return undefined;
+      const v = value.trim().toLowerCase();
+      if (v === "active") return 1;
+      if (v === "inactive") return 0;
+      return undefined;
+    };
+
+    const cleanPhone = (value?: string | null) => {
+      if (!value) return "";
+      let v = value.replace(/[\s\-()]/g, "");
+      if (v.startsWith("+")) v = v.slice(1);
+      const isQatar = v.startsWith("974");
+      if (!isQatar && /^\d{6}$/.test(v)) v = `974${v}`;
+      else if (isQatar) { const rest = v.slice(3); if (rest.length === 6) v = `974${rest}`; }
+      return v;
+    };
+
+    for (let index = 0; index < records.length; index++) {
+      const row = records[index];
+      const rowNumber = index + 2;
+      totalProcessed += 1;
+
+      const reasons: string[] = [];
+      const externalIdRaw = (row["ID"] || row["id"] || "").toString().trim();
+      const nameRaw = (row["Name"] || row["name"] || "").toString().trim();
+      const companyRaw = (row["Company"] || row["company"] || "").toString().trim();
+      const emailRaw = (row["Email Address"] || row["Email"] || row["email"] || "").toString().trim();
+      const phoneRaw = (row["Phone Number"] || row["Phone"] || row["phone"] || "").toString().trim();
+      const locationRaw = (row["Location"] || row["location"] || "").toString().trim();
+      const statusRaw = (row["Status"] || row["status"] || "").toString().trim();
+
+      const name = nameRaw || "";
+      if (!name) reasons.push("Missing name");
+
+      const company = companyRaw || null;
+      const email = emailRaw ? emailRaw.toLowerCase() : null;
+      if (email && !emailRegex.test(email)) reasons.push("Invalid email format");
+
+      const phone = cleanPhone(phoneRaw);
+      if (!phone) reasons.push("Invalid or missing phone");
+      else if (/[a-zA-Z]/.test(phone)) reasons.push("Invalid phone (contains letters)");
+
+      const location = mapLocation(locationRaw || null);
+      const status = mapStatus(statusRaw || null);
+      if (status === undefined) reasons.push("Invalid status");
+
+      if (reasons.length > 0) {
+        rejectedRows.push({ rowNumber, reason: reasons.join("; ") });
+        continue;
+      }
+
+      const externalId = externalIdRaw || null;
+
+      if (externalId) {
+        const existingHost = await this.prisma.host.findUnique({ where: { externalId } });
+        if (existingHost) { skipped++; continue; }
+      }
+
+      try {
+        const createdStaff = await this.prisma.host.create({
+          data: {
+            externalId,
+            name,
+            company: company ?? "",
+            email,
+            phone,
+            location: location as "BARWA_TOWERS" | "ELEMENT_MARIOTT" | "MARINA_50" | null,
+            status: status ?? 1,
+            type: "STAFF",
+          },
+        });
+        inserted++;
+
+        // Auto-create User account for new Staff member
+        const userEmail = email || `staff_${createdStaff.id}@system.local`;
+        const existingUserByEmail = await this.prisma.user.findUnique({ where: { email: userEmail } });
+        if (existingUserByEmail) {
+          usersSkipped++;
+        } else {
+          const existingUserByHostId = await this.prisma.user.findFirst({ where: { hostId: createdStaff.id } });
+          if (existingUserByHostId) {
+            usersSkipped++;
+          } else {
+            const randomPassword = crypto.randomBytes(16).toString("hex");
+            const hashedPassword = await bcrypt.hash(randomPassword, 12);
+            const newUser = await this.prisma.user.create({
+              data: {
+                email: userEmail,
+                password: hashedPassword,
+                name,
+                role: "STAFF",
+                hostId: createdStaff.id,
+              },
+            });
+            usersCreated++;
+
+            if (!userEmail.endsWith("@system.local")) {
+              const resetToken = this.jwtService.sign(
+                { sub: Number(newUser.id), purpose: "reset" },
+                { expiresIn: "72h" },
+              );
+              const adminUrl = this.configService.get("ADMIN_URL") || "https://arafatvisitor.cloud/admin";
+              const resetUrl = `${adminUrl}/reset-password?token=${resetToken}`;
+              this.emailService.sendHostWelcome(userEmail, name, resetUrl).catch(() => {});
+            }
+          }
+        }
+      } catch (e) {
+        const errorMsg = e instanceof Error ? e.message : "Unknown database error";
+        rejectedRows.push({ rowNumber, reason: `Database error: ${errorMsg}` });
+      }
+    }
+
+    return {
+      totalProcessed,
+      inserted,
+      skipped,
+      rejected: rejectedRows.length,
+      rejectedRows,
+      usersCreated,
+      usersSkipped,
+    };
   }
 
   // ============ DELIVERIES CRUD ============
@@ -3088,7 +3476,7 @@ export class AdminApiController {
 
   // ============ PRE-REGISTRATIONS CRUD ============
 
-  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST)
+  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST, Role.STAFF)
   @Get("pre-registrations")
   async getPreRegistrations(
     @Req() req: any,
@@ -3149,7 +3537,7 @@ export class AdminApiController {
     };
   }
 
-  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST)
+  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST, Role.STAFF)
   @Get("pre-registrations/:id")
   async getPreRegistration(@Param("id") id: string, @Req() req: any) {
     const visit = await this.prisma.visit.findUnique({
@@ -3170,7 +3558,7 @@ export class AdminApiController {
     return visit;
   }
 
-  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST)
+  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST, Role.STAFF)
   @Post("pre-registrations")
   async createPreRegistration(
     @Req() req: any,
@@ -3188,8 +3576,8 @@ export class AdminApiController {
       notes?: string;
     },
   ) {
-    // HOST can only create pre-registrations for their own host
-    if (req.user?.role === 'HOST' && req.user?.hostId) {
+    // HOST/STAFF can only create pre-registrations for their own host
+    if ((req.user?.role === 'HOST' || req.user?.role === 'STAFF') && req.user?.hostId) {
       body.hostId = String(req.user.hostId);
     }
 
@@ -3299,7 +3687,7 @@ export class AdminApiController {
     return { success: true, message: "Pre-registration deleted" };
   }
 
-  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST)
+  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST, Role.STAFF)
   @Post("pre-registrations/:id/approve")
   async approvePreRegistration(@Param("id") id: string, @Req() req: any) {
     const visit = await this.prisma.visit.findUnique({
@@ -3329,7 +3717,7 @@ export class AdminApiController {
     return { success: true, message: "Pre-registration approved" };
   }
 
-  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST)
+  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST, Role.STAFF)
   @Post("pre-registrations/:id/reject")
   async rejectPreRegistration(
     @Param("id") id: string,
@@ -3362,7 +3750,7 @@ export class AdminApiController {
     return { success: true, message: "Pre-registration rejected" };
   }
 
-  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST)
+  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST, Role.STAFF)
   @Post("pre-registrations/:id/re-approve")
   async reApprovePreRegistration(@Param("id") id: string, @Req() req: any) {
     const visit = await this.prisma.visit.findUnique({
@@ -3659,7 +4047,7 @@ export class AdminApiController {
 
   // ============ LOOKUP TABLES ============
 
-  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST)
+  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST, Role.STAFF)
   @Get("lookups/purposes")
   async getPurposeLookups() {
     const purposes = await this.prisma.lookupPurpose.findMany({
@@ -3669,7 +4057,7 @@ export class AdminApiController {
     return purposes;
   }
 
-  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST)
+  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST, Role.STAFF)
   @Get("lookups/delivery-types")
   async getDeliveryTypeLookups() {
     const deliveryTypes = await this.prisma.lookupDeliveryType.findMany({
@@ -3679,7 +4067,7 @@ export class AdminApiController {
     return deliveryTypes;
   }
 
-  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST)
+  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST, Role.STAFF)
   @Get("lookups/couriers")
   async getCourierLookups() {
     const couriers = await this.prisma.lookupCourier.findMany({
@@ -3689,7 +4077,7 @@ export class AdminApiController {
     return couriers;
   }
 
-  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST)
+  @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST, Role.STAFF)
   @Get("lookups/locations")
   async getLocationLookups() {
     const locations = await this.prisma.lookupLocation.findMany({

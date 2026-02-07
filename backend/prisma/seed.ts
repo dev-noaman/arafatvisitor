@@ -115,6 +115,52 @@ async function seedHostUser() {
   console.log(`Created HOST demo user: ${email} linked to host: ${host.name} (${host.company})`);
 }
 
+async function seedStaffUser() {
+  console.log('Seeding STAFF demo user...');
+  const email = 'staff@arafatvisitor.cloud';
+
+  const existingUser = await prisma.user.findUnique({ where: { email } });
+  if (existingUser) {
+    console.log(`STAFF demo user already exists: ${email}`);
+    return;
+  }
+
+  // Create a staff Host record if none exists
+  let staffHost = await prisma.host.findFirst({
+    where: { type: 'STAFF', status: 1 },
+    orderBy: { id: 'asc' },
+  });
+
+  if (!staffHost) {
+    staffHost = await prisma.host.create({
+      data: {
+        name: 'Staff Demo',
+        company: 'Arafat Group',
+        email: 'staff@arafatvisitor.cloud',
+        phone: TEST_PHONE,
+        location: 'BARWA_TOWERS',
+        status: 1,
+        type: 'STAFF',
+        externalId: `TEST-STAFF-001`,
+      },
+    });
+    console.log(`Created staff Host record: ${staffHost.name}`);
+  }
+
+  const hash = await bcrypt.hash('staff123', BCRYPT_ROUNDS);
+  await prisma.user.create({
+    data: {
+      id: 999005,
+      email,
+      name: 'Staff User',
+      password: hash,
+      role: 'STAFF',
+      hostId: staffHost.id,
+    },
+  });
+  console.log(`Created STAFF demo user: ${email} linked to staff: ${staffHost.name} (${staffHost.company})`);
+}
+
 async function seedUsers() {
   const csvPath = path.join(__dirname, '../../Adel Data/users-export.csv');
   if (!fs.existsSync(csvPath)) {
@@ -178,8 +224,8 @@ async function seedUsers() {
     }
 
     // Map role string to Role enum, default to RECEPTION
-    const role = roleString && ['ADMIN', 'RECEPTION', 'HOST'].includes(roleString)
-      ? (roleString as 'ADMIN' | 'RECEPTION' | 'HOST')
+    const role = roleString && ['ADMIN', 'RECEPTION', 'HOST', 'STAFF'].includes(roleString)
+      ? (roleString as 'ADMIN' | 'RECEPTION' | 'HOST' | 'STAFF')
       : 'RECEPTION';
 
     // Use default password if not provided
@@ -493,6 +539,7 @@ async function main() {
   await seedUsers();
   await seedHostsFromCsv();
   await seedHostUser(); // Must run after hosts exist
+  await seedStaffUser(); // Must run after hosts exist
 
   // Seed test data with QR codes for testing
   const testHosts = await seedTestHosts();

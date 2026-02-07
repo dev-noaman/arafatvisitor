@@ -18,6 +18,7 @@ const DEMO_ACCOUNTS = [
   { role: 'Admin', email: 'admin@arafatvisitor.cloud', password: 'admin123', color: 'red' },
   { role: 'Reception', email: 'reception@arafatvisitor.cloud', password: 'reception123', color: 'blue' },
   { role: 'Host', email: 'host@arafatvisitor.cloud', password: 'host123', color: 'green' },
+  { role: 'Staff', email: 'staff@arafatvisitor.cloud', password: 'staff123', color: 'purple' },
 ]
 
 export function SignInForm() {
@@ -224,7 +225,7 @@ export function SignInForm() {
                 <span className="px-4 bg-white text-gray-500">Quick Demo Login</span>
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-4 gap-3">
               {DEMO_ACCOUNTS.map((account) => (
                 <button
                   key={account.role}
@@ -238,6 +239,8 @@ export function SignInForm() {
                       ? 'border-red-200 bg-red-50 hover:border-red-400 hover:bg-red-100'
                       : account.color === 'blue'
                       ? 'border-blue-200 bg-blue-50 hover:border-blue-400 hover:bg-blue-100'
+                      : account.color === 'purple'
+                      ? 'border-purple-200 bg-purple-50 hover:border-purple-400 hover:bg-purple-100'
                       : 'border-green-200 bg-green-50 hover:border-green-400 hover:bg-green-100'
                   } disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
@@ -252,6 +255,8 @@ export function SignInForm() {
                         ? 'bg-red-500'
                         : account.color === 'blue'
                         ? 'bg-blue-500'
+                        : account.color === 'purple'
+                        ? 'bg-purple-500'
                         : 'bg-green-500'
                     }`}>
                       <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -264,6 +269,8 @@ export function SignInForm() {
                       ? 'text-red-700'
                       : account.color === 'blue'
                       ? 'text-blue-700'
+                      : account.color === 'purple'
+                      ? 'text-purple-700'
                       : 'text-green-700'
                   }`}>
                     {account.role}

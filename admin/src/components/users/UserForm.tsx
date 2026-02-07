@@ -7,7 +7,7 @@ import type { User, UserFormData, Host } from '@/types'
 const userSchema = z.object({
   email: z.string().email('Invalid email address'),
   name: z.string().optional(),
-  role: z.enum(['ADMIN', 'RECEPTION', 'HOST'] as const),
+  role: z.enum(['ADMIN', 'RECEPTION', 'HOST', 'STAFF'] as const),
   password: z
     .string()
     .min(8, 'Password must be at least 8 characters')
@@ -47,7 +47,7 @@ export default function UserForm({ onSubmit, initialData, isLoading, hosts = [],
   const selectedRole = watch('role')
 
   const handleFormSubmit = async (data: UserFormData) => {
-    if (data.role !== 'HOST') {
+    if (data.role !== 'HOST' && data.role !== 'STAFF') {
       delete data.hostId
     }
     await onSubmit(data)
@@ -99,15 +99,16 @@ export default function UserForm({ onSubmit, initialData, isLoading, hosts = [],
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           disabled={isLoading}
         >
-          <option value="HOST">Host (Employee)</option>
+          <option value="HOST">Host (External)</option>
+          <option value="STAFF">Staff (Internal)</option>
           <option value="RECEPTION">Reception</option>
           <option value="ADMIN">Administrator</option>
         </select>
         {errors.role && <p className="text-sm text-red-600 mt-1">{errors.role.message}</p>}
       </div>
 
-      {/* Host Selection (only for HOST role) */}
-      {selectedRole === 'HOST' && (
+      {/* Host/Staff Selection (for HOST or STAFF role) */}
+      {(selectedRole === 'HOST' || selectedRole === 'STAFF') && (
         <div>
           <label htmlFor="hostId" className="block text-sm font-medium text-gray-700 mb-1">
             Linked Host/Company *
@@ -126,7 +127,7 @@ export default function UserForm({ onSubmit, initialData, isLoading, hosts = [],
             ))}
           </select>
           <p className="text-xs text-gray-500 mt-1">
-            HOST users can only see data belonging to their linked company
+            HOST/STAFF users can only see data belonging to their linked company
           </p>
         </div>
       )}

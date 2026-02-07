@@ -136,7 +136,7 @@ export default function VisitForm({
           </option>
           {hosts.map((host) => (
             <option key={host.id} value={host.id}>
-              {host.name} ({host.email})
+              {host.type === 'STAFF' ? '[Staff] ' : ''}{host.name} ({host.email})
             </option>
           ))}
         </select>

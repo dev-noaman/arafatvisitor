@@ -13,7 +13,7 @@ export const NAV_ITEMS: NavItem[] = [
     path: '/admin',
     label: 'Dashboard',
     icon: 'Grid',
-    roles: ['ADMIN', 'HOST', 'RECEPTION'],
+    roles: ['ADMIN', 'HOST', 'RECEPTION', 'STAFF'],
   },
   {
     path: '/admin/hosts',
@@ -22,16 +22,22 @@ export const NAV_ITEMS: NavItem[] = [
     roles: ['ADMIN', 'HOST', 'RECEPTION'],
   },
   {
+    path: '/admin/staff',
+    label: 'Staff',
+    icon: 'Briefcase',
+    roles: ['ADMIN'],
+  },
+  {
     path: '/admin/visitors',
     label: 'Visitors',
     icon: 'UserCheck',
-    roles: ['ADMIN', 'HOST', 'RECEPTION'],
+    roles: ['ADMIN', 'HOST', 'RECEPTION', 'STAFF'],
   },
   {
     path: '/admin/pre-register',
     label: 'Pre Register',
     icon: 'Calendar',
-    roles: ['ADMIN', 'HOST', 'RECEPTION'],
+    roles: ['ADMIN', 'HOST', 'RECEPTION', 'STAFF'],
   },
   {
     path: '/admin/deliveries',

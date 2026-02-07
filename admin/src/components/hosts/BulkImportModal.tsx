@@ -15,9 +15,11 @@ interface BulkImportModalProps {
   isOpen: boolean
   onClose: () => void
   onSuccess: () => void
+  importEndpoint?: string
+  title?: string
 }
 
-export default function BulkImportModal({ isOpen, onClose, onSuccess }: BulkImportModalProps) {
+export default function BulkImportModal({ isOpen, onClose, onSuccess, importEndpoint = '/admin/api/hosts/import', title = 'Bulk Import Hosts' }: BulkImportModalProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [result, setResult] = useState<ImportResult | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -56,7 +58,7 @@ export default function BulkImportModal({ isOpen, onClose, onSuccess }: BulkImpo
       if (ext === 'csv') {
         // Read CSV as text
         const text = await selectedFile.text()
-        const response = await api.post<ImportResult>('/admin/api/hosts/import', {
+        const response = await api.post<ImportResult>(importEndpoint, {
           csvContent: text,
         })
         setResult(response)
@@ -68,13 +70,13 @@ export default function BulkImportModal({ isOpen, onClose, onSuccess }: BulkImpo
           reader.onerror = reject
           reader.readAsDataURL(selectedFile)
         })
-        const response = await api.post<ImportResult>('/admin/api/hosts/import', {
+        const response = await api.post<ImportResult>(importEndpoint, {
           xlsxContent: base64,
         })
         setResult(response)
       }
     } catch (err: any) {
-      setError(err?.message || 'Failed to import hosts')
+      setError(err?.message || 'Failed to import')
     } finally {
       setIsLoading(false)
     }
@@ -104,7 +106,7 @@ export default function BulkImportModal({ isOpen, onClose, onSuccess }: BulkImpo
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50">
-          <h2 className="text-xl font-bold text-gray-900">Bulk Import Hosts</h2>
+          <h2 className="text-xl font-bold text-gray-900">{title}</h2>
           <button
             onClick={handleClose}
             className="text-gray-500 hover:text-gray-700 transition"

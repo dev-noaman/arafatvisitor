@@ -72,6 +72,7 @@ export const getRoleBadgeColor = (role: UserRole): string => {
     ADMIN: 'bg-red-100 text-red-800',
     RECEPTION: 'bg-blue-100 text-blue-800',
     HOST: 'bg-green-100 text-green-800',
+    STAFF: 'bg-purple-100 text-purple-800',
   }
   return colors[role] || 'bg-gray-100 text-gray-800'
 }
@@ -81,6 +82,7 @@ export const getRoleLabel = (role: UserRole): string => {
     ADMIN: 'Administrator',
     RECEPTION: 'Reception',
     HOST: 'Host',
+    STAFF: 'Staff',
   }
   return labels[role] || role
 }

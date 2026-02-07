@@ -4,7 +4,9 @@
 
 -- ============ ENUMS ============
 
-CREATE TYPE "Role" AS ENUM ('ADMIN', 'RECEPTION', 'HOST');
+CREATE TYPE "Role" AS ENUM ('ADMIN', 'RECEPTION', 'HOST', 'STAFF');
+
+CREATE TYPE "HostType" AS ENUM ('EXTERNAL', 'STAFF');
 
 CREATE TYPE "Location" AS ENUM ('Barwa Towers', 'Marina 50', 'Element Mariott');
 
@@ -26,6 +28,7 @@ CREATE TABLE "Host" (
     "location" "Location",
     "phone" VARCHAR(191),
     "status" SMALLINT NOT NULL DEFAULT 1,
+    "type" "HostType" NOT NULL DEFAULT 'EXTERNAL',
     "deletedAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -182,6 +185,9 @@ CREATE TABLE "LookupLocation" (
 );
 
 -- ============ INDEXES ============
+
+CREATE INDEX "Host_type_idx" ON "Host"("type");
+CREATE INDEX "Host_type_status_idx" ON "Host"("type", "status");
 
 CREATE UNIQUE INDEX "Host_externalId_key" ON "Host"("externalId");
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");

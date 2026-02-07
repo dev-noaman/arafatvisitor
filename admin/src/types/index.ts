@@ -1,5 +1,5 @@
 // User Roles
-export type UserRole = 'ADMIN' | 'RECEPTION' | 'HOST';
+export type UserRole = 'ADMIN' | 'RECEPTION' | 'HOST' | 'STAFF';
 
 // User Status
 export type UserStatus = 'ACTIVE' | 'INACTIVE';
@@ -21,7 +21,7 @@ export interface User {
   updatedAt: string;
 }
 
-// Host Entity (contact person at a company, NOT internal employee)
+// Host Entity (contact person at a company or internal staff member)
 export interface Host {
   id: string;
   name: string;
@@ -30,6 +30,7 @@ export interface Host {
   company: string;
   location?: 'BARWA_TOWERS' | 'MARINA_50' | 'ELEMENT_MARIOTT';
   status?: number;
+  type?: 'EXTERNAL' | 'STAFF';
   createdAt: string;
   updatedAt: string;
 }
