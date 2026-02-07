@@ -8,6 +8,7 @@ interface HostModalProps {
   onSubmit: (data: HostFormData) => Promise<void>
   hostData?: Host
   isLoading?: boolean
+  entityLabel?: string
 }
 
 export default function HostModal({
@@ -16,6 +17,7 @@ export default function HostModal({
   onSubmit,
   hostData,
   isLoading,
+  entityLabel = 'Host',
 }: HostModalProps) {
   useEffect(() => {
     if (isOpen) {
@@ -42,7 +44,7 @@ export default function HostModal({
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
             <h2 className="text-xl font-semibold text-gray-900">
-              {hostData ? 'Edit Host' : 'Create New Host'}
+              {hostData ? `Edit ${entityLabel}` : `Create New ${entityLabel}`}
             </h2>
             <button
               onClick={onClose}

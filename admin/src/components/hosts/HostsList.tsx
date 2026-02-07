@@ -15,6 +15,7 @@ interface HostsListProps {
   onPageChange: (page: number) => void
   onEdit: (host: Host) => void
   onDelete: (host: Host) => void
+  entityLabel?: string
 }
 
 export default function HostsList({
@@ -25,6 +26,7 @@ export default function HostsList({
   onPageChange,
   onEdit,
   onDelete,
+  entityLabel = 'hosts',
 }: HostsListProps) {
   const { user } = useAuth()
   const isAdmin = user?.role === 'ADMIN'
@@ -86,7 +88,7 @@ export default function HostsList({
             ) : hosts.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
-                  No hosts found. Create your first host to get started.
+                  No {entityLabel} found. Create your first to get started.
                 </td>
               </tr>
             ) : (
@@ -132,7 +134,7 @@ export default function HostsList({
           <div className="text-sm text-gray-600">
             Showing {(pagination.page - 1) * pagination.limit + 1} to{' '}
             {Math.min(pagination.page * pagination.limit, pagination.total)} of{' '}
-            {pagination.total} hosts
+            {pagination.total} {entityLabel}
           </div>
           <div className="flex gap-2">
             <button

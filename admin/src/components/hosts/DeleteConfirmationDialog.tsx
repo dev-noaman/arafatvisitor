@@ -7,6 +7,7 @@ interface DeleteConfirmationDialogProps {
   onConfirm: () => Promise<void>
   onCancel: () => void
   isLoading?: boolean
+  entityLabel?: string
 }
 
 export default function DeleteConfirmationDialog({
@@ -15,6 +16,7 @@ export default function DeleteConfirmationDialog({
   onConfirm,
   onCancel,
   isLoading,
+  entityLabel = 'Host',
 }: DeleteConfirmationDialogProps) {
   useEffect(() => {
     if (isOpen) {
@@ -59,7 +61,7 @@ export default function DeleteConfirmationDialog({
 
           {/* Content */}
           <div className="text-center px-6 pb-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Delete Host</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Delete {entityLabel}</h3>
             <p className="text-gray-600 mb-2">
               Are you sure you want to delete <span className="font-medium">{host.name}</span>?
             </p>

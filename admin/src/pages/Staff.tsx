@@ -169,6 +169,7 @@ export default function Staff() {
           onPageChange={handlePageChange}
           onEdit={handleEdit}
           onDelete={handleDeleteClick}
+          entityLabel="staff"
         />
       )}
 
@@ -179,6 +180,7 @@ export default function Staff() {
         onSubmit={handleFormSubmit}
         hostData={selectedStaff}
         isLoading={isSubmitting}
+        entityLabel="Staff"
       />
 
       {/* Delete Confirmation */}
@@ -191,6 +193,7 @@ export default function Staff() {
           setStaffToDelete(undefined)
         }}
         isLoading={isDeleting}
+        entityLabel="Staff"
       />
 
       {/* Bulk Import Modal */}
