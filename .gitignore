@@ -53,3 +53,18 @@ nul
 .claude/
 New Text Document.txt
 *.zip
+
+# Working directories
+specs/
+tailadmin-react-pro-222/
+.agents/
+
+# Temp files from testing
+PHASE*
+BADGE.txt
+deploy_logs*.txt
+job_id.txt
+run_id.txt
+network-requests.txt
+tmp_*.json
+latest_run.json
