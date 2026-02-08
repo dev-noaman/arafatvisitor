@@ -1,6 +1,6 @@
 # Arafat Visitor Management System Development Guidelines
 
-Last updated: 2026-02-07 (One-time reset tokens, min 6 char passwords, unified email templates matching QR style)
+Last updated: 2026-02-08 (Reset password page redesigned to match login split layout)
 
 ## Active Technologies
 
@@ -434,6 +434,12 @@ Professional HTML email matching QR email design:
 ### Pages
 - `/admin/forgot-password` - Request reset link
 - `/admin/reset-password?token=xxx` - Set new password
+
+### Auth Page Design Pattern (Unified)
+All auth pages (SignIn, ForgotPassword, ResetPassword) use the same split layout:
+- **Left side**: Form with "Back to sign in" link, `max-w-md` centered, inputs with left icons (`pl-10`), `bg-gray-50 hover:bg-white`, blue shadow submit button with spinner
+- **Right side** (desktop only): Dark blue branding panel (`from-blue-900 via-blue-800 to-indigo-900`) with grid pattern, decorative blur circles, logo, and contextual tagline
+- Form components: `admin/src/components/auth/` — page wrappers: `admin/src/pages/auth/`
 
 ## Notification Services
 
