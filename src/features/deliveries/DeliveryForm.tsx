@@ -9,11 +9,12 @@ import { SearchableSelect } from "@/components/ui/searchable-select"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "sonner"
 import { Truck, Package, User } from "lucide-react"
-import { fetchHosts, createDelivery, getAuthToken, fetchDeliveryTypeLookups } from "@/lib/api"
+import { fetchHosts, createDelivery, getAuthToken, fetchDeliveryTypeLookups, fetchCourierLookups } from "@/lib/api"
 import type { Host, LookupItem } from "@/lib/api"
 
 const schema = z.object({
   typeOfDelivery: z.string().min(1, "Type of delivery is required"),
+  courier: z.string().optional(),
   hostCompany: z.string().min(1, "Host company is required"),
   staffId: z.string().optional(),
 })
@@ -23,6 +24,7 @@ type FormValues = z.infer<typeof schema>
 export function DeliveryForm() {
   const [hosts, setHosts] = useState<Host[]>([])
   const [deliveryTypes, setDeliveryTypes] = useState<LookupItem[]>([])
+  const [couriers, setCouriers] = useState<LookupItem[]>([])
   const [isLoadingTypes, setIsLoadingTypes] = useState(false)
   const configRaw = typeof sessionStorage !== "undefined" ? sessionStorage.getItem("vms_config") : null
   const config = configRaw ? JSON.parse(configRaw) : {}
@@ -31,11 +33,17 @@ export function DeliveryForm() {
   useEffect(() => {
     fetchHosts().then(setHosts).catch(() => setHosts([]))
 
-    // Fetch delivery types from API
+    // Fetch delivery types and couriers from API
     setIsLoadingTypes(true)
-    fetchDeliveryTypeLookups()
-      .then(setDeliveryTypes)
-      .catch(() => setDeliveryTypes([]))
+    Promise.all([fetchDeliveryTypeLookups(), fetchCourierLookups()])
+      .then(([types, courierList]) => {
+        setDeliveryTypes(types)
+        setCouriers(courierList)
+      })
+      .catch(() => {
+        setDeliveryTypes([])
+        setCouriers([])
+      })
       .finally(() => setIsLoadingTypes(false))
   }, [])
 
@@ -49,11 +57,27 @@ export function DeliveryForm() {
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { typeOfDelivery: "", hostCompany: "", staffId: "" },
+    defaultValues: { typeOfDelivery: "", courier: "", hostCompany: "", staffId: "" },
   })
 
+  const typeOfDelivery = watch("typeOfDelivery")
   const hostCompany = watch("hostCompany")
   const staffId = watch("staffId")
+
+  const isFoodOrGift = typeOfDelivery === "Food" || typeOfDelivery === "Gift"
+  const filteredCouriers = couriers.filter((c) => {
+    if (isFoodOrGift) return c.category === "FOOD"
+    return c.category === "PARCEL" || !c.category
+  })
+
+  // Reset courier when delivery type changes and current selection is invalid
+  useEffect(() => {
+    const currentCourier = watch("courier")
+    if (currentCourier) {
+      const valid = filteredCouriers.some((c) => c.label === currentCourier)
+      if (!valid) setValue("courier", "")
+    }
+  }, [typeOfDelivery])
 
   const isArafatGroup = hostCompany === "Arafat Group"
   const staffMembers = isArafatGroup
@@ -72,12 +96,13 @@ export function DeliveryForm() {
       try {
         await createDelivery({
           recipient: data.typeOfDelivery,
-          courier: "Kiosk",
+          courier: data.courier || "Kiosk",
           hostId: host.id,
           notes: `Type: ${data.typeOfDelivery}`,
         })
         toast.success("Host notified", { description: "Delivery logged and host will be notified." })
         setValue("typeOfDelivery", "")
+        setValue("courier", "")
         setValue("hostCompany", "")
         setValue("staffId", "")
       } catch (e) {
@@ -87,6 +112,7 @@ export function DeliveryForm() {
     }
     toast.success("Delivery logged", { description: "Host will be notified." })
     setValue("typeOfDelivery", "")
+    setValue("courier", "")
     setValue("hostCompany", "")
     setValue("staffId", "")
   }
@@ -127,6 +153,28 @@ export function DeliveryForm() {
               <p className="text-sm text-destructive">{errors.typeOfDelivery.message}</p>
             )}
           </div>
+
+          {typeOfDelivery && filteredCouriers.length > 0 && (
+            <div className="space-y-2">
+              <Label>Courier</Label>
+              <Select
+                value={watch("courier")}
+                onValueChange={(value) => setValue("courier", value)}
+              >
+                <SelectTrigger className="h-12 touch-manipulation">
+                  <Truck className="mr-2 h-5 w-5 text-muted-foreground" />
+                  <SelectValue placeholder="Select courier" />
+                </SelectTrigger>
+                <SelectContent>
+                  {filteredCouriers.map((c) => (
+                    <SelectItem key={c.id} value={c.label}>
+                      {c.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label>Host Company</Label>
