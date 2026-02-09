@@ -2,6 +2,7 @@ import { useState, useEffect } from "react"
 import { LoginForm } from "@/features/auth/LoginForm"
 import { QRScanner } from "@/features/visitors/QRScanner"
 import { CheckInBadge } from "@/features/visitors/CheckInBadge"
+import { CheckOutBadge } from "@/features/visitors/CheckOutBadge"
 import { CheckInOptions } from "@/features/visitors/CheckInOptions"
 import { CheckOutOptions } from "@/features/visitors/CheckOutOptions"
 import { VisitorSearch } from "@/features/visitors/VisitorSearch"
@@ -31,6 +32,7 @@ type View =
   | "walkin"
   | "reports"
   | "checkin-badge"
+  | "checkout-badge"
 
 function App() {
   const isRegisterPage = window.location.pathname === "/register"
@@ -97,6 +99,11 @@ function App() {
   const navigateToBadge = (sessionId: string) => {
     setBadgeSessionId(sessionId)
     setCurrentView("checkin-badge")
+  }
+
+  const navigateToCheckoutBadge = (sessionId: string) => {
+    setBadgeSessionId(sessionId)
+    setCurrentView("checkout-badge")
   }
 
   const showBackButton = currentView !== "dashboard"
@@ -280,6 +287,7 @@ function App() {
                   <QRScanner
                     mode="checkout"
                     onBack={() => navigateTo("checkout-options")}
+                    onCheckedOut={navigateToCheckoutBadge}
                   />
                 )}
                 {currentView === "search-checkin" && (
@@ -293,6 +301,7 @@ function App() {
                   <VisitorSearch
                     mode="checkout"
                     onBack={() => navigateTo("checkout-options")}
+                    onCheckout={navigateToCheckoutBadge}
                   />
                 )}
                 {currentView === "register" && <CheckInRegister />}
@@ -300,6 +309,9 @@ function App() {
                 {currentView === "reports" && <ReportsPanel />}
                 {currentView === "checkin-badge" && badgeSessionId && (
                   <CheckInBadge sessionId={badgeSessionId} onComplete={navigateHome} />
+                )}
+                {currentView === "checkout-badge" && badgeSessionId && (
+                  <CheckOutBadge sessionId={badgeSessionId} onComplete={navigateHome} />
                 )}
               </div>
             )}

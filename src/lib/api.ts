@@ -242,8 +242,8 @@ export async function checkinVisit(sessionId: string): Promise<any> {
   return apiFetch(`/visits/${sessionId}/checkin`, { method: 'POST' })
 }
 
-export async function checkoutVisit(id: string): Promise<void> {
-  await apiFetch(`/visits/${id}/checkout`, { method: 'POST' })
+export async function checkoutVisit(id: string): Promise<any> {
+  return apiFetch(`/visits/${id}/checkout`, { method: 'POST' })
 }
 
 export async function fetchDeliveries(status?: string): Promise<Delivery[]> {

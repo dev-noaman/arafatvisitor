@@ -397,12 +397,16 @@ export class VisitsService {
     return visits.map((v) => ({
       id: v.id,
       sessionId: v.sessionId,
-      visitorName: v.visitorName,
-      visitorCompany: v.visitorCompany,
-      visitorPhone: v.visitorPhone,
-      visitorEmail: v.visitorEmail,
+      visitor: {
+        name: v.visitorName,
+        company: v.visitorCompany,
+        phone: v.visitorPhone,
+        email: v.visitorEmail,
+      },
       host: v.host,
-      checkInAt: v.checkInAt,
+      purpose: v.purpose,
+      location: v.location,
+      checkInTimestamp: v.checkInAt,
     }));
   }
 

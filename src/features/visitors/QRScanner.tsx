@@ -10,7 +10,7 @@ type QRScannerMode = "checkin" | "checkout"
 // Zebra DS9300 scanner sends input as keyboard events
 // Characters arrive rapidly followed by Enter key
 
-export function QRScanner(props: { mode?: QRScannerMode; onBack?: () => void; onCheckedIn?: (sessionId: string) => void }) {
+export function QRScanner(props: { mode?: QRScannerMode; onBack?: () => void; onCheckedIn?: (sessionId: string) => void; onCheckedOut?: (sessionId: string) => void }) {
   const mode = props.mode ?? "checkout"
   const [scanning, setScanning] = useState(true)
   const [result, setResult] = useState<string | null>(null)
@@ -74,6 +74,19 @@ export function QRScanner(props: { mode?: QRScannerMode; onBack?: () => void; on
         } catch {
           // If check-in API fails, still show the badge with whatever data we have
           props.onCheckedIn(sessionId)
+        }
+        return
+      }
+
+      // Auto check-out flow for checkout mode
+      if (mode === "checkout" && props.onCheckedOut && getAuthToken()) {
+        setAutoProcessing(true)
+        try {
+          await checkoutVisit(sessionId)
+          props.onCheckedOut(sessionId)
+        } catch {
+          // If check-out API fails, still show the badge
+          props.onCheckedOut(sessionId)
         }
         return
       }

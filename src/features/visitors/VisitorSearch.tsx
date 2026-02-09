@@ -12,6 +12,7 @@ type VisitorSearchProps = {
   mode: "checkin" | "checkout"
   onBack?: () => void
   onCheckin?: (sessionId: string) => void
+  onCheckout?: (sessionId: string) => void
 }
 
 function normalizePhone(s: string): string {
@@ -30,7 +31,7 @@ function matchesQuery(visit: VisitSession, query: string): boolean {
   return false
 }
 
-export function VisitorSearch({ mode, onBack, onCheckin }: VisitorSearchProps) {
+export function VisitorSearch({ mode, onBack, onCheckin, onCheckout }: VisitorSearchProps) {
   const [query, setQuery] = useState("")
   const [searching, setSearching] = useState(false)
   const [searched, setSearched] = useState(false)
@@ -116,10 +117,14 @@ export function VisitorSearch({ mode, onBack, onCheckin }: VisitorSearchProps) {
     setCheckingOut(sessionId)
     try {
       await checkoutVisit(sessionId)
-      setActiveVisits((prev) => prev.filter((v) => v.sessionId !== sessionId))
-      setQuery("")
-      setSearched(false)
-      toast.success("Visitor checked out successfully")
+      if (onCheckout) {
+        onCheckout(sessionId)
+      } else {
+        setActiveVisits((prev) => prev.filter((v) => v.sessionId !== sessionId))
+        setQuery("")
+        setSearched(false)
+        toast.success("Visitor checked out successfully")
+      }
     } catch (e) {
       toast.error("Check-out failed", { description: (e as Error).message })
     } finally {
