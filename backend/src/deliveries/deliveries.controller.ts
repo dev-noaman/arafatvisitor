@@ -15,7 +15,9 @@ import { RolesGuard } from "../common/guards/roles.guard";
 import { Roles } from "../common/decorators/roles.decorator";
 import { CurrentUser } from "../common/decorators/current-user.decorator";
 import { Role } from "@prisma/client";
+import { SkipThrottle } from "@nestjs/throttler";
 
+@SkipThrottle()
 @Controller("deliveries")
 @UseGuards(JwtAuthGuard)
 export class DeliveriesController {

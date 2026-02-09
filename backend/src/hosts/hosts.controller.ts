@@ -24,12 +24,14 @@ import { RolesGuard } from "../common/guards/roles.guard";
 import { Roles } from "../common/decorators/roles.decorator";
 import { Public } from "../common/decorators/public.decorator";
 import { Role } from "@prisma/client";
+import { SkipThrottle } from "@nestjs/throttler";
 
 class ImportDto {
   csvContent?: string;
   xlsxContent?: string;
 }
 
+@SkipThrottle()
 @Controller("hosts")
 export class HostsController {
   constructor(

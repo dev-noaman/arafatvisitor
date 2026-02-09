@@ -1,8 +1,10 @@
 import { Controller, Get, UseInterceptors } from "@nestjs/common";
 import { CacheInterceptor, CacheKey, CacheTTL } from "@nestjs/cache-manager";
+import { SkipThrottle } from "@nestjs/throttler";
 import { Public } from "../common/decorators/public.decorator";
 import { PrismaService } from "../prisma/prisma.service";
 
+@SkipThrottle()
 @Controller("lookups")
 export class LookupsController {
   constructor(private readonly prisma: PrismaService) {}

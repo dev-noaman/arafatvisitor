@@ -7,6 +7,7 @@ import {
   Query,
   UseGuards,
 } from "@nestjs/common";
+import { SkipThrottle } from "@nestjs/throttler";
 import { VisitsService } from "./visits.service";
 import { CreateVisitDto } from "./dto/create-visit.dto";
 import { PreRegisterVisitDto } from "./dto/pre-register.dto";
@@ -18,6 +19,7 @@ import { Public } from "../common/decorators/public.decorator";
 import { CurrentUser } from "../common/decorators/current-user.decorator";
 import { Role } from "@prisma/client";
 
+@SkipThrottle()
 @Controller("visits")
 @UseGuards(JwtAuthGuard)
 export class VisitsController {

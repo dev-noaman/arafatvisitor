@@ -15,7 +15,9 @@ import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
 import { RolesGuard } from "../common/guards/roles.guard";
 import { Roles } from "../common/decorators/roles.decorator";
 import { Role } from "@prisma/client";
+import { SkipThrottle } from "@nestjs/throttler";
 
+@SkipThrottle()
 @Controller("users")
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Role.ADMIN)
