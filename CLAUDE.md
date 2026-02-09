@@ -1,6 +1,6 @@
 # Arafat Visitor Management System Development Guidelines
 
-Last updated: 2026-02-09 (Checkout badge, rate limit fix, CSP update, duplicate check-in/out prevention)
+Last updated: 2026-02-09 (QR button on Visitors + Pre-Register pages, icon-only action buttons)
 
 ## Active Technologies
 
@@ -301,6 +301,12 @@ RECEIVED → PICKED_UP
 - "Edit" button on Pre-Registrations hidden for HOST/STAFF (update is ADMIN/RECEPTION only)
 - Implemented via `useAuth()` hook checking `user.role === 'ADMIN'`
 
+### Action Button Style Convention
+- All action buttons in table rows use icon-only style: `p-1.5 rounded-md` with colored text + hover background
+- Pattern: `className="inline-flex items-center p-1.5 rounded-md text-{color}-600 hover:bg-{color}-50 transition"`
+- Colors: blue (Edit), red (Delete), orange (Checkout), indigo (QR Code)
+- Approve/Reject/Re-Approve are text buttons (no icon-only)
+
 ## Caching
 
 - Dashboard KPIs and chart data: 60-second TTL (`@UseInterceptors(CacheInterceptor)`)
@@ -392,13 +398,19 @@ All admin pages are lazy-loaded via `React.lazy()` with `<Suspense>` fallbacks:
 ## Send QR Feature
 
 ### Functionality
-Send QR codes to visitors via Email or WhatsApp from the Admin Panel Dashboard.
+Send QR codes to visitors via Email or WhatsApp from multiple admin pages.
 
 ### How to Use
-1. Go to **Dashboard** → **Current Visitors** section
-2. Click **QR** button on any visitor row
-3. Modal opens with QR code display
-4. Click **WhatsApp** or **Email** to send
+- **Dashboard** → Current Visitors → QR button (CHECKED_IN visitors)
+- **Visitors** page → QR button (CHECKED_IN visitors)
+- **Pre-Register** page → QR button (APPROVED pre-registrations)
+- Modal opens with QR code, visitor info, and WhatsApp/Email send buttons
+
+### QrModal Reuse Pattern
+- Component: `admin/src/components/dashboard/QrModal.tsx`
+- Accepts `CurrentVisitor` type from `@/services/dashboard`
+- Pages with different entity types (Visit, PreRegistration) map fields in a `handleQr` function
+- Key mapping: `id`, `visitorName`, `visitorPhone`, `visitorEmail`, `hostName` (from `entity.host?.name`), `hostCompany` (from `entity.host?.company`)
 
 ### WhatsApp QR Code
 WhatsApp sends a **QR code image** with caption containing:
