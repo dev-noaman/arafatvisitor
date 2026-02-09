@@ -70,110 +70,116 @@ const mockDeliveries = [
 
 // ============ SEED FUNCTION ============
 async function seed() {
-  console.log('Seeding mock data for demo...\n');
+  console.log('Upserting mock data (insert or reset to original state)...\n');
 
-  // 1. Create Hosts
-  console.log('Creating 10 mock hosts...');
+  // 1. Create/Reset Hosts
+  console.log('Upserting 10 mock hosts...');
   for (const h of mockHosts) {
+    const hostData = {
+      name: h.name,
+      company: h.company,
+      email: h.email,
+      phone: h.phone,
+      location: h.location,
+      type: 'EXTERNAL' as const,
+      status: 1,
+    };
     await prisma.host.upsert({
       where: { id: h.id },
-      update: {},
-      create: {
-        id: h.id,
-        name: h.name,
-        company: h.company,
-        email: h.email,
-        phone: h.phone,
-        location: h.location,
-        type: 'EXTERNAL',
-        status: 1,
-      },
+      update: hostData,
+      create: { id: h.id, ...hostData },
     });
   }
-  console.log('  -> 10 hosts created\n');
+  console.log('  -> 10 hosts upserted\n');
 
-  // 2. Create Visitors (APPROVED / CHECKED_IN / CHECKED_OUT)
-  console.log('Creating 10 mock visitors...');
+  // 2. Create/Reset Visitors (APPROVED / CHECKED_IN / CHECKED_OUT)
+  console.log('Upserting 10 mock visitors...');
   const now = new Date();
   for (const v of mockVisitors) {
     const id = `${MOCK_VISITOR_PREFIX}${v.suffix}`;
     const host = mockHosts[v.hostIdx];
+    const visitData = {
+      sessionId: `mock-session-${v.suffix}`,
+      visitorName: v.name,
+      visitorCompany: v.company,
+      visitorPhone: VISITOR_PHONE,
+      visitorEmail: VISITOR_EMAIL,
+      hostId: host.id,
+      purpose: v.purpose,
+      location: host.location,
+      status: v.status,
+      expectedDate: now,
+      approvedAt: now,
+      checkInAt: v.status === 'CHECKED_IN' || v.status === 'CHECKED_OUT' ? now : null,
+      checkOutAt: v.status === 'CHECKED_OUT' ? now : null,
+      rejectedAt: null,
+      rejectionReason: null,
+    };
     await prisma.visit.upsert({
       where: { id },
-      update: {},
-      create: {
-        id,
-        sessionId: `mock-session-${v.suffix}`,
-        visitorName: v.name,
-        visitorCompany: v.company,
-        visitorPhone: VISITOR_PHONE,
-        visitorEmail: VISITOR_EMAIL,
-        hostId: host.id,
-        purpose: v.purpose,
-        location: host.location,
-        status: v.status,
-        expectedDate: now,
-        approvedAt: now,
-        checkInAt: v.status === 'CHECKED_IN' || v.status === 'CHECKED_OUT' ? now : null,
-        checkOutAt: v.status === 'CHECKED_OUT' ? now : null,
-      },
+      update: visitData,
+      create: { id, ...visitData },
     });
   }
-  console.log('  -> 10 visitors created\n');
+  console.log('  -> 10 visitors upserted\n');
 
-  // 3. Create Pre-Registrations (PENDING_APPROVAL / REJECTED)
-  console.log('Creating 10 mock pre-registrations...');
+  // 3. Create/Reset Pre-Registrations (PENDING_APPROVAL / REJECTED)
+  console.log('Upserting 10 mock pre-registrations...');
   const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
   for (const pr of mockPreRegs) {
     const id = `${MOCK_PREREG_PREFIX}${pr.suffix}`;
     const host = mockHosts[pr.hostIdx];
+    const preRegData = {
+      sessionId: `mock-prereg-session-${pr.suffix}`,
+      visitorName: pr.name,
+      visitorCompany: pr.company,
+      visitorPhone: `9745050${pr.suffix}`,
+      visitorEmail: `${pr.name.split(' ')[0].toLowerCase()}@mock.qa`,
+      hostId: host.id,
+      purpose: pr.purpose,
+      location: host.location,
+      status: pr.status,
+      expectedDate: tomorrow,
+      approvedAt: null,
+      checkInAt: null,
+      checkOutAt: null,
+      rejectedAt: pr.status === 'REJECTED' ? now : null,
+      rejectionReason: pr.status === 'REJECTED' ? 'Schedule conflict' : null,
+    };
     await prisma.visit.upsert({
       where: { id },
-      update: {},
-      create: {
-        id,
-        sessionId: `mock-prereg-session-${pr.suffix}`,
-        visitorName: pr.name,
-        visitorCompany: pr.company,
-        visitorPhone: `9745050${pr.suffix}`,
-        visitorEmail: `${pr.name.split(' ')[0].toLowerCase()}@mock.qa`,
-        hostId: host.id,
-        purpose: pr.purpose,
-        location: host.location,
-        status: pr.status,
-        expectedDate: tomorrow,
-        rejectedAt: pr.status === 'REJECTED' ? now : null,
-        rejectionReason: pr.status === 'REJECTED' ? 'Schedule conflict' : null,
-      },
+      update: preRegData,
+      create: { id, ...preRegData },
     });
   }
-  console.log('  -> 10 pre-registrations created\n');
+  console.log('  -> 10 pre-registrations upserted\n');
 
-  // 4. Create Deliveries
-  console.log('Creating 10 mock deliveries...');
+  // 4. Create/Reset Deliveries
+  console.log('Upserting 10 mock deliveries...');
   for (const d of mockDeliveries) {
     const id = `${MOCK_DELIVERY_PREFIX}${d.suffix}`;
     const host = mockHosts[d.hostIdx];
+    const deliveryData = {
+      deliveryType: d.type,
+      recipient: d.recipient,
+      hostId: host.id,
+      courier: d.courier,
+      location: host.location,
+      status: d.status,
+      notes: `Mock delivery for demo - ${d.type}`,
+      receivedAt: now,
+      pickedUpAt: d.status === 'PICKED_UP' ? now : null,
+    };
     await prisma.delivery.upsert({
       where: { id },
-      update: {},
-      create: {
-        id,
-        deliveryType: d.type,
-        recipient: d.recipient,
-        hostId: host.id,
-        courier: d.courier,
-        location: host.location,
-        status: d.status,
-        notes: `Mock delivery for demo - ${d.type}`,
-        receivedAt: now,
-        pickedUpAt: d.status === 'PICKED_UP' ? now : null,
-      },
+      update: deliveryData,
+      create: { id, ...deliveryData },
     });
   }
-  console.log('  -> 10 deliveries created\n');
+  console.log('  -> 10 deliveries upserted\n');
 
-  console.log('Mock data seeded successfully!');
+  console.log('Mock data seeded (upserted) successfully!');
+  console.log('Re-run to reset all data back to original state.');
   console.log('To remove: npx ts-node prisma/mock-data.ts --remove');
 }
 
