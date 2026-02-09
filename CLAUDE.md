@@ -1,6 +1,6 @@
 # Arafat Visitor Management System Development Guidelines
 
-Last updated: 2026-02-09 (Staff auto-linking on user create, kiosk delivery staff dropdown)
+Last updated: 2026-02-09 (Checkout badge, rate limit fix, CSP update, duplicate check-in/out prevention)
 
 ## Active Technologies
 
@@ -122,6 +122,7 @@ No demo login buttons on the sign-in page — production login only.
 ### Admin Panel Sections
 - **Dashboard**: KPIs, charts, pending approvals, current visitors (real-time via WebSocket). Total Hosts KPI counts only `type=EXTERNAL` hosts (not STAFF host records).
 - **Visitors**: Manage visitors (APPROVED, CHECKED_IN, CHECKED_OUT)
+- **Visitors filters**: Only APPROVED, CHECKED_IN, CHECKED_OUT — no PENDING or REJECTED (those belong on Pre Register page)
 - **Pre Register**: Pre-registered visits (PENDING_APPROVAL, REJECTED)
 - **Deliveries**: Package tracking with timeline view
 - **Hosts**: Manage external companies and host contacts (with Bulk Import button)
@@ -173,14 +174,16 @@ RECEIVED → PICKED_UP
 - **Kiosk → Admin auto-login**: Kiosk login generates 15-min token stored in `sessionStorage`. Admin button opens `/admin/auto-login?token=JWT`. The auto-login page calls `POST /admin/api/token-login` to exchange it for a new 24h admin token with httpOnly cookie. Falls back to client-side JWT decode if endpoint unavailable.
 
 ### Rate Limiting
-- **Default**: 10 requests per 60 seconds (all endpoints)
+- All auth-protected controllers use `@SkipThrottle()` — only the auth controller is rate-limited
 - **Login-account**: 5 attempts per 15 minutes per account
 - **Login-IP**: 20 attempts per 15 minutes per IP address
+- **Default fallback**: 60 requests per 60 seconds (for any endpoint without `@SkipThrottle()`)
 - Configured via `@nestjs/throttler` v5 with named throttler groups in `app.module.ts`
 - `@Throttle()` decorator uses Record syntax: `@Throttle({ name: { limit, ttl } })`
+- **Gotcha**: Socket.io polling + dashboard parallel API calls easily exceed low rate limits behind nginx proxy
 
 ### Security Headers
-- Helmet with CSP: `defaultSrc: ['self']`, `styleSrc: ['self', 'unsafe-inline']`, `imgSrc: ['self', 'data:']`
+- Helmet with CSP: `defaultSrc: ['self']`, `scriptSrc: ['self', 'static.cloudflareinsights.com']`, `styleSrc: ['self', 'unsafe-inline', 'fonts.googleapis.com']`, `imgSrc: ['self', 'data:']`, `fontSrc: ['self', 'fonts.gstatic.com']`, `connectSrc: ['self', 'cloudflareinsights.com']`
 - Response compression via `compression` middleware
 - Input sanitization via `SanitizePipe` (strips HTML tags from all string inputs)
 - Request ID tracking via `RequestIdMiddleware` (X-Request-Id header)
@@ -368,8 +371,17 @@ Module: `backend/src/tasks/cleanup.service.ts`
 - On check-in, host is notified via WhatsApp and email with visitor arrival details
 - Component: `src/features/visitors/CheckInBadge.tsx`
 - Backend endpoint: `POST /visits/:sessionId/checkin` (ADMIN/RECEPTION roles)
-- The check-in endpoint accepts APPROVED or already-CHECKED_IN visits
-- Notifications only trigger on new check-ins (APPROVED → CHECKED_IN), not re-scans
+- The check-in endpoint rejects already-checked-in or checked-out visitors (400 error)
+- Notifications only trigger on new check-ins (APPROVED → CHECKED_IN)
+
+### QR Check-Out Goodbye Badge
+- When a visitor scans their QR code on the kiosk (Check Out > Scan QR), the system auto-checks them out
+- Flow: QR scan → auto-call `POST /visits/:sessionId/checkout` → display full-screen goodbye badge
+- Badge shows: "Thank You For Visiting Us", visitor name, company, host details, check-out time
+- 5-second countdown timer then auto-returns to home screen
+- Component: `src/features/visitors/CheckOutBadge.tsx`
+- Phone/email search checkout also shows the badge via `onCheckout` callback
+- Duplicate check-out attempts are rejected with 400 error and toast message
 
 ## Code Splitting (Admin)
 
@@ -485,6 +497,12 @@ All emails use the same branded layout matching the QR VISITOR PASS email:
 | QR code sent from admin | QR email template | QR image + caption | Visitor |
 | Host created (single or bulk import) | Welcome email with 72h reset link | — | Host |
 | Staff created (single or bulk import) | Welcome email with 72h reset link | — | Staff |
+
+## Backend API Response Format (Visits)
+
+- All visit endpoints must return nested `visitor: { name, company, phone, email }` object (not flat `visitorName`, `visitorPhone` fields)
+- `findBySessionId()`, `getActive()`, `checkout()`, `checkin()` all return this format
+- Frontend `VisitSession` type expects nested `visitor` object — flat fields will break client-side filtering (e.g., phone search)
 
 ## Admin API Field Aliasing
 

@@ -47,7 +47,7 @@ class EmailHealthIndicator extends HealthIndicator {
   }
 }
 
-@SkipThrottle()
+@SkipThrottle({ default: true, 'login-account': true, 'login-ip': true })
 @Controller('health')
 export class HealthController {
   private readonly logger = new Logger(HealthController.name);

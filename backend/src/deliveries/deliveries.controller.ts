@@ -17,7 +17,7 @@ import { CurrentUser } from "../common/decorators/current-user.decorator";
 import { Role } from "@prisma/client";
 import { SkipThrottle } from "@nestjs/throttler";
 
-@SkipThrottle()
+@SkipThrottle({ default: true, 'login-account': true, 'login-ip': true })
 @Controller("deliveries")
 @UseGuards(JwtAuthGuard)
 export class DeliveriesController {

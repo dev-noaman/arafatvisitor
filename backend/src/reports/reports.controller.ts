@@ -6,7 +6,7 @@ import { Roles } from "../common/decorators/roles.decorator";
 import { Role } from "@prisma/client";
 import { SkipThrottle } from "@nestjs/throttler";
 
-@SkipThrottle()
+@SkipThrottle({ default: true, 'login-account': true, 'login-ip': true })
 @Controller("reports")
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Role.ADMIN)

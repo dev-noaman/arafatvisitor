@@ -45,7 +45,7 @@ type DeliveryWithHost = Prisma.DeliveryGetPayload<{ include: { host: true } }>;
 // They use JWT auth with Bearer token or httpOnly cookie
 // Individual endpoints have specific rate limiting applied
 
-@SkipThrottle()
+@SkipThrottle({ default: true, 'login-account': true, 'login-ip': true })
 @Controller("admin/api")
 export class AdminApiController {
   private readonly logger = new Logger(AdminApiController.name);
