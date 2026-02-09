@@ -1,10 +1,12 @@
 import { useCallback, useState, useEffect } from 'react'
 import { VisitorsList, VisitModal, DeleteConfirmationDialog } from '@/components/visitors'
+import { QrModal } from '@/components/dashboard/QrModal'
 import ErrorState from '@/components/common/ErrorState'
 import { getVisitors, createVisit, updateVisit, deleteVisit, approveVisit, rejectVisit, checkoutVisit } from '@/services/visitors'
 import { getHosts } from '@/services/hosts'
 import { useToast } from '@/hooks'
 import type { Visit, VisitFormData, Host, VisitStatus } from '@/types'
+import type { CurrentVisitor } from '@/services/dashboard'
 
 export default function Visitors() {
   const { success, error } = useToast()
@@ -20,6 +22,8 @@ export default function Visitors() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [, setIsActioning] = useState(false)
+  const [qrVisitor, setQrVisitor] = useState<CurrentVisitor | null>(null)
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false)
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 10,
@@ -155,6 +159,23 @@ export default function Visitors() {
     }
   }
 
+  // Handle QR
+  const handleQr = (visitor: Visit) => {
+    setQrVisitor({
+      id: visitor.id,
+      sessionId: '',
+      visitorName: visitor.visitorName,
+      visitorCompany: visitor.host?.company,
+      visitorPhone: visitor.visitorPhone || '',
+      visitorEmail: visitor.visitorEmail,
+      hostName: visitor.host?.name || '',
+      hostCompany: visitor.host?.company || '',
+      purpose: visitor.purpose || '',
+      checkInAt: visitor.checkInTime || '',
+    })
+    setIsQrModalOpen(true)
+  }
+
   // Handle delete
   const handleDelete = async () => {
     if (!visitorToDelete) return
@@ -237,6 +258,7 @@ export default function Visitors() {
           onApprove={handleApprove}
           onReject={handleReject}
           onCheckout={handleCheckout}
+          onQr={handleQr}
         />
       )}
 
@@ -249,6 +271,16 @@ export default function Visitors() {
         hosts={hosts}
         isLoading={isSubmitting}
         isLoadingHosts={isLoadingHosts}
+      />
+
+      {/* QR Modal */}
+      <QrModal
+        visitor={qrVisitor}
+        isOpen={isQrModalOpen}
+        onClose={() => {
+          setIsQrModalOpen(false)
+          setQrVisitor(null)
+        }}
       />
 
       {/* Delete Confirmation */}
