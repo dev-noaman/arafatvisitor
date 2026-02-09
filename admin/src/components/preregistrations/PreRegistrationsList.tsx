@@ -191,7 +191,7 @@ export default function PreRegistrationsList({
                     {canApproveReject && canApprove(preReg) && onApprove && (
                       <button
                         onClick={() => onApprove(preReg)}
-                        className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium text-green-600 hover:bg-green-50 transition"
+                        className="inline-flex items-center px-2.5 py-1.5 rounded-md text-xs font-medium text-white bg-green-500 hover:bg-green-600 transition"
                       >
                         Approve
                       </button>
@@ -199,7 +199,7 @@ export default function PreRegistrationsList({
                     {canApproveReject && canReject(preReg) && onReject && (
                       <button
                         onClick={() => onReject(preReg)}
-                        className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium text-red-600 hover:bg-red-50 transition"
+                        className="inline-flex items-center px-2.5 py-1.5 rounded-md text-xs font-medium text-white bg-red-500 hover:bg-red-600 transition"
                       >
                         Reject
                       </button>
