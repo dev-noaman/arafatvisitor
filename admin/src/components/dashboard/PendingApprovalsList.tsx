@@ -106,20 +106,30 @@ export function PendingApprovalsList({
                   </p>
                 </div>
                 {canApproveReject && (
-                  <div className="flex gap-2 ml-4 flex-shrink-0">
+                  <div className="flex gap-1 ml-4 flex-shrink-0">
                     <button
                       onClick={() => handleApprove(approval.id)}
                       disabled={actioningId === approval.id}
-                      className="px-3 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700 disabled:bg-gray-400 transition"
+                      className="inline-flex items-center p-1.5 rounded-md text-green-600 hover:bg-green-50 disabled:text-gray-400 transition"
+                      title="Approve"
                     >
-                      {actioningId === approval.id ? 'Processing...' : 'Approve'}
+                      {actioningId === approval.id ? (
+                        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                      ) : (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                      )}
                     </button>
                     <button
                       onClick={() => handleReject(approval.id)}
                       disabled={actioningId === approval.id}
-                      className="px-3 py-2 bg-red-600 text-white text-sm rounded hover:bg-red-700 disabled:bg-gray-400 transition"
+                      className="inline-flex items-center p-1.5 rounded-md text-red-600 hover:bg-red-50 disabled:text-gray-400 transition"
+                      title="Reject"
                     >
-                      {actioningId === approval.id ? 'Processing...' : 'Reject'}
+                      {actioningId === approval.id ? (
+                        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                      ) : (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                      )}
                     </button>
                   </div>
                 )}
