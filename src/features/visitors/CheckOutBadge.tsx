@@ -28,6 +28,8 @@ export function CheckOutBadge({ sessionId, onComplete }: { sessionId: string; on
   const [, setError] = useState(false)
   const [countdown, setCountdown] = useState(5)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const onCompleteRef = useRef(onComplete)
+  onCompleteRef.current = onComplete
 
   useEffect(() => {
     getVisitPass(sessionId)
@@ -49,7 +51,7 @@ export function CheckOutBadge({ sessionId, onComplete }: { sessionId: string; on
       setCountdown((prev) => {
         if (prev <= 1) {
           if (timerRef.current) clearInterval(timerRef.current)
-          onComplete()
+          onCompleteRef.current()
           return 0
         }
         return prev - 1
@@ -59,7 +61,7 @@ export function CheckOutBadge({ sessionId, onComplete }: { sessionId: string; on
     return () => {
       if (timerRef.current) clearInterval(timerRef.current)
     }
-  }, [loading, onComplete])
+  }, [loading])
 
   if (loading) {
     return (

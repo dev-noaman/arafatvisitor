@@ -179,7 +179,7 @@ export default function VisitorsList({
                         Reject
                       </button>
                     )}
-                    {canCheckout(visitor) && onQr && (
+                    {(visitor.status === 'APPROVED' || visitor.status === 'CHECKED_IN') && onQr && (
                       <button
                         onClick={() => onQr(visitor)}
                         className="inline-flex items-center p-1.5 rounded-md text-indigo-600 hover:bg-indigo-50 transition"
