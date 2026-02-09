@@ -588,6 +588,14 @@ The seed script only creates one admin user (`admin@arafatvisitor.cloud` / `admi
 
 No test data is seeded. The deploy workflow does not run seeds — it's a simple build-and-deploy flow. Seeds are only used for local development or manual one-time bootstrap.
 
+### Mock Data (GitHub Actions Manual Workflow)
+- **Workflow**: `.github/workflows/mock-data.yml` — triggered manually via `workflow_dispatch`
+- **Actions**: "Insert Mock Data" or "Delete Mock Data"
+- **Script**: `backend/prisma/mock-data.ts`
+- **Insert** uses full `upsert` — re-running resets all mock records back to original state (reverts status changes, approvals, etc.)
+- **Delete** removes all mock records by known ID prefixes (`mock-visit-*`, `mock-prereg-*`, `mock-delivery-*`, host IDs 900001–900010)
+- Creates: 10 hosts, 10 visitors (mixed APPROVED/CHECKED_IN/CHECKED_OUT), 10 pre-registrations (mixed PENDING_APPROVAL/REJECTED), 10 deliveries (mixed RECEIVED/PICKED_UP)
+
 ## Production Deployment
 
 ### GitHub Secrets Required
