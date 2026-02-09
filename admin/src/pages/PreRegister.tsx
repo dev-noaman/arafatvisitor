@@ -4,6 +4,7 @@ import {
   PreRegistrationModal,
   DeleteConfirmationDialog,
 } from '@/components/preregistrations'
+import { QrModal } from '@/components/dashboard/QrModal'
 import ErrorState from '@/components/common/ErrorState'
 import { getPreRegistrations, createPreRegistration, updatePreRegistration, deletePreRegistration, approvePreRegistration, rejectPreRegistration, reApproveRejected } from '@/services/preregistrations'
 import { getHosts } from '@/services/hosts'
@@ -13,6 +14,7 @@ import type {
   PreRegistrationFormData,
   Host,
 } from '@/types'
+import type { CurrentVisitor } from '@/services/dashboard'
 
 export default function PreRegister() {
   const { success, error } = useToast()
@@ -30,6 +32,8 @@ export default function PreRegister() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [, setIsActioning] = useState(false)
+  const [qrVisitor, setQrVisitor] = useState<CurrentVisitor | null>(null)
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false)
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 10,
@@ -171,6 +175,23 @@ export default function PreRegister() {
     }
   }
 
+  // Handle QR
+  const handleQr = (preReg: PreRegistration) => {
+    setQrVisitor({
+      id: preReg.id,
+      sessionId: '',
+      visitorName: preReg.visitorName,
+      visitorCompany: preReg.visitorCompany,
+      visitorPhone: preReg.visitorPhone || '',
+      visitorEmail: preReg.visitorEmail,
+      hostName: preReg.host?.name || '',
+      hostCompany: preReg.host?.company || '',
+      purpose: preReg.purpose || '',
+      checkInAt: '',
+    })
+    setIsQrModalOpen(true)
+  }
+
   // Handle delete
   const handleDelete = async () => {
     if (!preRegToDelete) return
@@ -255,6 +276,7 @@ export default function PreRegister() {
           onApprove={handleApprove}
           onReject={handleReject}
           onReApprove={handleReApprove}
+          onQr={handleQr}
         />
       )}
 
@@ -267,6 +289,16 @@ export default function PreRegister() {
         hosts={hosts}
         isLoading={isSubmitting}
         isLoadingHosts={isLoadingHosts}
+      />
+
+      {/* QR Modal */}
+      <QrModal
+        visitor={qrVisitor}
+        isOpen={isQrModalOpen}
+        onClose={() => {
+          setIsQrModalOpen(false)
+          setQrVisitor(null)
+        }}
       />
 
       {/* Delete Confirmation */}
