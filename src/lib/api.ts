@@ -275,6 +275,7 @@ export type LookupItem = {
   id: number
   code: string
   label: string
+  category?: string
   active: boolean
   sortOrder: number
 }
@@ -285,4 +286,8 @@ export async function fetchPurposeLookups(): Promise<LookupItem[]> {
 
 export async function fetchDeliveryTypeLookups(): Promise<LookupItem[]> {
   return apiFetch('/lookups/delivery-types')
+}
+
+export async function fetchCourierLookups(): Promise<LookupItem[]> {
+  return apiFetch('/lookups/couriers')
 }
