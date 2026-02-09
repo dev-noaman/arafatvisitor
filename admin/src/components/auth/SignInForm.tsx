@@ -88,7 +88,7 @@ export function SignInForm() {
                   {...register('email')}
                   id="email"
                   type="email"
-                  placeholder="info@example.com"
+                  placeholder="Enter your Email"
                   className={`w-full pl-10 pr-4 py-3 border rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition ${
                     errors.email ? 'border-red-500 bg-red-50' : 'border-gray-300 bg-gray-50 hover:bg-white'
                   }`}
@@ -119,7 +119,7 @@ export function SignInForm() {
                   {...register('password')}
                   id="password"
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="Enter your password"
+                  placeholder="Enter your Password"
                   className={`w-full pl-10 pr-12 py-3 border rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition ${
                     errors.password ? 'border-red-500 bg-red-50' : 'border-gray-300 bg-gray-50 hover:bg-white'
                   }`}
