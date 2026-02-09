@@ -3972,14 +3972,39 @@ export class AdminApiController {
 
     const hashedPassword = await bcrypt.hash(body.password, 12);
 
+    let hostId: bigint | null = body.hostId ? BigInt(body.hostId) : null;
+
+    // For STAFF role, auto-create a Host record (type=STAFF, company="Arafat Group")
+    if (body.role === "STAFF" && !hostId) {
+      const existingHost = await this.prisma.host.findFirst({
+        where: { email: body.email, type: "STAFF" },
+      });
+      if (existingHost) {
+        hostId = existingHost.id;
+      } else {
+        const createdHost = await this.prisma.host.create({
+          data: {
+            name: body.name || body.email,
+            company: "Arafat Group",
+            email: body.email,
+            phone: "",
+            location: "BARWA_TOWERS",
+            status: 1,
+            type: "STAFF",
+          },
+        });
+        hostId = createdHost.id;
+      }
+    }
+
     const user = await this.prisma.user.create({
       data: {
         email: body.email,
         name: body.name,
         password: hashedPassword,
-        role: body.role as "ADMIN" | "RECEPTION" | "HOST",
+        role: body.role as "ADMIN" | "RECEPTION" | "HOST" | "STAFF",
         status: "ACTIVE",
-        hostId: body.hostId ? BigInt(body.hostId) : null,
+        hostId,
       },
       select: {
         id: true,

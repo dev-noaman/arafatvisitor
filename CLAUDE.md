@@ -1,6 +1,6 @@
 # Arafat Visitor Management System Development Guidelines
 
-Last updated: 2026-02-08 (Reset password page redesigned to match login split layout)
+Last updated: 2026-02-09 (Staff auto-linking on user create, kiosk delivery staff dropdown)
 
 ## Active Technologies
 
@@ -241,11 +241,10 @@ RECEIVED → PICKED_UP
 ### User Creation with Staff Linking
 - Users form role options: **Staff (Internal)**, **Reception**, **Administrator** — no HOST option (HOST users are auto-created from Hosts page)
 - Default role: STAFF
-- When role=STAFF, a **Linked Host/Company** dropdown appears to link the user to a company
-- The dropdown lists all hosts; the selected host's `id` is saved as `hostId` on the User record
-- This links the STAFF user to a company, enabling company-scoped data access
+- **No Linked Host/Company dropdown** — STAFF users are automatically linked to "Arafat Group"
+- Backend auto-creates a Host record (type=STAFF, company="Arafat Group") when creating a STAFF user (same logic as bulk import)
 - Components: `admin/src/components/users/UserForm.tsx`, `UserModal.tsx`, `admin/src/pages/Users.tsx`
-- Backend: `POST /admin/api/users` accepts optional `hostId` field (string, converted to BigInt)
+- Backend: `POST /admin/api/users` auto-creates Host record for STAFF role if no `hostId` provided
 
 ### User Password Edit (Admin)
 - When editing a user, the password field is visible with label **"New Password"**
@@ -270,6 +269,13 @@ RECEIVED → PICKED_UP
 - Hosts page filters by `type=EXTERNAL`; Staff page filters by `type=STAFF`
 - Host dropdowns in visitor/pre-registration forms show both types; staff prefixed with `[Staff]`
 - Staff CRUD endpoints mirror hosts but with `type: 'STAFF'`
+
+### Kiosk Delivery Staff Sub-Dropdown
+- When "Arafat Group" is selected as host company in the kiosk delivery form, a **Staff Member** dropdown appears
+- Lists all hosts with `type=STAFF` and `company="Arafat Group"`
+- The selected staff member's `hostId` is used when creating the delivery
+- For other companies, behavior is unchanged (first matching host is used)
+- Backend hosts API (`GET /hosts`) includes `type` field in response for EXTERNAL/STAFF distinction
 
 ### User Status (ACTIVE/INACTIVE)
 - User model has `status` field (default: `ACTIVE`)

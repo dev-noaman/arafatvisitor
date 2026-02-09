@@ -8,13 +8,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "sonner"
-import { Truck, Package } from "lucide-react"
+import { Truck, Package, User } from "lucide-react"
 import { fetchHosts, createDelivery, getAuthToken, fetchDeliveryTypeLookups } from "@/lib/api"
 import type { Host, LookupItem } from "@/lib/api"
 
 const schema = z.object({
   typeOfDelivery: z.string().min(1, "Type of delivery is required"),
   hostCompany: z.string().min(1, "Host company is required"),
+  staffId: z.string().optional(),
 })
 
 type FormValues = z.infer<typeof schema>
@@ -48,13 +49,25 @@ export function DeliveryForm() {
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { typeOfDelivery: "", hostCompany: "" },
+    defaultValues: { typeOfDelivery: "", hostCompany: "", staffId: "" },
   })
 
   const hostCompany = watch("hostCompany")
+  const staffId = watch("staffId")
+
+  const isArafatGroup = hostCompany === "Arafat Group"
+  const staffMembers = isArafatGroup
+    ? hosts.filter((h) => h.company === "Arafat Group" && h.type === "STAFF")
+    : []
 
   const onSubmit = async (data: FormValues) => {
-    const host = hosts.find((h) => h.company === data.hostCompany)
+    let host: Host | undefined
+    if (data.hostCompany === "Arafat Group" && data.staffId) {
+      host = hosts.find((h) => h.id === data.staffId)
+    }
+    if (!host) {
+      host = hosts.find((h) => h.company === data.hostCompany)
+    }
     if (useApi && host?.id) {
       try {
         await createDelivery({
@@ -66,6 +79,7 @@ export function DeliveryForm() {
         toast.success("Host notified", { description: "Delivery logged and host will be notified." })
         setValue("typeOfDelivery", "")
         setValue("hostCompany", "")
+        setValue("staffId", "")
       } catch (e) {
         toast.error("Failed", { description: (e as Error).message })
       }
@@ -74,6 +88,7 @@ export function DeliveryForm() {
     toast.success("Delivery logged", { description: "Host will be notified." })
     setValue("typeOfDelivery", "")
     setValue("hostCompany", "")
+    setValue("staffId", "")
   }
 
   return (
@@ -118,7 +133,10 @@ export function DeliveryForm() {
             <SearchableSelect
               options={companyOptions}
               value={hostCompany}
-              onChange={(v) => setValue("hostCompany", v)}
+              onChange={(v) => {
+                setValue("hostCompany", v)
+                setValue("staffId", "")
+              }}
               placeholder="Select host company..."
               triggerClassName="h-12"
             />
@@ -126,6 +144,28 @@ export function DeliveryForm() {
               <p className="text-sm text-destructive">{errors.hostCompany.message}</p>
             )}
           </div>
+
+          {isArafatGroup && staffMembers.length > 0 && (
+            <div className="space-y-2">
+              <Label>Staff Member</Label>
+              <Select
+                value={staffId}
+                onValueChange={(value) => setValue("staffId", value)}
+              >
+                <SelectTrigger className="h-12 touch-manipulation">
+                  <User className="mr-2 h-5 w-5 text-muted-foreground" />
+                  <SelectValue placeholder="Select staff member" />
+                </SelectTrigger>
+                <SelectContent>
+                  {staffMembers.map((staff) => (
+                    <SelectItem key={staff.id} value={staff.id}>
+                      {staff.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <Button
             type="submit"

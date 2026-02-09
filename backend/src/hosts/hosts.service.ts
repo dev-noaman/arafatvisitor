@@ -28,6 +28,7 @@ export class HostsService {
         phone: true,
         location: true,
         status: true,
+        type: true,
       },
     });
   }

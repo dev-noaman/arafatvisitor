@@ -9,6 +9,7 @@ export type Host = {
   company: string
   email?: string
   phone: string
+  type?: 'EXTERNAL' | 'STAFF'
 }
 
 export type Visitor = {
