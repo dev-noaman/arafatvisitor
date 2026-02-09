@@ -22,7 +22,7 @@ interface VisitorsListProps {
   onCheckout?: (visitor: Visit) => void
 }
 
-const VISIT_STATUSES: VisitStatus[] = ['PENDING', 'APPROVED', 'CHECKED_IN', 'CHECKED_OUT', 'REJECTED']
+const VISIT_STATUSES: VisitStatus[] = ['APPROVED', 'CHECKED_IN', 'CHECKED_OUT']
 
 export default function VisitorsList({
   visitors,
