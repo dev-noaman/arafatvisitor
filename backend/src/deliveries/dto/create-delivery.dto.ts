@@ -9,8 +9,9 @@ export class CreateDeliveryDto {
   @MinLength(1)
   courier: string;
 
+  @IsOptional()
   @IsString()
-  location: string;
+  location?: string;
 
   @IsOptional()
   @IsString()

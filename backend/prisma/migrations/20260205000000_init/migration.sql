@@ -164,6 +164,7 @@ CREATE TABLE "LookupCourier" (
     "id" SERIAL NOT NULL,
     "code" TEXT NOT NULL,
     "label" TEXT NOT NULL,
+    "category" TEXT NOT NULL DEFAULT 'PARCEL',
     "active" BOOLEAN NOT NULL DEFAULT true,
     "sortOrder" INTEGER NOT NULL DEFAULT 0,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -240,14 +241,20 @@ INSERT INTO "LookupDeliveryType" (code, label, active, "sortOrder", "updatedAt")
 ('GIFT', 'Gift', true, 3, NOW())
 ON CONFLICT (code) DO NOTHING;
 
--- Couriers
-INSERT INTO "LookupCourier" (code, label, active, "sortOrder", "updatedAt") VALUES
-('DHL', 'DHL', true, 1, NOW()),
-('FEDEX', 'FedEx', true, 2, NOW()),
-('ARAMEX', 'Aramex', true, 3, NOW()),
-('QATAR_POST', 'Qatar Post', true, 4, NOW()),
-('UPS', 'UPS', true, 5, NOW()),
-('TNT', 'TNT Express', true, 6, NOW())
+-- Couriers (PARCEL = Document deliveries, FOOD = Food/Gift deliveries)
+INSERT INTO "LookupCourier" (code, label, category, active, "sortOrder", "updatedAt") VALUES
+('DHL', 'DHL', 'PARCEL', true, 1, NOW()),
+('FEDEX', 'FedEx', 'PARCEL', true, 2, NOW()),
+('ARAMEX', 'Aramex', 'PARCEL', true, 3, NOW()),
+('QATAR_POST', 'Qatar Post', 'PARCEL', true, 4, NOW()),
+('UPS', 'UPS', 'PARCEL', true, 5, NOW()),
+('TNT', 'TNT Express', 'PARCEL', true, 6, NOW()),
+('SNOONU', 'Snoonu', 'FOOD', true, 7, NOW()),
+('KEETA', 'Keeta', 'FOOD', true, 8, NOW()),
+('TALABAT', 'Talabat', 'FOOD', true, 9, NOW()),
+('RAFEEQ', 'Rafeeq', 'FOOD', true, 10, NOW()),
+('DELIVEROO', 'Deliveroo', 'FOOD', true, 11, NOW()),
+('NINJA', 'Ninja', 'FOOD', true, 12, NOW())
 ON CONFLICT (code) DO NOTHING;
 
 -- Locations

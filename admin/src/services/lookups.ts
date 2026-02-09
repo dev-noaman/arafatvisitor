@@ -4,6 +4,7 @@ export interface LookupItem {
   id: number
   code: string
   label: string
+  category?: string
   active: boolean
   sortOrder: number
 }

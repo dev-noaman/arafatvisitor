@@ -49,6 +49,8 @@ export default function DeliveryForm({ onSubmit, isLoading }: DeliveryFormProps)
     handleSubmit,
     formState: { errors },
     reset,
+    watch,
+    setValue,
   } = useForm<DeliveryFormData>({
     resolver: zodResolver(deliverySchema),
     defaultValues: {
@@ -57,6 +59,24 @@ export default function DeliveryForm({ onSubmit, isLoading }: DeliveryFormProps)
       courier: '',
     },
   })
+
+  const selectedDeliveryType = watch('deliveryType')
+
+  const filteredCouriers = couriers.filter((c) => {
+    if (selectedDeliveryType === 'Food' || selectedDeliveryType === 'Gift') {
+      return c.category === 'FOOD'
+    }
+    return c.category === 'PARCEL' || !c.category
+  })
+
+  // Reset courier when delivery type changes and current selection is invalid
+  useEffect(() => {
+    const currentCourier = watch('courier')
+    const valid = filteredCouriers.some((c) => c.label === currentCourier)
+    if (currentCourier && !valid) {
+      setValue('courier', '')
+    }
+  }, [selectedDeliveryType])
 
   const handleFormSubmit = async (data: DeliveryFormData) => {
     await onSubmit(data)
@@ -129,7 +149,7 @@ export default function DeliveryForm({ onSubmit, isLoading }: DeliveryFormProps)
           <option value="">
             {isLoadingLookups ? 'Loading...' : 'Select a courier'}
           </option>
-          {couriers.map((courier) => (
+          {filteredCouriers.map((courier) => (
             <option key={courier.id} value={courier.label}>
               {courier.label}
             </option>
