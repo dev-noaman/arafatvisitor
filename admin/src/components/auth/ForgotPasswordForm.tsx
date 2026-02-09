@@ -84,7 +84,7 @@ export function ForgotPasswordForm() {
               {...register('email')}
               id="email"
               type="email"
-              placeholder="Enter your email"
+              placeholder="Enter your Email"
               className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                 errors.email ? 'border-red-500' : 'border-gray-300'
               }`}

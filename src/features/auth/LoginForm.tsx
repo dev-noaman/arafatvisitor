@@ -119,7 +119,7 @@ export function LoginForm(props: { onLoginSuccess?: (role: "admin" | "reception"
                 <Mail className="absolute left-3 top-3.5 h-5 w-5 text-muted-foreground" />
                 <Input
                   id="forgot-email"
-                  placeholder="name@company.com"
+                  placeholder="Enter your Email"
                   type="email"
                   className="pl-10 h-12"
                   {...registerForgot("email")}
@@ -164,7 +164,7 @@ export function LoginForm(props: { onLoginSuccess?: (role: "admin" | "reception"
               <User className="absolute left-3 top-3.5 h-5 w-5 text-muted-foreground" />
               <Input
                 id="email"
-                placeholder="name@company.com"
+                placeholder="Enter your Email"
                 type="email"
                 className="pl-10 h-12"
                 {...register("email")}
@@ -181,6 +181,7 @@ export function LoginForm(props: { onLoginSuccess?: (role: "admin" | "reception"
               <Input
                 id="password"
                 type="password"
+                placeholder="Enter your Password"
                 className="pl-10 h-12"
                 {...register("password")}
               />

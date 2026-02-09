@@ -1,6 +1,6 @@
 # Arafat Visitor Management System Development Guidelines
 
-Last updated: 2026-02-09 (QR button on Visitors + Pre-Register pages, icon-only action buttons)
+Last updated: 2026-02-09 (Kiosk navbar button, medium action icons, date defaults + min validation)
 
 ## Active Technologies
 
@@ -118,6 +118,12 @@ npm test          # Run all unit tests once (Vitest)
 
 This is the only seed user. All other users are created via the admin panel or bulk import.
 No demo login buttons on the sign-in page — production login only.
+
+### Admin Navbar
+- Left: hamburger (mobile) + "Welcome, {name}"
+- Right: **Kiosk** button (monitor icon, opens `/` in new tab) + user avatar/email dropdown
+- Kiosk button: `<a href="/" target="_blank">` with monitor SVG icon, "Kiosk" text hidden on mobile
+- Component: `admin/src/layout/AppHeader.tsx`
 
 ### Admin Panel Sections
 - **Dashboard**: KPIs, charts, pending approvals, current visitors (real-time via WebSocket). Total Hosts KPI counts only `type=EXTERNAL` hosts (not STAFF host records).
@@ -302,10 +308,11 @@ RECEIVED → PICKED_UP
 - Implemented via `useAuth()` hook checking `user.role === 'ADMIN'`
 
 ### Action Button Style Convention
-- All action buttons in table rows use icon-only style: `p-1.5 rounded-md` with colored text + hover background
-- Pattern: `className="inline-flex items-center p-1.5 rounded-md text-{color}-600 hover:bg-{color}-50 transition"`
-- Colors: blue (Edit), red (Delete), orange (Checkout), indigo (QR Code)
-- Approve/Reject/Re-Approve are text buttons (no icon-only)
+- All action buttons use icon-only style with medium size: `p-2 rounded-lg` and `w-5 h-5` SVGs with `strokeWidth={2.5}`
+- Pattern: `className="inline-flex items-center p-2 rounded-lg text-{color}-600 hover:bg-{color}-50 transition"`
+- Colors: green (Approve/checkmark), red (Reject/X, Delete/trash), blue (Edit/pencil, Re-Approve/refresh), indigo (QR Code), orange (Checkout/logout)
+- Dashboard (Pending Approvals + Current Visitors) and Pre-Register table all use the same sizing
+- Spinner state: when `actioningId` matches, show `w-5 h-5 animate-spin` SVG instead of action icon
 
 ## Caching
 
@@ -470,6 +477,7 @@ All auth pages (SignIn, ForgotPassword, ResetPassword) use the same split layout
 - **Left side**: Form with "Back to sign in" link, `max-w-md` centered, inputs with left icons (`pl-10`), `bg-gray-50 hover:bg-white`, blue shadow submit button with spinner
 - **Right side** (desktop only): Dark blue branding panel (`from-blue-900 via-blue-800 to-indigo-900`) with grid pattern, decorative blur circles, logo, and contextual tagline
 - Form components: `admin/src/components/auth/` — page wrappers: `admin/src/pages/auth/`
+- **Placeholders**: Email → `"Enter your Email"`, Password → `"Enter your Password"` (both admin and kiosk)
 
 ## Notification Services
 
@@ -538,6 +546,14 @@ The admin create endpoints accept frontend field names and map them to database 
 ```typescript
 const expectedDate = body.expectedDate || body.visitDate;
 ```
+
+## Date Field Defaults & Validation
+
+Both the Visitor form (`VisitForm.tsx`) and Pre-Registration form (`PreRegistrationForm.tsx`) use:
+- **Default value**: Current date/time via `getCurrentDateTimeLocal()` helper
+- **Min attribute**: `min={getCurrentDateTimeLocal()}` prevents selecting past dates
+- Helper function converts local time to `datetime-local` format: `YYYY-MM-DDTHH:MM`
+- When editing an existing record, `initialData` overrides the default (pre-fills the saved date)
 
 ## Shared Host/Staff Components (entityLabel Pattern)
 
