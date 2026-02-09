@@ -1,0 +1,42 @@
+name: Mock Data (Insert / Delete)
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'What to do with mock data?'
+        required: true
+        type: choice
+        options:
+          - Insert Mock Data
+          - Delete Mock Data
+
+env:
+  VPS_PATH: /var/www/arafatvisitor
+  SSH_OPTS: '-o StrictHostKeyChecking=no'
+
+jobs:
+  mock-data:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install sshpass
+        run: sudo apt-get install -y sshpass
+
+      - name: Upload mock-data script
+        run: |
+          sshpass -p '${{ secrets.VPS_PASSWORD }}' scp ${{ env.SSH_OPTS }} backend/prisma/mock-data.ts ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }}:${{ env.VPS_PATH }}/backend/prisma/mock-data.ts
+
+      - name: Run mock-data script
+        run: |
+          FLAG=""
+          if [ "${{ inputs.action }}" = "Delete Mock Data" ]; then
+            FLAG="--remove"
+          fi
+          sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh ${{ env.SSH_OPTS }} ${{ secrets.VPS_USER }}@${{ secrets.VPS_IP }} << ENDSSH
+          set -e
+          cd ${{ env.VPS_PATH }}/backend
+          npx ts-node prisma/mock-data.ts $FLAG
+          ENDSSH
