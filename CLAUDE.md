@@ -1,6 +1,6 @@
 # Arafat Visitor Management System Development Guidelines
 
-Last updated: 2026-02-09 (Kiosk navbar button, medium action icons, date defaults + min validation)
+Last updated: 2026-02-09 (Courier categories FOOD/PARCEL, kiosk courier dropdown, delivery icon actions)
 
 ## Active Technologies
 
@@ -285,6 +285,13 @@ RECEIVED → PICKED_UP
 - The selected staff member's `hostId` is used when creating the delivery
 - For other companies, behavior is unchanged (first matching host is used)
 - Backend hosts API (`GET /hosts`) includes `type` field in response for EXTERNAL/STAFF distinction
+
+### Kiosk Delivery Courier Dropdown
+- When a delivery type is selected, a Courier dropdown appears (filtered by `category`)
+- Food/Gift → FOOD couriers (Snoonu, Keeta, Talabat, etc.)
+- Document → PARCEL couriers (DHL, FedEx, Aramex, etc.)
+- Courier selection resets when switching delivery types if current selection is invalid
+- Submit uses `data.courier || "Kiosk"` as fallback
 
 ### User Status (ACTIVE/INACTIVE)
 - User model has `status` field (default: `ACTIVE`)
@@ -815,7 +822,9 @@ Lookup tables store values for dropdown menus, fetched from the database.
 
 **LookupDeliveryType** - Type of Delivery options: Document, Food, Gift
 
-**LookupCourier** - Courier options: DHL, FedEx, Aramex, Qatar Post, UPS, TNT Express
+**LookupCourier** - Courier options with `category` field:
+  - PARCEL: DHL, FedEx, Aramex, Qatar Post, UPS, TNT Express
+  - FOOD: Snoonu, Keeta, Talabat, Rafeeq, Deliveroo, Ninja
 
 **LookupLocation** - Location options: Barwa Towers, Marina 50, Element Mariott
 
@@ -846,11 +855,15 @@ This includes all enums, tables, indexes, foreign keys, and lookup data INSERT s
 - Three dropdowns: Type of Delivery, Host, Courier
 - Fetches from: `/admin/api/lookups/delivery-types`, `/admin/api/hosts`, `/admin/api/lookups/couriers`
 - Backend derives recipient name and location from selected host
+- Courier dropdown filters by delivery type: Food/Gift → FOOD couriers, Document → PARCEL couriers
+- Courier auto-resets when delivery type changes and current selection is invalid
 
 ### Type of Delivery (Reception Kiosk)
 - Location: `src/features/deliveries/DeliveryForm.tsx`
-- Fetches from: `/lookups/delivery-types`
+- Fetches from: `/lookups/delivery-types`, `/lookups/couriers`
 - Uses Radix UI Select component
+- Courier dropdown appears after selecting delivery type, filtered by category (same logic as admin)
+- Falls back to `courier: "Kiosk"` if no courier selected
 
 ### Backend Lookups Module
 - Controller: `backend/src/lookups/lookups.controller.ts`
