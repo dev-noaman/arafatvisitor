@@ -29,7 +29,7 @@ import { RolesGuard } from "./common/guards/roles.guard";
       {
         name: 'default',
         ttl: 60000,
-        limit: 10,
+        limit: 60,
       },
       {
         name: 'login-account',
