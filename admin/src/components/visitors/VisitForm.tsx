@@ -5,6 +5,12 @@ import { z } from 'zod'
 import type { Visit, VisitFormData, Host } from '@/types'
 import { getPurposeLookups, type LookupItem } from '@/services/lookups'
 
+function getCurrentDateTimeLocal() {
+  const now = new Date()
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset())
+  return now.toISOString().slice(0, 16)
+}
+
 const visitSchema = z.object({
   visitorName: z.string().min(2, 'Visitor name must be at least 2 characters'),
   visitorEmail: z.string().email('Invalid email address').optional().or(z.literal('')),
@@ -53,7 +59,7 @@ export default function VisitForm({
       visitorEmail: '',
       visitorPhone: '',
       hostId: '',
-      visitDate: '',
+      visitDate: getCurrentDateTimeLocal(),
       purpose: '',
       notes: '',
     },
@@ -152,6 +158,7 @@ export default function VisitForm({
           {...register('visitDate')}
           type="datetime-local"
           id="visitDate"
+          min={getCurrentDateTimeLocal()}
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           disabled={isLoading}
         />
