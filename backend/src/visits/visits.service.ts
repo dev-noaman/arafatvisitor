@@ -264,8 +264,10 @@ export class VisitsService {
     });
     if (!visit) throw new NotFoundException("Visit not found");
     if (visit.status === "CHECKED_IN") {
-      // Already checked in — return current data
-      return this.findBySessionId(sessionId);
+      throw new BadRequestException("Visitor is already checked in");
+    }
+    if (visit.status === "CHECKED_OUT") {
+      throw new BadRequestException("Visitor has already checked out");
     }
     if (visit.status !== "APPROVED") {
       throw new BadRequestException(

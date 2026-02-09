@@ -71,9 +71,10 @@ export function QRScanner(props: { mode?: QRScannerMode; onBack?: () => void; on
         try {
           await checkinVisit(sessionId)
           props.onCheckedIn(sessionId)
-        } catch {
-          // If check-in API fails, still show the badge with whatever data we have
-          props.onCheckedIn(sessionId)
+        } catch (e) {
+          setAutoProcessing(false)
+          toast.error("Check-in failed", { description: (e as Error).message })
+          startScan()
         }
         return
       }
@@ -84,9 +85,10 @@ export function QRScanner(props: { mode?: QRScannerMode; onBack?: () => void; on
         try {
           await checkoutVisit(sessionId)
           props.onCheckedOut(sessionId)
-        } catch {
-          // If check-out API fails, still show the badge
-          props.onCheckedOut(sessionId)
+        } catch (e) {
+          setAutoProcessing(false)
+          toast.error("Check-out failed", { description: (e as Error).message })
+          startScan()
         }
         return
       }
