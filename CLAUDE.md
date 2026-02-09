@@ -174,13 +174,13 @@ RECEIVED → PICKED_UP
 - **Kiosk → Admin auto-login**: Kiosk login generates 15-min token stored in `sessionStorage`. Admin button opens `/admin/auto-login?token=JWT`. The auto-login page calls `POST /admin/api/token-login` to exchange it for a new 24h admin token with httpOnly cookie. Falls back to client-side JWT decode if endpoint unavailable.
 
 ### Rate Limiting
-- All auth-protected controllers use `@SkipThrottle()` — only the auth controller is rate-limited
+- All auth-protected controllers use `@SkipThrottle({ default: true, 'login-account': true, 'login-ip': true })` — only the auth controller is rate-limited
 - **Login-account**: 5 attempts per 15 minutes per account
 - **Login-IP**: 20 attempts per 15 minutes per IP address
 - **Default fallback**: 60 requests per 60 seconds (for any endpoint without `@SkipThrottle()`)
 - Configured via `@nestjs/throttler` v5 with named throttler groups in `app.module.ts`
 - `@Throttle()` decorator uses Record syntax: `@Throttle({ name: { limit, ttl } })`
-- **Gotcha**: Socket.io polling + dashboard parallel API calls easily exceed low rate limits behind nginx proxy
+- **CRITICAL**: `@SkipThrottle()` with no args only skips the `default` throttler in v5! Named throttlers (`login-account`, `login-ip`) are still applied globally. Must pass all throttler names explicitly or every endpoint gets the 5-req/15min login limit.
 
 ### Security Headers
 - Helmet with CSP: `defaultSrc: ['self']`, `scriptSrc: ['self', 'static.cloudflareinsights.com']`, `styleSrc: ['self', 'unsafe-inline', 'fonts.googleapis.com']`, `imgSrc: ['self', 'data:']`, `fontSrc: ['self', 'fonts.gstatic.com']`, `connectSrc: ['self', 'cloudflareinsights.com']`
