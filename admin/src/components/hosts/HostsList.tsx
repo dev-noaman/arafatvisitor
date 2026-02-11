@@ -67,21 +67,21 @@ export default function HostsList({
 
       {/* Table */}
       <div className="overflow-x-auto">
-        <table className="w-full">
+        <table className="w-full table-fixed">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Name</th>
-              {!hideCompany && <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Company</th>}
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Email</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Phone</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Location</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider w-[18%]">Name</th>
+              {!hideCompany && <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider w-[20%]">Company</th>}
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider w-[22%]">Email</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider w-[12%]">Phone</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider w-[14%]">Location</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider w-[14%]">Actions</th>
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={hideCompany ? 5 : 6} className="px-6 py-8 text-center text-gray-500">
+                <td colSpan={hideCompany ? 5 : 6} className="px-4 py-8 text-center text-gray-500">
                   <div className="flex items-center justify-center">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
                   </div>
@@ -89,23 +89,23 @@ export default function HostsList({
               </tr>
             ) : hosts.length === 0 ? (
               <tr>
-                <td colSpan={hideCompany ? 5 : 6} className="px-6 py-8 text-center text-gray-500">
+                <td colSpan={hideCompany ? 5 : 6} className="px-4 py-8 text-center text-gray-500">
                   No {entityLabel} found. Create your first to get started.
                 </td>
               </tr>
             ) : (
               hosts.map((host) => (
                 <tr key={host.id} className="border-b border-gray-200 hover:bg-gray-50 transition">
-                  <td className="px-6 py-4 text-sm text-gray-900 font-medium">{host.name}</td>
-                  {!hideCompany && <td className="px-6 py-4 text-sm text-gray-600">{host.company}</td>}
-                  <td className="px-6 py-4 text-sm text-gray-600">{host.email}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{host.phone || '—'}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">
+                  <td className="px-4 py-2.5 text-sm text-gray-900 font-medium truncate" title={host.name}>{host.name}</td>
+                  {!hideCompany && <td className="px-4 py-2.5 text-sm text-gray-600 truncate" title={host.company}>{host.company}</td>}
+                  <td className="px-4 py-2.5 text-sm text-gray-600 truncate" title={host.email}>{host.email}</td>
+                  <td className="px-4 py-2.5 text-sm text-gray-600 whitespace-nowrap">{host.phone || '—'}</td>
+                  <td className="px-4 py-2.5 text-sm text-gray-600 whitespace-nowrap">
                     {host.location ? host.location.replace(/_/g, ' ') : '—'}
                   </td>
-                  <td className="px-6 py-4 text-sm space-x-2">
+                  <td className="px-4 py-2.5 text-sm whitespace-nowrap">
                     {isAdmin && (
-                      <>
+                      <div className="flex items-center gap-1">
                         <button
                           onClick={() => onEdit(host)}
                           className="inline-flex items-center p-1.5 rounded-md text-blue-600 hover:bg-blue-50 transition"
@@ -120,7 +120,7 @@ export default function HostsList({
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                         </button>
-                      </>
+                      </div>
                     )}
                   </td>
                 </tr>
