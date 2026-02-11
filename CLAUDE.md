@@ -1,6 +1,6 @@
 # Arafat Visitor Management System Development Guidelines
 
-Last updated: 2026-02-11 (phone cleaning rules update, OfficeRND hourly cron sync)
+Last updated: 2026-02-11 (phone cleaning rules finalized, all 580 hosts verified)
 
 ## Active Technologies
 
@@ -319,7 +319,9 @@ Applied in both OfficeRND sync (`officernd-sync.service.ts`) and bulk import (`a
 3. **Starts with `974`** → keep as-is (already has country code)
 4. **8 digits starting with `3`/`4`/`5`/`6`/`7`** → prefix `974` (Qatar mobile/landline)
 5. **11 digits starting with `010`/`011`/`012`** → prefix `2` (Egypt mobile)
-6. All other numbers → kept as-is, no prefix
+6. All other numbers (UAE `971`, Saudi `966`, Lebanon `961`, Kuwait `965`, Jordan `962`, etc.) → kept as-is, no prefix
+- Deploy workflow includes one-time SQL to fix existing 8-digit Qatar phones on VPS (idempotent, safe to re-run)
+- All 580 hosts verified on 2026-02-11 — remaining non-974 phones are legitimate international numbers
 
 ### User Status (ACTIVE/INACTIVE)
 - User model has `status` field (default: `ACTIVE`)
