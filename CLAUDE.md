@@ -616,9 +616,9 @@ The Staff page reuses host components with an `entityLabel` prop to customize la
 | `HostModal` | `entityLabel` | `'Host'` | `'Staff'` |
 | `HostsList` | `entityLabel` | `'hosts'` | `'staff'` |
 | `DeleteConfirmationDialog` | `entityLabel` | `'Host'` | `'Staff'` |
-| `BulkImportModal` | `importEndpoint`, `title`, `expectedColumns`, `entityLabel` | hosts defaults | Users page: `'/admin/api/users/import'`, `'Bulk Import Users'` |
-
 This avoids duplicating components. The `entityLabel` changes form labels ("Staff Name"), button text ("Create Staff"), empty states ("No staff found"), and pagination ("Showing X of Y staff").
+
+`BulkImportModal` lives in `components/common/` (not `components/hosts/`) — it's a shared component used by the Users page for bulk user import (`'/admin/api/users/import'`).
 
 **Note**: Staff sidebar item removed. Staff members are created via the Users page (single-add with role=STAFF, or bulk import with Role=STAFF in CSV). The Staff page route still exists but is not linked in navigation.
 
