@@ -1,6 +1,6 @@
 # Arafat Visitor Management System Development Guidelines
 
-Last updated: 2026-02-09 (Courier categories FOOD/PARCEL, kiosk courier dropdown, delivery icon actions)
+Last updated: 2026-02-11 (OfficeRND sync replaces bulk import on Hosts page)
 
 ## Active Technologies
 
@@ -131,7 +131,7 @@ No demo login buttons on the sign-in page — production login only.
 - **Visitors filters**: Only APPROVED, CHECKED_IN, CHECKED_OUT — no PENDING or REJECTED (those belong on Pre Register page)
 - **Pre Register**: Pre-registered visits (PENDING_APPROVAL, REJECTED)
 - **Deliveries**: Package tracking with timeline view
-- **Hosts**: Manage external companies and host contacts (with Bulk Import button)
+- **Hosts**: Manage external companies and host contacts (auto-synced from OfficeRND every hour)
 - **Users**: System user management — create/edit users with roles: Staff, Reception, Administrator. Bulk Import for all roles. Password edit (blank = keep current). HOST role users are auto-created from Hosts page, not from Users.
 - **Reports**: Visit and delivery reports with export
 - **Settings**: SMTP and WhatsApp configuration
@@ -229,7 +229,7 @@ RECEIVED → PICKED_UP
 | **Approve/Reject pre-regs** | All | No | Own company only | Own company only |
 | **Hosts CRUD** | Full | View only | Company-scoped view | Company-scoped view |
 | **Staff CRUD** | Full (via Users page) | No | No | No |
-| **Bulk import hosts** | Yes | No | No | No |
+| **OfficeRND host sync** | Automatic (cron) | — | — | — |
 | **Bulk import users** (all roles) | Yes | No | No | No |
 | **Users CRUD** | Yes | No | No | No |
 | **Settings** | Yes | No | No | No |
@@ -293,6 +293,20 @@ RECEIVED → PICKED_UP
 - Courier selection resets when switching delivery types if current selection is invalid
 - Submit uses `data.courier || "Kiosk"` as fallback
 
+### OfficeRND Host Sync (Background Cron)
+- **Replaces** the old CSV/XLSX bulk import button on Hosts page — fully automatic, no manual button
+- Runs **every hour** via `@Cron("0 * * * *")` in `backend/src/tasks/officernd-sync.service.ts`
+- Fetches ALL active companies from OfficeRND API, batch-checks `externalId` against DB, only processes new ones
+- OAuth client credentials: configurable via `OFFICERND_CLIENT_ID`, `OFFICERND_CLIENT_SECRET`, `OFFICERND_ORG_SLUG` env vars (defaults hardcoded)
+- Phone resolution: company properties → first member's phone → company detail endpoint
+- Location mapping: fuzzy match on location name (barwa → BARWA_TOWERS, element/mariott → ELEMENT_MARIOTT, marina → MARINA_50)
+- Uses `externalId` (OfficeRND company `_id`) to skip existing hosts — no duplicates
+- Auto-creates HOST user + sends welcome email (same as single host create)
+- Guard against concurrent runs: `isSyncing` flag prevents overlapping syncs
+- Registered in `TasksModule` alongside `CleanupService`
+- Old standalone script `sync-new-companies-and-members.js` removed
+- Hosts page: "Sync OfficeRND" button removed — only "Add Host" remains for manual single-add
+
 ### User Status (ACTIVE/INACTIVE)
 - User model has `status` field (default: `ACTIVE`)
 - **INACTIVE users are blocked from login** — returns "Account is deactivated" error
@@ -304,7 +318,7 @@ RECEIVED → PICKED_UP
 ### Frontend Role-Based UI
 - Delete buttons hidden for non-ADMIN users (Visitors, Deliveries, Pre-registrations, Hosts)
 - Edit/Delete buttons on Hosts page hidden for non-ADMIN
-- "Add Host" and "Bulk Import" buttons hidden for non-ADMIN on Hosts page
+- "Add Host" button hidden for non-ADMIN on Hosts page
 - Staff page still exists at `/admin/staff` (route accessible) but removed from sidebar navigation
 - Sidebar navigation: Dashboard/Visitors/Pre-Register/Deliveries visible to all roles; Hosts visible to ADMIN+HOST+RECEPTION; Users/Settings to ADMIN only; Reports to ADMIN+HOST
 - Staff sidebar item removed — staff users managed via Users page
@@ -356,8 +370,9 @@ RECEIVED → PICKED_UP
 |------|----------|-------------|
 | QR Token Cleanup | Daily 2:00 AM | Deletes QR tokens expired > 30 days |
 | Refresh Token Cleanup | Daily 2:15 AM | Deletes revoked/expired refresh tokens |
+| OfficeRND Host Sync | Every hour (:00) | Syncs new companies from OfficeRND, creates hosts + users |
 
-Module: `backend/src/tasks/cleanup.service.ts`
+Modules: `backend/src/tasks/cleanup.service.ts`, `backend/src/tasks/officernd-sync.service.ts`
 
 ## Health Checks
 
@@ -403,6 +418,12 @@ Module: `backend/src/tasks/cleanup.service.ts`
 - Phone/email search checkout also shows the badge via `onCheckout` callback
 - Duplicate check-out attempts are rejected with 400 error and toast message
 
+### Badge Countdown Callback Pattern (IMPORTANT)
+- Both `CheckInBadge` and `CheckOutBadge` use `useRef` for the `onComplete` callback (`onCompleteRef`)
+- The `onComplete` prop must NOT be in the `useEffect` dependency array — App.tsx re-renders every second (clock timer), which creates a new `navigateHome` reference, causing the interval to reset endlessly
+- Pattern: `const onCompleteRef = useRef(onComplete); onCompleteRef.current = onComplete;` then use `onCompleteRef.current()` inside the interval
+- Without this, the 5-second countdown never reaches 0 and the badge never auto-returns to home
+
 ## Code Splitting (Admin)
 
 All admin pages are lazy-loaded via `React.lazy()` with `<Suspense>` fallbacks:
@@ -416,7 +437,7 @@ Send QR codes to visitors via Email or WhatsApp from multiple admin pages.
 
 ### How to Use
 - **Dashboard** → Current Visitors → QR button (CHECKED_IN visitors)
-- **Visitors** page → QR button (CHECKED_IN visitors)
+- **Visitors** page → QR button (APPROVED + CHECKED_IN visitors)
 - **Pre-Register** page → QR button (APPROVED pre-registrations)
 - Modal opens with QR code, visitor info, and WhatsApp/Email send buttons
 
@@ -712,7 +733,7 @@ POST /admin/api/settings/test-email       # Test SMTP
 POST /admin/api/settings/test-whatsapp    # Test WhatsApp (accepts {phone} or {recipientPhone})
 
 # Hosts (ADMIN for CRUD, all roles can view — HOST/STAFF company-scoped)
-POST /admin/api/hosts/import              # Bulk import (ADMIN only)
+POST /admin/api/hosts/import              # Bulk import from CSV/XLSX (ADMIN only)
 GET  /admin/api/hosts                     # List hosts (supports ?type=EXTERNAL|STAFF filter)
 POST /admin/api/hosts                     # Create host (ADMIN only) — auto-creates HOST user + welcome email
 PUT  /admin/api/hosts/:id                 # Update host (ADMIN only)
@@ -793,7 +814,7 @@ A **contact person at a company** (external host or internal staff) who can rece
 - id, externalId, name, company, email, phone, location, status, **type** (EXTERNAL/STAFF)
 - `type` field distinguishes external hosts from internal staff members (default: EXTERNAL)
 - Each host belongs to one location; a company can have hosts across multiple locations
-- Bulk Import: CSV/XLSX upload via "Bulk Import" button on /admin/hosts (external hosts only)
+- Sync: "Sync OfficeRND" button on /admin/hosts fetches active companies from OfficeRND API (replaces CSV bulk import)
 
 ### Visit
 - id, sessionId, visitorName, visitorCompany, visitorPhone, visitorEmail
