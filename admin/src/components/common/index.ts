@@ -10,6 +10,7 @@ export { AdvancedFilterPanel } from './AdvancedFilterPanel'
 export { ActivityLog } from './ActivityLog'
 export { SearchHighlight } from './SearchHighlight'
 export { KeyboardShortcuts } from './KeyboardShortcuts'
+export { default as BulkImportModal } from './BulkImportModal'
 export {
   TableRowSkeleton,
   TableSkeleton,

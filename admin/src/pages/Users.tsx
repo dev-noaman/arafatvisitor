@@ -1,6 +1,6 @@
 import { useCallback, useState, useEffect } from 'react'
 import { UsersList, UserModal, DeleteConfirmationDialog } from '@/components/users'
-import { BulkImportModal } from '@/components/hosts'
+import { BulkImportModal } from '@/components/common'
 import ErrorState from '@/components/common/ErrorState'
 import { getUsers, createUser, updateUser, deleteUser, deactivateUser, activateUser } from '@/services/users'
 import { useToast } from '@/hooks'
