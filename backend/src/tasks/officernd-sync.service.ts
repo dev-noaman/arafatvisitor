@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
@@ -8,7 +8,7 @@ import * as bcrypt from "bcrypt";
 import * as crypto from "crypto";
 
 @Injectable()
-export class OfficeRndSyncService implements OnModuleInit {
+export class OfficeRndSyncService {
   private readonly logger = new Logger(OfficeRndSyncService.name);
   private isSyncing = false;
 
@@ -18,108 +18,6 @@ export class OfficeRndSyncService implements OnModuleInit {
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
   ) {}
-
-  /**
-   * One-time phone refresh on startup — re-fetches original phones from OfficeRND
-   * and applies corrected cleanPhone rules to existing hosts.
-   * Safe to re-run: only updates if phone value actually differs.
-   */
-  async onModuleInit() {
-    setTimeout(() => this.refreshPhones(), 5000);
-  }
-
-  private async refreshPhones() {
-    try {
-      const CLIENT_ID =
-        this.configService.get("OFFICERND_CLIENT_ID") || "ZvJWSI3v6hBZyGnS";
-      const CLIENT_SECRET =
-        this.configService.get("OFFICERND_CLIENT_SECRET") ||
-        "Be4GtOyNcl4BcWFZPiBQlwH71KO7QP3l";
-      const ORG_SLUG =
-        this.configService.get("OFFICERND_ORG_SLUG") ||
-        "arafat-business-centers";
-      const BASE = `https://app.officernd.com/api/v2/organizations/${ORG_SLUG}`;
-      const TOKEN_SCOPE =
-        "flex.community.companies.read flex.community.members.read";
-
-      const tokenRes = await fetch(
-        "https://identity.officernd.com/oauth/token",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: `client_id=${CLIENT_ID}&client_secret=${CLIENT_SECRET}&grant_type=client_credentials&scope=${encodeURIComponent(TOKEN_SCOPE)}`,
-        },
-      );
-      if (!tokenRes.ok) {
-        this.logger.error(`Phone refresh: OfficeRND auth failed ${tokenRes.status}`);
-        return;
-      }
-      const { access_token: accessToken } = await tokenRes.json();
-
-      const companies = await this.fetchAll(
-        `${BASE}/companies?status=active&$limit=50`,
-        accessToken,
-      );
-
-      const existingHosts = await this.prisma.host.findMany({
-        where: {
-          externalId: { in: companies.map((c: any) => c._id) },
-        },
-        select: { id: true, externalId: true, phone: true },
-      });
-      const existingMap = new Map(
-        existingHosts.map((h) => [h.externalId, h]),
-      );
-
-      let updated = 0;
-      for (const c of companies) {
-        const existing = existingMap.get(c._id);
-        if (!existing) continue;
-
-        let phone = this.extractPhone(c);
-        if (!phone) {
-          try {
-            const members = await this.fetchAll(
-              `${BASE}/members?company=${encodeURIComponent(c._id)}&$limit=1`,
-              accessToken,
-            );
-            if (members.length > 0 && members[0].phone) {
-              phone = members[0].phone;
-            }
-          } catch (_) {}
-        }
-        if (!phone) {
-          try {
-            const res = await fetch(
-              `${BASE}/companies/${encodeURIComponent(c._id)}`,
-              { headers: { Authorization: `Bearer ${accessToken}` } },
-            );
-            if (res.ok) {
-              const full = await res.json();
-              if (full.properties?.["Phone Number"] != null) {
-                phone = String(full.properties["Phone Number"]);
-              }
-            }
-          } catch (_) {}
-        }
-
-        const cleanedPhone = this.cleanPhone(phone) || null;
-        if (cleanedPhone !== existing.phone) {
-          await this.prisma.host.update({
-            where: { id: existing.id },
-            data: { phone: cleanedPhone },
-          });
-          updated++;
-        }
-      }
-
-      this.logger.log(`Phone refresh done: ${updated} hosts updated out of ${existingHosts.length}`);
-    } catch (error) {
-      this.logger.error(
-        `Phone refresh failed: ${error instanceof Error ? error.message : error}`,
-      );
-    }
-  }
 
   /**
    * Sync new companies from OfficeRND every hour.
