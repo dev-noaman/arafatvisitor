@@ -295,10 +295,7 @@ export class OfficeRndSyncService {
     if (v.startsWith("+")) v = v.slice(1);
     // Already has 974 prefix → keep as-is
     if (v.startsWith("974")) return v;
-    if (/^\d{6}$/.test(v)) {
-      // 6 digits → prefix 974 (Qatar)
-      v = `974${v}`;
-    } else if (/^\d{8}$/.test(v) && /^[34567]/.test(v)) {
+    if (/^\d{8}$/.test(v) && /^[34567]/.test(v)) {
       // 8 digits starting with 3/4/5/6/7 → prefix 974 (Qatar mobile/landline)
       v = `974${v}`;
     } else if (/^\d{11}$/.test(v) && /^(010|011|012)/.test(v)) {

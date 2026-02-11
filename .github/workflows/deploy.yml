@@ -132,10 +132,6 @@ jobs:
           UPDATE "Host" SET phone = '974' || phone
           WHERE phone ~ '^[34567][0-9]{7}$';
 
-          -- 6 digits → prefix 974 (Qatar)
-          UPDATE "Host" SET phone = '974' || phone
-          WHERE phone ~ '^[0-9]{6}$';
-
           -- 11 digits starting with 010/011/012 → prefix 2 (Egypt)
           UPDATE "Host" SET phone = '2' || phone
           WHERE phone ~ '^(010|011|012)[0-9]{8}$';
