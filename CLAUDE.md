@@ -320,7 +320,6 @@ Applied in both OfficeRND sync (`officernd-sync.service.ts`) and bulk import (`a
 4. **8 digits starting with `3`/`4`/`5`/`6`/`7`** → prefix `974` (Qatar mobile/landline)
 5. **11 digits starting with `010`/`011`/`012`** → prefix `2` (Egypt mobile)
 6. All other numbers (UAE `971`, Saudi `966`, Lebanon `961`, Kuwait `965`, Jordan `962`, etc.) → kept as-is, no prefix
-- Deploy workflow includes one-time SQL to fix existing 8-digit Qatar phones on VPS (idempotent, safe to re-run)
 - All 580 hosts verified on 2026-02-11 — remaining non-974 phones are legitimate international numbers
 
 ### User Status (ACTIVE/INACTIVE)
