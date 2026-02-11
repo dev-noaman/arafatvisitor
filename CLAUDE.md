@@ -1,6 +1,6 @@
 # Arafat Visitor Management System Development Guidelines
 
-Last updated: 2026-02-11 (OfficeRND hourly cron sync, bulk import button removed from Hosts page)
+Last updated: 2026-02-11 (phone cleaning rules update, OfficeRND hourly cron sync)
 
 ## Active Technologies
 
@@ -311,6 +311,14 @@ RECEIVED → PICKED_UP
 - Old standalone script `sync-new-companies-and-members.js` removed
 - Hosts page: only "Add Host" button remains for manual single-add
 
+### Phone Cleaning Rules
+Applied in both OfficeRND sync (`officernd-sync.service.ts`) and bulk import (`admin.controller.ts`):
+1. **Dual numbers** `xxx/xxx` → take left part before `/`
+2. Strip `+`, spaces, dashes, parens
+3. **6 digits** → prefix `974` (Qatar country code)
+4. **11 digits** → prefix `2` (Egypt country code)
+- Deploy workflow (`deploy.yml`) includes idempotent SQL UPDATEs to fix existing host phone numbers on VPS
+
 ### User Status (ACTIVE/INACTIVE)
 - User model has `status` field (default: `ACTIVE`)
 - **INACTIVE users are blocked from login** — returns "Account is deactivated" error
@@ -338,6 +346,14 @@ RECEIVED → PICKED_UP
 - Colors: green (Approve/checkmark), red (Reject/X, Delete/trash), blue (Edit/pencil, Re-Approve/refresh), indigo (QR Code), orange (Checkout/logout)
 - Dashboard (Pending Approvals + Current Visitors) and Pre-Register table all use the same sizing
 - Spinner state: when `actioningId` matches, show `w-5 h-5 animate-spin` SVG instead of action icon
+
+### Hosts Table Style
+- `table-fixed` layout with fixed column widths: Name 18%, Company 20%, Email 22%, Phone 12%, Location 14%, Actions 14%
+- `truncate` on Name, Company, Email cells — long text shows `...` with full text on hover (`title` attribute)
+- `whitespace-nowrap` on Phone, Location, Actions — no wrapping
+- Compact row padding: `px-4 py-2.5` (reduced from `px-6 py-4`)
+- Uppercase headers: `text-xs font-semibold uppercase tracking-wider`
+- Component: `admin/src/components/hosts/HostsList.tsx`
 
 ## Caching
 
