@@ -90,26 +90,69 @@ export class OfficeRndSyncService {
         where: {
           externalId: { in: companies.map((c: any) => c._id) },
         },
-        select: { externalId: true },
+        select: { id: true, externalId: true, phone: true },
       });
-      const existingIds = new Set(
-        existingHosts.map((h) => h.externalId),
+      const existingMap = new Map(
+        existingHosts.map((h) => [h.externalId, h]),
       );
 
-      // 5. Filter to only new companies
+      // 5. Update phones for existing hosts (re-fetch from OfficeRND source)
+      let phonesUpdated = 0;
+      for (const c of companies) {
+        const existing = existingMap.get(c._id);
+        if (!existing) continue;
+
+        let phone = this.extractPhone(c);
+        if (!phone) {
+          try {
+            const members = await this.fetchAll(
+              `${BASE}/members?company=${encodeURIComponent(c._id)}&$limit=1`,
+              accessToken,
+            );
+            if (members.length > 0 && members[0].phone) {
+              phone = members[0].phone;
+            }
+          } catch (_) {}
+        }
+        if (!phone) {
+          try {
+            const res = await fetch(
+              `${BASE}/companies/${encodeURIComponent(c._id)}`,
+              { headers: { Authorization: `Bearer ${accessToken}` } },
+            );
+            if (res.ok) {
+              const full = await res.json();
+              if (full.properties?.["Phone Number"] != null) {
+                phone = String(full.properties["Phone Number"]);
+              }
+            }
+          } catch (_) {}
+        }
+
+        const cleanedPhone = this.cleanPhone(phone) || null;
+        if (cleanedPhone !== existing.phone) {
+          await this.prisma.host.update({
+            where: { id: existing.id },
+            data: { phone: cleanedPhone },
+          });
+          phonesUpdated++;
+        }
+      }
+
+      // 6. Filter to only new companies
       const newCompanies = companies.filter(
-        (c: any) => !existingIds.has(c._id),
+        (c: any) => !existingMap.has(c._id),
       );
 
       if (newCompanies.length === 0) {
         this.logger.log(
-          `OfficeRND sync: ${companies.length} companies checked, all exist — nothing to do`,
+          `OfficeRND sync: ${companies.length} companies checked, all exist — ${phonesUpdated} phones updated`,
         );
         return;
       }
 
       this.logger.log(
-        `OfficeRND sync: ${newCompanies.length} new companies out of ${companies.length} total`,
+        `OfficeRND sync: ${newCompanies.length} new companies out of ${companies.length} total, ${phonesUpdated} phones updated`,
       );
 
       // 6. Process new companies
@@ -294,8 +337,10 @@ export class OfficeRndSyncService {
     v = v.replace(/[\s\-()]/g, "");
     if (v.startsWith("+")) v = v.slice(1);
     if (/^\d{6}$/.test(v)) {
+      // 6 digits = Qatar local → prefix 974
       v = `974${v}`;
-    } else if (/^\d{11}$/.test(v)) {
+    } else if (/^\d{11}$/.test(v) && v.startsWith("0")) {
+      // 11 digits starting with 0 (010/011/012) = Egypt → prefix 2
       v = `2${v}`;
     }
     return v;
