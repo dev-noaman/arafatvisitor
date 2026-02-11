@@ -126,6 +126,19 @@ jobs:
           ('MARINA_50', 'Marina 50', true, 2, NOW()),
           ('ELEMENT_MARIOTT', 'Element Mariott', true, 3, NOW())
           ON CONFLICT (code) DO NOTHING;
+
+          -- Fix existing host phones (one-time, idempotent)
+          -- 8 digits starting with 3/5/6/7 → prefix 974 (Qatar)
+          UPDATE "Host" SET phone = '974' || phone
+          WHERE phone ~ '^[3567][0-9]{7}$';
+
+          -- 6 digits → prefix 974 (Qatar)
+          UPDATE "Host" SET phone = '974' || phone
+          WHERE phone ~ '^[0-9]{6}$';
+
+          -- 11 digits starting with 010/011/012 → prefix 2 (Egypt)
+          UPDATE "Host" SET phone = '2' || phone
+          WHERE phone ~ '^(010|011|012)[0-9]{8}$';
           EOSQL
 
           npm run build
