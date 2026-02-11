@@ -296,7 +296,8 @@ RECEIVED → PICKED_UP
 ### OfficeRND Host Sync (Background Cron)
 - **Replaces** the old CSV/XLSX bulk import button on Hosts page — fully automatic, no manual button
 - Runs **every hour** via `@Cron("0 * * * *")` in `backend/src/tasks/officernd-sync.service.ts`
-- Fetches ALL active companies from OfficeRND API, batch-checks `externalId` against DB, only processes new ones
+- Fetches ALL active companies from OfficeRND API, batch-checks `externalId` against DB, inserts new ones
+- **Also re-fetches and updates phone numbers** for existing hosts from OfficeRND source data (no email/user re-creation)
 - OAuth client credentials: configurable via `OFFICERND_CLIENT_ID`, `OFFICERND_CLIENT_SECRET`, `OFFICERND_ORG_SLUG` env vars (defaults hardcoded)
 - **Field mapping** (OfficeRND → Host schema):
   - `name` → first member's name (`GET /members?company=ID&$limit=1`), fallback to company name
@@ -315,9 +316,11 @@ RECEIVED → PICKED_UP
 Applied in both OfficeRND sync (`officernd-sync.service.ts`) and bulk import (`admin.controller.ts`):
 1. **Dual numbers** `xxx/xxx` → take left part before `/`
 2. Strip `+`, spaces, dashes, parens
-3. **6 digits** → prefix `974` (Qatar country code)
-4. **11 digits** → prefix `2` (Egypt country code)
-- Deploy workflow (`deploy.yml`) includes idempotent SQL UPDATEs to fix existing host phone numbers on VPS
+3. **Starts with `974`** → keep as-is (already has country code)
+4. **6 digits** → prefix `974` (Qatar)
+5. **8 digits starting with `3`/`5`/`6`/`7`** → prefix `974` (Qatar mobile/landline)
+6. **11 digits starting with `010`/`011`/`012`** → prefix `2` (Egypt mobile)
+7. All other numbers → kept as-is, no prefix
 
 ### User Status (ACTIVE/INACTIVE)
 - User model has `status` field (default: `ACTIVE`)
