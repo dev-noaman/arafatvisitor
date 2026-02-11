@@ -1,6 +1,6 @@
 # Arafat Visitor Management System Development Guidelines
 
-Last updated: 2026-02-11 (OfficeRND sync replaces bulk import on Hosts page)
+Last updated: 2026-02-11 (OfficeRND hourly cron sync, bulk import button removed from Hosts page)
 
 ## Active Technologies
 
@@ -298,14 +298,18 @@ RECEIVED → PICKED_UP
 - Runs **every hour** via `@Cron("0 * * * *")` in `backend/src/tasks/officernd-sync.service.ts`
 - Fetches ALL active companies from OfficeRND API, batch-checks `externalId` against DB, only processes new ones
 - OAuth client credentials: configurable via `OFFICERND_CLIENT_ID`, `OFFICERND_CLIENT_SECRET`, `OFFICERND_ORG_SLUG` env vars (defaults hardcoded)
-- Phone resolution: company properties → first member's phone → company detail endpoint
-- Location mapping: fuzzy match on location name (barwa → BARWA_TOWERS, element/mariott → ELEMENT_MARIOTT, marina → MARINA_50)
-- Uses `externalId` (OfficeRND company `_id`) to skip existing hosts — no duplicates
+- **Field mapping** (OfficeRND → Host schema):
+  - `name` → first member's name (`GET /members?company=ID&$limit=1`), fallback to company name
+  - `company` → company name from OfficeRND
+  - `email` → first member's email, fallback to company email
+  - `phone` → company properties["Phone Number"] → first member's phone → company detail endpoint
+  - `location` → fuzzy match on OfficeRND location name (barwa → BARWA_TOWERS, element/mariott → ELEMENT_MARIOTT, marina → MARINA_50)
+  - `externalId` → OfficeRND company `_id` (used to skip existing hosts — no duplicates)
 - Auto-creates HOST user + sends welcome email (same as single host create)
 - Guard against concurrent runs: `isSyncing` flag prevents overlapping syncs
 - Registered in `TasksModule` alongside `CleanupService`
 - Old standalone script `sync-new-companies-and-members.js` removed
-- Hosts page: "Sync OfficeRND" button removed — only "Add Host" remains for manual single-add
+- Hosts page: only "Add Host" button remains for manual single-add
 
 ### User Status (ACTIVE/INACTIVE)
 - User model has `status` field (default: `ACTIVE`)
