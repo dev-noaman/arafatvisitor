@@ -296,21 +296,35 @@ RECEIVED → PICKED_UP
 ### OfficeRND Host Sync (Background Cron)
 - **Replaces** the old CSV/XLSX bulk import button on Hosts page — fully automatic, no manual button
 - Runs **every hour** via `@Cron("0 * * * *")` in `backend/src/tasks/officernd-sync.service.ts`
-- Fetches ALL active companies from OfficeRND API, batch-checks `externalId` against DB, inserts new ones
-- **Also re-fetches and updates phone numbers** for existing hosts from OfficeRND source data (no email/user re-creation)
 - OAuth client credentials: configurable via `OFFICERND_CLIENT_ID`, `OFFICERND_CLIENT_SECRET`, `OFFICERND_ORG_SLUG` env vars (defaults hardcoded)
-- **Field mapping** (OfficeRND → Host schema):
-  - `name` → first member's name (`GET /members?company=ID&$limit=1`), fallback to company name
-  - `company` → company name from OfficeRND
-  - `email` → first member's email, fallback to company email
-  - `phone` → company properties["Phone Number"] → first member's phone → company detail endpoint
-  - `location` → fuzzy match on OfficeRND location name (barwa → BARWA_TOWERS, element/mariott → ELEMENT_MARIOTT, marina → MARINA_50)
-  - `externalId` → OfficeRND company `_id` (used to skip existing hosts — no duplicates)
-- Auto-creates HOST user + sends welcome email (same as single host create)
-- Guard against concurrent runs: `isSyncing` flag prevents overlapping syncs
 - Registered in `TasksModule` alongside `CleanupService`
 - Old standalone script `sync-new-companies-and-members.js` removed
 - Hosts page: only "Add Host" button remains for manual single-add
+
+**Sync Flow:**
+1. Check `isSyncing` flag → skip if already running (prevents overlapping hourly runs)
+2. Get OAuth token from OfficeRND (`client_credentials` grant)
+3. Fetch all locations (for name → enum mapping)
+4. Fetch ALL active companies (cursor-based pagination)
+5. Batch query DB: get all hosts with matching `externalId`
+6. Filter to **new companies only** (existing hosts are never touched)
+7. For each new company:
+   - Fetch first member (`GET /members?company=ID&$limit=1`) → contact person name/email/phone
+   - If no phone → fetch company detail for `properties["Phone Number"]`
+   - `cleanPhone()` → apply Qatar/Egypt prefix rules
+   - `mapLocation()` → fuzzy match (barwa → `BARWA_TOWERS`, element/mariott → `ELEMENT_MARIOTT`, marina → `MARINA_50`)
+   - Create Host record (`externalId`, `name`, `company`, `email`, `phone`, `location`)
+   - Auto-create HOST User (random password, `role=HOST`, linked `hostId`)
+   - Send welcome email with 72h password reset link (only for real emails, not `@system.local`)
+8. Log summary: "X inserted, Y users created, Z rejected"
+
+**Field Mapping** (OfficeRND → Host schema):
+- `name` → first member's name, fallback to company name
+- `company` → company name from OfficeRND
+- `email` → first member's email, fallback to company email
+- `phone` → company properties → member phone → company detail endpoint (cascade)
+- `location` → fuzzy match on OfficeRND location name
+- `externalId` → OfficeRND company `_id` (duplicate prevention)
 
 ### Phone Cleaning Rules
 Applied in both OfficeRND sync (`officernd-sync.service.ts`) and bulk import (`admin.controller.ts`):
