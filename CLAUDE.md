@@ -317,10 +317,9 @@ Applied in both OfficeRND sync (`officernd-sync.service.ts`) and bulk import (`a
 1. **Dual numbers** `xxx/xxx` → take left part before `/`
 2. Strip `+`, spaces, dashes, parens
 3. **Starts with `974`** → keep as-is (already has country code)
-4. **6 digits** → prefix `974` (Qatar)
-5. **8 digits starting with `3`/`5`/`6`/`7`** → prefix `974` (Qatar mobile/landline)
-6. **11 digits starting with `010`/`011`/`012`** → prefix `2` (Egypt mobile)
-7. All other numbers → kept as-is, no prefix
+4. **8 digits starting with `3`/`4`/`5`/`6`/`7`** → prefix `974` (Qatar mobile/landline)
+5. **11 digits starting with `010`/`011`/`012`** → prefix `2` (Egypt mobile)
+6. All other numbers → kept as-is, no prefix
 
 ### User Status (ACTIVE/INACTIVE)
 - User model has `status` field (default: `ACTIVE`)
