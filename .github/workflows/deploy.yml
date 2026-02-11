@@ -133,7 +133,7 @@ jobs:
           WHERE phone LIKE '%/%';
 
           -- Step 2: Strip +, spaces, dashes, parens
-          UPDATE "Host" SET phone = REGEXP_REPLACE(REGEXP_REPLACE(phone, '^\\+', ''), '[\\s\\-()]', '', 'g')
+          UPDATE "Host" SET phone = REGEXP_REPLACE(REGEXP_REPLACE(phone, '^\+', ''), '[\s() -]', '', 'g')
           WHERE phone IS NOT NULL AND phone != '';
 
           -- Step 3: 6 digits → prefix 974
