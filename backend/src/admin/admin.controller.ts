@@ -550,22 +550,16 @@ export class AdminApiController {
 
       const cleanPhone = (value?: string | null) => {
         if (!value) return "";
-        let v = value.replace(/[\s\-()]/g, "");
+        // Dual numbers "xxx/xxx" → take left part before "/"
+        let v = value.includes("/") ? value.split("/")[0].trim() : value;
+        v = v.replace(/[\s\-()]/g, "");
         if (v.startsWith("+")) {
           v = v.slice(1);
         }
-        // Qatar-specific adjustments
-        const isQatar = v.startsWith("974");
-        if (!isQatar && /^\d{6}$/.test(v)) {
-          // 6 digits without country code - still treat as Qatar and prefix
+        if (/^\d{6}$/.test(v)) {
           v = `974${v}`;
-        } else if (isQatar) {
-          const rest = v.slice(3);
-          if (rest.length === 6) {
-            // already 974 + 6 digits, keep as is
-            v = `974${rest}`;
-          }
-          // other 974* lengths: keep as-is (logged via rejection rules below if needed)
+        } else if (/^\d{11}$/.test(v)) {
+          v = `2${v}`;
         }
         return v;
       };

@@ -126,6 +126,23 @@ jobs:
           ('MARINA_50', 'Marina 50', true, 2, NOW()),
           ('ELEMENT_MARIOTT', 'Element Mariott', true, 3, NOW())
           ON CONFLICT (code) DO NOTHING;
+
+          -- Fix existing host phone numbers (one-time cleanup, idempotent)
+          -- Step 1: Dual numbers "xxx/xxx" → take left part before "/"
+          UPDATE "Host" SET phone = TRIM(SPLIT_PART(phone, '/', 1))
+          WHERE phone LIKE '%/%';
+
+          -- Step 2: Strip +, spaces, dashes, parens
+          UPDATE "Host" SET phone = REGEXP_REPLACE(REGEXP_REPLACE(phone, '^\\+', ''), '[\\s\\-()]', '', 'g')
+          WHERE phone IS NOT NULL AND phone != '';
+
+          -- Step 3: 6 digits → prefix 974
+          UPDATE "Host" SET phone = '974' || phone
+          WHERE phone ~ '^\d{6}$';
+
+          -- Step 4: 11 digits → prefix 2
+          UPDATE "Host" SET phone = '2' || phone
+          WHERE phone ~ '^\d{11}$';
           EOSQL
 
           npm run build

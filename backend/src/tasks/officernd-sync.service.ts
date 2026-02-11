@@ -289,10 +289,14 @@ export class OfficeRndSyncService {
 
   private cleanPhone(value?: string | null): string {
     if (!value) return "";
-    let v = value.replace(/[\s\-()]/g, "");
+    // Dual numbers "xxx/xxx" → take left part before "/"
+    let v = value.includes("/") ? value.split("/")[0].trim() : value;
+    v = v.replace(/[\s\-()]/g, "");
     if (v.startsWith("+")) v = v.slice(1);
-    if (!v.startsWith("974") && /^\d{6}$/.test(v)) {
+    if (/^\d{6}$/.test(v)) {
       v = `974${v}`;
+    } else if (/^\d{11}$/.test(v)) {
+      v = `2${v}`;
     }
     return v;
   }
