@@ -128,9 +128,9 @@ jobs:
           ON CONFLICT (code) DO NOTHING;
 
           -- Fix existing host phones (one-time, idempotent)
-          -- 8 digits starting with 3/5/6/7 → prefix 974 (Qatar)
+          -- 8 digits starting with 3/4/5/6/7 → prefix 974 (Qatar)
           UPDATE "Host" SET phone = '974' || phone
-          WHERE phone ~ '^[3567][0-9]{7}$';
+          WHERE phone ~ '^[34567][0-9]{7}$';
 
           -- 6 digits → prefix 974 (Qatar)
           UPDATE "Host" SET phone = '974' || phone
