@@ -1,0 +1,319 @@
+name: 📱 Flutter Build APK & IPA
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_apk:
+        description: 'Build APK'
+        required: true
+        default: true
+        type: boolean
+      build_ipa:
+        description: 'Build IPA'
+        required: true
+        default: true
+        type: boolean
+  push:
+    branches:
+      - main
+      - 008-flutter-mobile-app
+    paths:
+      - 'MOBILE/**'
+      - '.github/workflows/flutter-build-release.yml'
+    tags:
+      - 'v*'
+
+jobs:
+  build-apk:
+    name: 📦 Build Android APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    # Run only if build_apk is true or if not manually triggered (default true)
+    if: github.event_name != 'workflow_dispatch' || inputs.build_apk
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          architecture: x64
+          cache: true
+
+      - name: 📂 Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '11'
+          cache: gradle
+
+      - name: 📚 Get Flutter dependencies
+        working-directory: MOBILE
+        run: flutter pub get
+
+      - name: 🔨 Build APK (Release)
+        working-directory: MOBILE
+        run: flutter build apk --release
+
+      - name: 📊 Display APK Info
+        run: |
+          echo "📦 APK Build Information"
+          echo "========================================"
+          ls -lh MOBILE/build/app/outputs/flutter-apk/
+          echo ""
+          echo "File Details:"
+          file MOBILE/build/app/outputs/flutter-apk/app-release.apk
+
+      - name: ✅ Verify APK
+        run: |
+          APK_FILE="MOBILE/build/app/outputs/flutter-apk/app-release.apk"
+          if [ -f "$APK_FILE" ]; then
+            SIZE=$(du -h "$APK_FILE" | cut -f1)
+            echo "✅ APK created successfully - Size: $SIZE"
+          else
+            echo "❌ APK file not found"
+            exit 1
+          fi
+
+      - name: 📤 Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: arafat-vms-apk-${{ github.run_number }}
+          path: MOBILE/build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 30
+
+      - name: 🏷️ Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: MOBILE/build/app/outputs/flutter-apk/app-release.apk
+          body: |
+            # Arafat VMS - Android Release
+
+            **APK Build**: ${{ github.run_number }}
+            **Version**: ${{ github.ref_name }}
+            **Commit**: ${{ github.sha }}
+
+            ## Installation
+            Download the APK and install on Android device (API 23+)
+
+            ```bash
+            adb install arafat-vms-*.apk
+            ```
+
+            ## What's New
+            - Complete Visitor Management System
+            - QR Code Check-in/Checkout
+            - Role-based Access Control
+            - Offline-first Design
+        draft: false
+        prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-ipa:
+    name: 🍎 Build iOS IPA
+    runs-on: macos-latest
+    timeout-minutes: 60
+    # Run only if build_ipa is true or if not manually triggered (default true)
+    if: github.event_name != 'workflow_dispatch' || inputs.build_ipa
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          architecture: x64
+          cache: true
+
+      - name: 📚 Get Flutter dependencies
+        working-directory: MOBILE
+        run: flutter pub get
+
+      - name: 🔧 Update CocoaPods
+        working-directory: MOBILE/ios
+        run: |
+          echo "📦 Updating CocoaPods repository..."
+          pod repo update || true
+          echo "📦 Installing pods..."
+          pod install
+
+      - name: 🔨 Build iOS Release (Unsigned)
+        working-directory: MOBILE
+        run: |
+          echo "🏗️  Building iOS release..."
+          flutter build ios --release --no-codesign
+          echo "✅ iOS build completed"
+
+      - name: 📦 Package into IPA Format
+        run: |
+          cd MOBILE/build/ios/iphoneos
+          echo "📦 Creating IPA package..."
+          mkdir -p Payload
+          mv Runner.app Payload/
+          zip -qq -r -9 FlutterIpaExport.ipa Payload
+          echo "✅ IPA packaged successfully"
+
+      - name: 📊 Display IPA Info
+        run: |
+          echo "🍎 IPA Build Information"
+          echo "========================================"
+          ls -lh MOBILE/build/ios/iphoneos/FlutterIpaExport.ipa
+          echo ""
+          echo "Archive Contents (first 10 files):"
+          unzip -l MOBILE/build/ios/iphoneos/FlutterIpaExport.ipa | head -15
+
+      - name: ✅ Verify IPA
+        run: |
+          IPA_FILE="MOBILE/build/ios/iphoneos/FlutterIpaExport.ipa"
+          if [ -f "$IPA_FILE" ]; then
+            SIZE=$(du -h "$IPA_FILE" | cut -f1)
+            echo "✅ IPA created successfully - Size: $SIZE"
+            echo "Integrity check:"
+            unzip -t "$IPA_FILE" > /dev/null && echo "✅ IPA integrity verified"
+          else
+            echo "❌ IPA file not found"
+            exit 1
+          fi
+
+      - name: 📤 Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: arafat-vms-ipa-${{ github.run_number }}
+          path: MOBILE/build/ios/iphoneos/FlutterIpaExport.ipa
+          retention-days: 30
+
+      - name: 🏷️ Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: MOBILE/build/ios/iphoneos/FlutterIpaExport.ipa
+          body: |
+            # Arafat VMS - iOS Release
+
+            **IPA Build**: ${{ github.run_number }}
+            **Version**: ${{ github.ref_name }}
+            **Commit**: ${{ github.sha }}
+
+            ## Installation
+
+            ### Option 1: TestFlight (Recommended for Testing)
+            - Must be code-signed with Apple Developer certificate
+            - Upload via Xcode or Apple Transporter
+            - Invite testers via TestFlight
+
+            ### Option 2: Direct Installation
+            - This IPA is unsigned - requires code signing for device installation
+            - Use Xcode to sign and install on connected device
+
+            ### Code Signing (Required for App Store)
+            This is an unsigned build. To prepare for App Store submission:
+            1. Code sign with your Apple Distribution certificate
+            2. Use proper provisioning profiles
+            3. Submit via App Store Connect
+
+            ## What's New
+            - Complete Visitor Management System
+            - QR Code Check-in/Checkout
+            - Role-based Access Control
+            - iOS 13+ Support
+
+            ## Requirements
+            - iOS 13.0+
+            - Code signature for installation
+          draft: false
+          prerelease: false
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-aab:
+    name: 📦 Build Android App Bundle
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    if: github.event_name != 'workflow_dispatch' || inputs.build_apk
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          architecture: x64
+          cache: true
+
+      - name: 📂 Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '11'
+          cache: gradle
+
+      - name: 📚 Get Flutter dependencies
+        working-directory: MOBILE
+        run: flutter pub get
+
+      - name: 🔨 Build App Bundle (Release)
+        working-directory: MOBILE
+        run: flutter build appbundle --release
+
+      - name: 📊 Display AAB Info
+        run: |
+          echo "📦 AAB Build Information"
+          echo "========================================"
+          ls -lh MOBILE/build/app/outputs/bundle/release/
+
+      - name: 📤 Upload AAB Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: arafat-vms-aab-${{ github.run_number }}
+          path: MOBILE/build/app/outputs/bundle/release/app-release.aab
+          retention-days: 30
+
+  notify-completion:
+    name: 📬 Build Notification
+    runs-on: ubuntu-latest
+    needs: [build-apk, build-ipa, build-aab]
+    if: always()
+
+    steps:
+      - name: 📊 Build Summary
+        run: |
+          echo "╔════════════════════════════════════════╗"
+          echo "║   Arafat VMS - Build Complete         ║"
+          echo "╚════════════════════════════════════════╝"
+          echo ""
+          echo "📊 Build Results:"
+          echo "  APK Build: ${{ needs.build-apk.result }}"
+          echo "  IPA Build: ${{ needs.build-ipa.result }}"
+          echo "  AAB Build: ${{ needs.build-aab.result }}"
+          echo ""
+          echo "📦 Artifacts Available:"
+          echo "  - arafat-vms-apk-${{ github.run_number }}"
+          echo "  - arafat-vms-ipa-${{ github.run_number }}"
+          echo "  - arafat-vms-aab-${{ github.run_number }}"
+          echo ""
+          echo "📍 Run Details:"
+          echo "  Commit: ${{ github.sha }}"
+          echo "  Branch: ${{ github.ref_name }}"
+          echo "  Run: #${{ github.run_number }}"
+
+      - name: ✅ Verify All Builds Passed
+        if: needs.build-apk.result == 'success' && needs.build-ipa.result == 'success' && needs.build-aab.result == 'success'
+        run: echo "🎉 All builds completed successfully!"
+
+      - name: ❌ Build Failed
+        if: failure()
+        run: |
+          echo "❌ One or more builds failed"
+          exit 1
