@@ -1,11 +1,24 @@
 ﻿# Arafat Visitor Management System Development Guidelines
 
-Last updated: 2026-02-11 (phone cleaning rules finalized, all 580 hosts verified)
+Last updated: 2026-02-13 (Flutter mobile app implementation complete - 71/77 tasks)
 
 ## Active Technologies
-- Dart 3.10.8+ / Flutter SDK (latest stable) + flutter_riverpod 2.6.x (state), dio 5.7.x (HTTP), go_router 14.6.x (routing), mobile_scanner 6.0.x (QR), flutter_form_builder 9.5.x (forms), freezed 2.5.x (models) (008-flutter-mobile-app)
-- flutter_secure_storage 9.2.x (JWT tokens on Keychain/Keystore), no local database (008-flutter-mobile-app)
 
+### 📱 Mobile App (Flutter - 008-flutter-mobile-app branch)
+- **Language**: Dart 3.10.8+
+- **Framework**: Flutter SDK (latest stable)
+- **State Management**: flutter_riverpod 3.1.0 (AsyncNotifier pattern)
+- **HTTP**: dio 5.4.0 + dio_smart_retry (auth interceptor with 401 refresh)
+- **Navigation**: go_router 17.1.0 (bottom-tab shell with auth redirect)
+- **QR Scanning**: mobile_scanner 7.1.4 + qr_flutter 4.1.0
+- **Forms**: flutter_form_builder 10.3.0 + form_builder_validators 11.3.0
+- **Models**: freezed 3.2.3 + json_serializable 6.7.1 (type-safe codegen)
+- **Storage**: flutter_secure_storage 10.0.0 (JWT on Keychain/Keystore)
+- **Utilities**: intl 0.20.2 (date formatting), shimmer 3.0.0 (loading states)
+- **Testing**: flutter_test + mocktail 1.0.2
+- **Status**: ✅ Feature-complete (71/77 tasks) - Ready for Phase 13 Polish
+
+### 🖥️ Backend & Admin
 - **Language**: TypeScript 5.7 (admin), TypeScript 5.1 (backend), ES2022 target
 - **Admin Panel**: React 19, React Router 7, TailwindCSS 4, ApexCharts, Vite 6
 - **Frontend (Reception)**: React 19, TailwindCSS 4.1, Vite 7.2
@@ -23,6 +36,41 @@ Last updated: 2026-02-11 (phone cleaning rules finalized, all 580 hosts verified
 
 ```text
 .
+├── MOBILE/                        # Flutter Mobile App (Dart 3.10.8+)
+│   ├── lib/
+│   │   ├── main.dart              # App entry with ProviderScope
+│   │   ├── app/
+│   │   │   ├── app.dart           # MaterialApp.router with theme
+│   │   │   ├── router.dart        # GoRouter: bottom-tab shell + auth redirect
+│   │   │   └── theme.dart         # Material 3 theme (Arafat blue palette)
+│   │   ├── core/
+│   │   │   ├── api/
+│   │   │   │   ├── api_client.dart         # Dio + AuthInterceptor
+│   │   │   │   ├── api_endpoints.dart      # Endpoint path constants
+│   │   │   │   └── auth_interceptor.dart   # Bearer token + 401 refresh
+│   │   │   ├── models/            # 7 freezed models (user, host, visit, delivery, lookup, dashboard, paginated_response)
+│   │   │   ├── storage/
+│   │   │   │   └── secure_storage.dart # Keychain/Keystore JWT persistence
+│   │   │   ├── providers/         # Riverpod providers (dio, storage, lookups, etc.)
+│   │   │   └── utils/             # Date formatting, role utilities
+│   │   ├── features/              # 8 feature modules
+│   │   │   ├── auth/              # Login, forgot password, auth flow
+│   │   │   ├── dashboard/         # KPIs, pending approvals, current visitors
+│   │   │   ├── visitors/          # CRUD with pagination, search, form validation
+│   │   │   ├── pre_register/      # Approve/reject/re-approve workflow
+│   │   │   ├── deliveries/        # Mark picked up action, CRUD
+│   │   │   ├── qr_scan/           # Check-in/checkout with countdown badges
+│   │   │   ├── hosts/             # Directory with search (ADMIN only)
+│   │   │   ├── profile/           # User profile, change password
+│   │   │   └── more/              # Menu navigation with role-based items
+│   │   └── shared/
+│   │       └── widgets/           # Reusable: LoadingIndicator, ErrorWidget, EmptyState, PaginatedListView, ConfirmDialog
+│   ├── pubspec.yaml               # Dependencies (riverpod 3.1.0, dio 5.4.0, go_router 17.1.0, etc.)
+│   ├── analysis_options.yaml       # Lint rules
+│   ├── build.yaml                 # Build runner config
+│   ├── BUILD_INSTRUCTIONS.md       # Local & CI/CD build guide
+│   └── [workflows in .github]
+│
 ├── admin/                         # TailAdmin SPA (React 19 + TailwindCSS 4)
 │   ├── src/
 │   │   ├── components/            # Reusable UI components
@@ -104,6 +152,22 @@ npm test          # Run all unit tests once (Vitest)
 ```
 
 **Note:** After building the admin SPA, restart the backend to serve the new static files.
+
+### Mobile App (Flutter) Commands
+```bash
+cd MOBILE
+flutter pub get              # Get dependencies
+flutter pub cache repair     # Fix dependency issues
+flutter analyze              # Lint analysis
+flutter test                 # Run unit tests
+flutter run                  # Run on connected device
+flutter build apk --release  # Build Android APK (release)
+flutter build appbundle --release # Build Android App Bundle
+flutter build ios --release --no-codesign # Build iOS IPA (unsigned)
+dart run build_runner build --delete-conflicting-outputs # Generate models
+```
+
+**Note:** iOS builds require macOS. For Android, use `flutter build apk --debug` for faster dev builds.
 
 ## Admin Panel
 
@@ -924,6 +988,143 @@ This includes all enums, tables, indexes, foreign keys, and lookup data INSERT s
 - Uses Radix UI Select component
 - Courier dropdown appears after selecting delivery type, filtered by category (same logic as admin)
 - Falls back to `courier: "Kiosk"` if no courier selected
+
+## GitHub Actions CI/CD
+
+### Flutter Build Automation
+
+**Workflow**: `.github/workflows/flutter-build-release.yml`
+
+#### Build Jobs
+
+1. **Android APK** (ubuntu-latest, ~30 min)
+   - Builds release APK: `MOBILE/build/app/outputs/flutter-apk/app-release.apk`
+   - Ready for testing and Google Play Console submission
+   - Uploaded as artifact: `arafat-vms-apk-{number}`
+
+2. **iOS IPA** (macos-latest, ~40 min)
+   - Builds unsigned IPA: `MOBILE/build/ios/iphoneos/FlutterIpaExport.ipa`
+   - Requires manual code signing for App Store/TestFlight
+   - Uploaded as artifact: `arafat-vms-ipa-{number}`
+
+3. **Android App Bundle** (ubuntu-latest, ~30 min)
+   - Builds AAB: `MOBILE/build/app/outputs/bundle/release/app-release.aab`
+   - Optimized for Google Play Store distribution
+   - Uploaded as artifact: `arafat-vms-aab-{number}`
+
+#### Trigger Methods
+
+**Manual Trigger** (Recommended for testing)
+- Go to **Actions** → **Flutter Build APK & IPA** → **Run workflow**
+- Toggle `build_apk` and `build_ipa` as needed
+- Both default to `true`
+
+**Automatic on Push**
+- Branches: `main`, `008-flutter-mobile-app`
+- Only if changes in `MOBILE/**` or workflow file
+- Builds all platforms (APK, IPA, AAB)
+
+**Automatic on Version Tag**
+- Tag format: `v1.0.0` or `v1.0.0-beta.1`
+- Creates GitHub Release
+- Automatically uploads artifacts
+- Includes generated release notes
+
+#### Build Times
+
+- **APK**: ~30 minutes
+- **IPA**: ~40 minutes (slowest due to macOS runner)
+- **AAB**: ~30 minutes
+- **All in parallel**: ~40 minutes total
+
+#### Artifact Management
+
+- **Retention**: 30 days
+- **Location**: Actions tab → Workflow run → Artifacts section
+- **Download**: Click artifact name, download from browser
+- **Releases**: Version tags also create GitHub Release with artifacts
+
+#### Build Status & Notifications
+
+- PR comments: "✅ APK Build Successful" (for pull requests)
+- Summary job displays results for all platforms
+- Build logs available in Actions tab for debugging
+
+### Local Building
+
+**Android APK**:
+```bash
+cd MOBILE && flutter build apk --release
+# Output: MOBILE/build/app/outputs/flutter-apk/app-release.apk
+```
+
+**iOS IPA**:
+```bash
+cd MOBILE
+cd ios && pod install && cd ..
+flutter build ios --release --no-codesign
+cd build/ios/iphoneos
+mkdir -p Payload && mv Runner.app Payload/
+zip -r -9 FlutterIpaExport.ipa Payload
+# Output: MOBILE/build/ios/iphoneos/FlutterIpaExport.ipa
+```
+
+**Android App Bundle**:
+```bash
+cd MOBILE && flutter build appbundle --release
+# Output: MOBILE/build/app/outputs/bundle/release/app-release.aab
+```
+
+### Documentation
+
+- **Detailed Guide**: `.github/GITHUB_ACTIONS_GUIDE.md` (setup, code signing, troubleshooting)
+- **Build Instructions**: `MOBILE/BUILD_INSTRUCTIONS.md` (local & CI/CD builds, installation methods)
+
+### Code Signing (Production)
+
+Currently unsigned builds. To enable production signing:
+
+**Android (Play Store)**:
+1. Create/export keystore
+2. Add GitHub Secrets: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`
+3. Uncomment signing section in workflow
+
+**iOS (App Store)**:
+1. Export Apple Developer certificate and provisioning profile
+2. Add GitHub Secrets: `IOS_SIGNING_CERT_BASE64`, `IOS_SIGNING_CERT_PASSWORD`, `IOS_PROVISIONING_PROFILE_BASE64`, `KEYCHAIN_PASSWORD`
+3. Workflow includes `build-app-store` job that uses these secrets
+
+### Installation Methods
+
+**Android APK**:
+```bash
+adb install app-release.apk
+# Or download → tap on device
+```
+
+**iOS IPA**:
+- Requires Xcode for direct installation (unsigned)
+- TestFlight for testing (requires code signing)
+- App Store for production (requires code signing)
+
+**Play Store (AAB)**:
+- Upload to Google Play Console
+- Automatic optimization for device configurations
+
+### Monitoring & Troubleshooting
+
+**View Build Status**:
+1. Actions tab → Flutter Build APK & IPA
+2. Click workflow run
+3. See status for each job
+
+**Common Issues**:
+- **macOS pods timeout**: Increase `timeout-minutes` in workflow
+- **gradle timeout**: Same as above, default 45 min
+- **Java not found**: Already included in workflow setup
+- **CocoaPods needs update**: Workflow runs `pod repo update`
+
+See `.github/GITHUB_ACTIONS_GUIDE.md` for detailed troubleshooting and configuration options.
 
 ### Backend Lookups Module
 - Controller: `backend/src/lookups/lookups.controller.ts`
