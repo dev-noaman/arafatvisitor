@@ -1,8 +1,10 @@
-# Arafat Visitor Management System Development Guidelines
+﻿# Arafat Visitor Management System Development Guidelines
 
 Last updated: 2026-02-11 (phone cleaning rules finalized, all 580 hosts verified)
 
 ## Active Technologies
+- Dart 3.10.8+ / Flutter SDK (latest stable) + flutter_riverpod 2.6.x (state), dio 5.7.x (HTTP), go_router 14.6.x (routing), mobile_scanner 6.0.x (QR), flutter_form_builder 9.5.x (forms), freezed 2.5.x (models) (008-flutter-mobile-app)
+- flutter_secure_storage 9.2.x (JWT tokens on Keychain/Keystore), no local database (008-flutter-mobile-app)
 
 - **Language**: TypeScript 5.7 (admin), TypeScript 5.1 (backend), ES2022 target
 - **Admin Panel**: React 19, React Router 7, TailwindCSS 4, ApexCharts, Vite 6
