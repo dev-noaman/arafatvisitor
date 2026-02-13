@@ -25,7 +25,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.initState();
     // Check authentication status on init
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(authNotifierProvider.notifier).checkAuthStatus();
+      ref.read(authProvider.notifier).checkAuthStatus();
     });
   }
 
@@ -37,13 +37,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       setState(() => _isLoading = true);
 
       await ref
-          .read(authNotifierProvider.notifier)
+          .read(authProvider.notifier)
           .login(email: email, password: password);
 
       setState(() => _isLoading = false);
 
       // Check if login was successful and navigate
-      final authState = ref.read(authNotifierProvider);
+      final authState = ref.read(authProvider);
       if (authState.value?.status == AuthStatus.authenticated) {
         if (mounted) {
           context.go('/dashboard');
@@ -54,7 +54,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final authState = ref.watch(authNotifierProvider);
+    final authState = ref.watch(authProvider);
     final theme = Theme.of(context);
 
     return Scaffold(

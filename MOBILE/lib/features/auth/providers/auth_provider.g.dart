@@ -15,7 +15,7 @@ final authProvider = AuthNotifierProvider._();
 
 /// Authentication provider
 final class AuthNotifierProvider
-    extends $NotifierProvider<AuthNotifier, AuthState> {
+    extends $AsyncNotifierProvider<AuthNotifier, AuthState> {
   /// Authentication provider
   AuthNotifierProvider._()
     : super(
@@ -34,31 +34,23 @@ final class AuthNotifierProvider
   @$internal
   @override
   AuthNotifier create() => AuthNotifier();
-
-  /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(AuthState value) {
-    return $ProviderOverride(
-      origin: this,
-      providerOverride: $SyncValueProvider<AuthState>(value),
-    );
-  }
 }
 
-String _$authNotifierHash() => r'c31207590479312a4f95aee8fbe4f761297fff18';
+String _$authNotifierHash() => r'359394985d0aad68ea621d5dd8f763db99283f42';
 
 /// Authentication provider
 
-abstract class _$AuthNotifier extends $Notifier<AuthState> {
-  AuthState build();
+abstract class _$AuthNotifier extends $AsyncNotifier<AuthState> {
+  FutureOr<AuthState> build();
   @$mustCallSuper
   @override
   void runBuild() {
-    final ref = this.ref as $Ref<AuthState, AuthState>;
+    final ref = this.ref as $Ref<AsyncValue<AuthState>, AuthState>;
     final element =
         ref.element
             as $ClassProviderElement<
-              AnyNotifier<AuthState, AuthState>,
-              AuthState,
+              AnyNotifier<AsyncValue<AuthState>, AuthState>,
+              AsyncValue<AuthState>,
               Object?,
               Object?
             >;

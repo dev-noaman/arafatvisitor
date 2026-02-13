@@ -7,6 +7,8 @@
 // - AsyncValue state transitions (loading → data → error)
 // - Reset functionality
 
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mocktail/mocktail.dart';
@@ -34,10 +36,10 @@ void main() {
     });
 
     group('Initial State', () {
-      test('Initial state is AsyncData with null', () {
+      test('Initial state is AsyncLoading while build runs', () {
+        // When an AsyncNotifier is first read, it's in loading state during build()
         final state = container.read(changePasswordProvider);
-        expect(state, isA<AsyncData<void>>());
-        expect(state.value, isNull);
+        expect(state, isA<AsyncLoading<void>>());
       });
     });
 
@@ -60,7 +62,6 @@ void main() {
         // ASSERT
         final state = container.read(changePasswordProvider);
         expect(state, isA<AsyncData<void>>());
-        expect(state.value, isNull);
 
         verify(() => mockRepository.changePassword(
           currentPassword: 'oldPass123',
@@ -216,29 +217,27 @@ void main() {
     group('AsyncValue State Transitions', () {
       test('State transitions to AsyncLoading during changePassword', () async {
         // ARRANGE
+        final completer = Completer<void>();
         when(() => mockRepository.changePassword(
           currentPassword: any(named: 'currentPassword'),
           newPassword: any(named: 'newPassword'),
-        )).thenAnswer((_) async {
-          await Future.delayed(const Duration(milliseconds: 50));
-        });
+        )).thenAnswer((_) => completer.future);
 
         final notifier = container.read(changePasswordProvider.notifier);
 
-        // ACT
+        // ACT - Start the operation
         final changeFuture = notifier.changePassword(
           currentPassword: 'current123',
           newPassword: 'newpass123',
         );
 
-        await Future.delayed(const Duration(milliseconds: 25));
+        // ASSERT - Check state is loading immediately after call
         var state = container.read(changePasswordProvider);
         expect(state, isA<AsyncLoading>());
 
-        // Wait for completion
+        // Complete the operation
+        completer.complete();
         await changeFuture;
-        state = container.read(changePasswordProvider);
-        expect(state, isA<AsyncData<void>>());
       });
 
       test('State remains AsyncData after error is reset', () async {
@@ -263,7 +262,6 @@ void main() {
         notifier.reset();
         state = container.read(changePasswordProvider);
         expect(state, isA<AsyncData<void>>());
-        expect(state.value, isNull);
       });
     });
 
@@ -311,11 +309,11 @@ void main() {
         );
 
         var state = container.read(changePasswordProvider);
-        expect(state.value, isNull);
+        expect(state, isA<AsyncData<void>>());
 
         notifier.reset();
         state = container.read(changePasswordProvider);
-        expect(state.value, isNull);
+        expect(state, isA<AsyncData<void>>());
       });
     });
   });

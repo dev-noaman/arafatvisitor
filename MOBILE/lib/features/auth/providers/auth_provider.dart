@@ -31,7 +31,7 @@ class AuthState {
 @riverpod
 class AuthNotifier extends AsyncNotifier<AuthState> {
   @override
-  AuthState build() {
+  Future<AuthState> build() async {
     return const AuthState(status: AuthStatus.initial);
   }
 

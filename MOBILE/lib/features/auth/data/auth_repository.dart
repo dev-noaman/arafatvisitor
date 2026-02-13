@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../../core/api/api_client.dart';
 import '../../../core/api/api_endpoints.dart';
 import '../../../core/models/user.dart';
 import '../../../core/providers/core_providers.dart';
@@ -17,7 +18,7 @@ AuthRepository authRepository(Ref ref) {
 class AuthRepository {
 
   AuthRepository(this._apiClient);
-  final Dio _apiClient;
+  final ApiClient _apiClient;
 
   /// Login with email and password
   /// Returns the authenticated user with tokens
