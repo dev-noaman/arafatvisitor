@@ -4,8 +4,8 @@ part 'paginated_response.freezed.dart';
 part 'paginated_response.g.dart';
 
 /// Generic paginated response model
-@freezed
-class PaginatedResponse<T> with _$PaginatedResponse<T> {
+@Freezed(genericArgumentFactories: true)
+abstract class PaginatedResponse<T> with _$PaginatedResponse<T> {
   const factory PaginatedResponse({
     required List<T> data,
     required int total,
@@ -14,6 +14,9 @@ class PaginatedResponse<T> with _$PaginatedResponse<T> {
     required int totalPages,
   }) = _PaginatedResponse;
 
-  factory PaginatedResponse.fromJson(Map<String, dynamic> json) =>
-      _$PaginatedResponseFromJson<T>(json);
+  factory PaginatedResponse.fromJson(
+    Map<String, dynamic> json,
+    T Function(Object? json) fromJsonT,
+  ) =>
+      _$PaginatedResponseFromJson<T>(json, fromJsonT);
 }

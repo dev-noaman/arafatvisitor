@@ -16,7 +16,7 @@ enum DeliveryStatus {
 
 /// Delivery model representing a package delivery
 @freezed
-class Delivery with _$Delivery {
+abstract class Delivery with _$Delivery {
   const factory Delivery({
     required String id,
     required String deliveryType,

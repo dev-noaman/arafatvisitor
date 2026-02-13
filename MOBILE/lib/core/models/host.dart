@@ -43,7 +43,7 @@ enum HostStatus {
 
 /// Host model representing a user who can host visitors
 @freezed
-class Host with _$Host {
+abstract class Host with _$Host {
   const factory Host({
     required String id,
     required String externalId,

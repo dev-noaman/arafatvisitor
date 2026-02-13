@@ -110,7 +110,7 @@ final class AuthStateProvider
   }
 }
 
-String _$authStateHash() => r'5a35943d9375b675d3ef0158617b3c3877c4453b';
+String _$authStateHash() => r'dc7797edfeeb576c4f86cd1c9fd83e9d1c0b6c0c';
 
 /// User provider (convenience)
 
@@ -155,7 +155,7 @@ final class CurrentUserProvider extends $FunctionalProvider<User?, User?, User?>
   }
 }
 
-String _$currentUserHash() => r'6e9e6ed72e607aa6b2948c8f4fa95627e75a461e';
+String _$currentUserHash() => r'2f845cf1754ef15a640a9621309d4fdbd11a3753';
 
 /// Is authenticated provider (convenience)
 
@@ -201,4 +201,4 @@ final class IsAuthenticatedProvider
   }
 }
 
-String _$isAuthenticatedHash() => r'80f5dfefcb96543f021266ad62ddc2bbab289f06';
+String _$isAuthenticatedHash() => r'c57c3e9e16de5031545a72fce38e85c4038c538e';

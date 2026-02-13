@@ -127,19 +127,19 @@ class AuthNotifier extends AsyncNotifier<AuthState> {
 
 /// AuthState provider
 @riverpod
-AuthState authState(AuthStateRef ref) {
-  return ref.watch(authNotifierProvider).value ??
+AuthState authState(Ref ref) {
+  return ref.watch(authProvider).value ??
       const AuthState(status: AuthStatus.initial);
 }
 
 /// User provider (convenience)
 @riverpod
-User? currentUser(CurrentUserRef ref) {
+User? currentUser(Ref ref) {
   return ref.watch(authStateProvider).user;
 }
 
 /// Is authenticated provider (convenience)
 @riverpod
-bool isAuthenticated(IsAuthenticatedRef ref) {
+bool isAuthenticated(Ref ref) {
   return ref.watch(authStateProvider).status == AuthStatus.authenticated;
 }

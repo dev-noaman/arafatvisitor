@@ -20,7 +20,7 @@ enum VisitStatus {
 
 /// Visit model representing a visitor's visit
 @freezed
-class Visit with _$Visit {
+abstract class Visit with _$Visit {
   const factory Visit({
     required String id,
     String? sessionId,

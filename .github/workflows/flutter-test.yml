@@ -1,0 +1,165 @@
+name: Flutter Unit Tests
+
+on:
+  push:
+    branches:
+      - 009-mobile-unit-testing
+      - main
+    paths:
+      - 'MOBILE/**'
+      - '.github/workflows/flutter-test.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'MOBILE/**'
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Run Unit Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.10.8'
+          cache: true
+
+      - name: Get Dependencies
+        working-directory: ./MOBILE
+        run: |
+          flutter pub get
+          flutter pub global activate coverage
+
+      - name: Run Tests with Coverage
+        working-directory: ./MOBILE
+        run: |
+          flutter test --coverage --no-test-assets 2>&1 | tee test-output.log
+
+      - name: Generate Coverage Report
+        working-directory: ./MOBILE
+        run: |
+          # Generate LCOV HTML report
+          flutter pub global run coverage:format_coverage \
+            --lcov \
+            --in=coverage \
+            --out=coverage/lcov.info \
+            --packages=.packages \
+            --report-on=lib
+
+      - name: Check Coverage Threshold
+        working-directory: ./MOBILE
+        run: |
+          # Extract coverage percentage from lcov.info
+          coverage_percent=$(python3 << 'EOF'
+          import re
+          try:
+              with open('coverage/lcov.info', 'r') as f:
+                  lines = f.readlines()
+                  total_lines = 0
+                  covered_lines = 0
+                  for line in lines:
+                      if line.startswith('LF:'):
+                          total_lines += int(line.split(':')[1].strip())
+                      elif line.startswith('LH:'):
+                          covered_lines += int(line.split(':')[1].strip())
+                  if total_lines > 0:
+                      percent = (covered_lines / total_lines) * 100
+                      print(f"{percent:.1f}")
+          except Exception as e:
+              print(f"Error: {e}")
+          EOF
+          )
+          echo "Coverage: ${coverage_percent}%"
+          echo "COVERAGE=${coverage_percent}" >> $GITHUB_ENV
+
+      - name: Upload Coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./MOBILE/coverage/lcov.info
+          flags: flutter
+          name: flutter-coverage
+          fail_ci_if_error: false
+
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: flutter-test-results
+          path: |
+            MOBILE/test-output.log
+            MOBILE/coverage/lcov.info
+
+      - name: Comment PR with Test Results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const testOutput = fs.readFileSync('./MOBILE/test-output.log', 'utf8');
+
+            // Extract test summary (last 20 lines)
+            const lines = testOutput.split('\n');
+            const summary = lines.slice(-20).join('\n');
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## ✅ Flutter Unit Tests\n\n**Coverage**: ${{ env.COVERAGE }}%\n\n\`\`\`\n${summary}\n\`\`\``
+            });
+
+  lint:
+    name: Lint & Format Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.10.8'
+          cache: true
+
+      - name: Get Dependencies
+        working-directory: ./MOBILE
+        run: flutter pub get
+
+      - name: Run Analyzer
+        working-directory: ./MOBILE
+        run: flutter analyze --no-fatal-infos
+
+      - name: Check Format
+        working-directory: ./MOBILE
+        run: |
+          flutter pub global activate dart_code_metrics
+          flutter pub global run dart_code_metrics:metrics check-unused-code lib/
+
+status-check:
+  name: Test Status Check
+  needs: [test]
+  if: always()
+  runs-on: ubuntu-latest
+
+  steps:
+    - name: Check Test Status
+      run: |
+        if [ "${{ needs.test.result }}" = "success" ]; then
+          echo "✅ All tests passed!"
+          exit 0
+        else
+          echo "❌ Tests failed!"
+          exit 1
+        fi

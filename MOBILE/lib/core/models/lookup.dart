@@ -5,7 +5,7 @@ part 'lookup.g.dart';
 
 /// Visit purpose lookup
 @freezed
-class LookupPurpose with _$LookupPurpose {
+abstract class LookupPurpose with _$LookupPurpose {
   const factory LookupPurpose({required String id, required String name}) =
       _LookupPurpose;
 
@@ -15,7 +15,7 @@ class LookupPurpose with _$LookupPurpose {
 
 /// Delivery type lookup
 @freezed
-class LookupDeliveryType with _$LookupDeliveryType {
+abstract class LookupDeliveryType with _$LookupDeliveryType {
   const factory LookupDeliveryType({required String id, required String name}) =
       _LookupDeliveryType;
 
@@ -25,7 +25,7 @@ class LookupDeliveryType with _$LookupDeliveryType {
 
 /// Courier lookup with category
 @freezed
-class LookupCourier with _$LookupCourier {
+abstract class LookupCourier with _$LookupCourier {
   const factory LookupCourier({
     required String id,
     required String name,
@@ -38,7 +38,7 @@ class LookupCourier with _$LookupCourier {
 
 /// Location lookup
 @freezed
-class LookupLocation with _$LookupLocation {
+abstract class LookupLocation with _$LookupLocation {
   const factory LookupLocation({required String id, required String name}) =
       _LookupLocation;
 

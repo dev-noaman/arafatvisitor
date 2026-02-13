@@ -58,7 +58,7 @@ final class SecureStorageProvider
   }
 }
 
-String _$secureStorageHash() => r'f4ad5ba37b951008ef111b1b00d7ff6eaa56e2be';
+String _$secureStorageHash() => r'c67bfca83b6a2754117438cf67e2e5f4500a66d7';
 
 /// Provider for AuthInterceptor
 
@@ -105,7 +105,7 @@ final class AuthInterceptorProvider
   }
 }
 
-String _$authInterceptorHash() => r'c23ac349aac851d4fb484cabc8ea0403712a574b';
+String _$authInterceptorHash() => r'7d745da0286bc3a7c1994287f87dabd4a528434d';
 
 /// Provider for ApiClient
 
@@ -151,4 +151,49 @@ final class ApiClientProvider
   }
 }
 
-String _$apiClientHash() => r'3b118051205c92a67c4e731b5492b6d59f34ba55';
+String _$apiClientHash() => r'30dcceaa618ccb049a2e2061db8b6d69a9b68946';
+
+/// Provider for Dio instance (extracted from ApiClient)
+
+@ProviderFor(dio)
+final dioProvider = DioProvider._();
+
+/// Provider for Dio instance (extracted from ApiClient)
+
+final class DioProvider extends $FunctionalProvider<Dio, Dio, Dio>
+    with $Provider<Dio> {
+  /// Provider for Dio instance (extracted from ApiClient)
+  DioProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'dioProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$dioHash();
+
+  @$internal
+  @override
+  $ProviderElement<Dio> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  Dio create(Ref ref) {
+    return dio(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(Dio value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<Dio>(value),
+    );
+  }
+}
+
+String _$dioHash() => r'4245e7d08279fc711d842313a20bb1f9cd397cd6';

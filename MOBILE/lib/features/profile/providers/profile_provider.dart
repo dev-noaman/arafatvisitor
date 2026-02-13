@@ -1,8 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../core/providers/core_providers.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../data/profile_repository.dart';
+
+part 'profile_provider.g.dart';
 
 final profileRepositoryProvider = Provider((ref) {
   final dio = ref.watch(dioProvider);
@@ -10,35 +13,31 @@ final profileRepositoryProvider = Provider((ref) {
 });
 
 final profileProvider = FutureProvider((ref) async {
-  final authState = ref.watch(authNotifierProvider);
-  return authState.whenData((auth) => auth?.user).value;
+  final authState = ref.watch(authStateProvider);
+  return authState.user;
 });
 
-final changePasswordProvider = StateNotifierProvider<ChangePasswordNotifier, AsyncValue<void>>((ref) {
-  final repository = ref.watch(profileRepositoryProvider);
-  return ChangePasswordNotifier(repository);
-});
+@riverpod
+class ChangePassword extends AsyncNotifier<void> {
+  late ProfileRepository _repository;
 
-class ChangePasswordNotifier extends StateNotifier<AsyncValue<void>> {
-  final ProfileRepository _repository;
-
-  ChangePasswordNotifier(this._repository) : super(const AsyncValue.data(null));
+  @override
+  Future<void> build() async {
+    _repository = ref.watch(profileRepositoryProvider);
+    return Future.value();
+  }
 
   Future<void> changePassword({
     required String currentPassword,
     required String newPassword,
   }) async {
-    state = const AsyncValue.loading();
-
-    try {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
       await _repository.changePassword(
         currentPassword: currentPassword,
         newPassword: newPassword,
       );
-      state = const AsyncValue.data(null);
-    } catch (e, st) {
-      state = AsyncValue.error(e, st);
-    }
+    });
   }
 
   void reset() {

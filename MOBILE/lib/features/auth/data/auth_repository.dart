@@ -9,7 +9,7 @@ part 'auth_repository.g.dart';
 
 /// Repository for authentication operations
 @riverpod
-AuthRepository authRepository(AuthRepositoryRef ref) {
+AuthRepository authRepository(Ref ref) {
   final apiClient = ref.watch(apiClientProvider);
   return AuthRepository(apiClient);
 }

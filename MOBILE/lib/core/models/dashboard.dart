@@ -5,7 +5,7 @@ part 'dashboard.g.dart';
 
 /// Dashboard KPIs summary
 @freezed
-class DashboardKpis with _$DashboardKpis {
+abstract class DashboardKpis with _$DashboardKpis {
   const factory DashboardKpis({
     required int totalHosts,
     required int visitsToday,
@@ -18,7 +18,7 @@ class DashboardKpis with _$DashboardKpis {
 
 /// Pending approval item
 @freezed
-class PendingApproval with _$PendingApproval {
+abstract class PendingApproval with _$PendingApproval {
   const factory PendingApproval({
     required String id,
     required String visitorName,
@@ -34,7 +34,7 @@ class PendingApproval with _$PendingApproval {
 
 /// Current visitor item
 @freezed
-class CurrentVisitor with _$CurrentVisitor {
+abstract class CurrentVisitor with _$CurrentVisitor {
   const factory CurrentVisitor({
     required String id,
     required String visitorName,
@@ -51,7 +51,7 @@ class CurrentVisitor with _$CurrentVisitor {
 
 /// Received delivery item
 @freezed
-class ReceivedDelivery with _$ReceivedDelivery {
+abstract class ReceivedDelivery with _$ReceivedDelivery {
   const factory ReceivedDelivery({
     required String id,
     required String deliveryType,
