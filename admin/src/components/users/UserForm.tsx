@@ -13,7 +13,7 @@ const userSchema = z.object({
     .min(8, 'Password must be at least 8 characters')
     .optional()
     .or(z.literal('')),
-  hostId: z.string().optional(),
+  hostId: z.union([z.string(), z.number(), z.null()]).optional(),
 })
 
 interface UserFormProps {
