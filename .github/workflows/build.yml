@@ -21,18 +21,18 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: mobile/package-lock.json
+          cache-dependency-path: MOBILE/package-lock.json
 
       - name: Install dependencies
-        working-directory: mobile
+        working-directory: MOBILE
         run: npm ci
 
       - name: Lint (TypeScript)
-        working-directory: mobile
+        working-directory: MOBILE
         run: npm run lint
 
       - name: Run tests
-        working-directory: mobile
+        working-directory: MOBILE
         run: npm test
 
   build-android:
@@ -49,10 +49,10 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: mobile/package-lock.json
+          cache-dependency-path: MOBILE/package-lock.json
 
       - name: Install dependencies
-        working-directory: mobile
+        working-directory: MOBILE
         run: npm ci
 
       - name: Set up JDK
@@ -62,7 +62,7 @@ jobs:
           java-version: 17
 
       - name: Generate native Android project
-        working-directory: mobile
+        working-directory: MOBILE
         run: npx expo prebuild --platform android --clean
 
       - name: Cache Gradle
@@ -71,21 +71,21 @@ jobs:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: gradle-${{ runner.os }}-${{ hashFiles('mobile/package.json', 'mobile/app.config.ts', 'mobile/package-lock.json') }}
+          key: gradle-${{ runner.os }}-${{ hashFiles('MOBILE/package.json', 'MOBILE/app.config.ts', 'MOBILE/package-lock.json') }}
 
       - name: Make gradlew executable
-        working-directory: mobile/android
+        working-directory: MOBILE/android
         run: chmod +x gradlew
 
       - name: Build Release APK
-        working-directory: mobile/android
+        working-directory: MOBILE/android
         run: ./gradlew assembleRelease --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: ArafatVisitor-release-apk
-          path: mobile/android/app/build/outputs/apk/release/*.apk
+          path: MOBILE/android/app/build/outputs/apk/release/*.apk
           retention-days: 30
 
   build-ios:
@@ -102,23 +102,23 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: mobile/package-lock.json
+          cache-dependency-path: MOBILE/package-lock.json
 
       - name: Install dependencies
-        working-directory: mobile
+        working-directory: MOBILE
         run: npm ci
 
       - name: Generate native iOS project
-        working-directory: mobile
+        working-directory: MOBILE
         run: npx expo prebuild --platform ios --clean
 
       - name: Install CocoaPods
-        working-directory: mobile/ios
+        working-directory: MOBILE/ios
         run: pod install
 
       - name: Discover workspace and scheme
         id: ios
-        working-directory: mobile/ios
+        working-directory: MOBILE/ios
         run: |
           WORKSPACE=$(ls *.xcworkspace 2>/dev/null | head -1)
           SCHEME="${WORKSPACE%.xcworkspace}"
@@ -126,7 +126,7 @@ jobs:
           echo "scheme=$SCHEME" >> $GITHUB_OUTPUT
 
       - name: Build archive
-        working-directory: mobile/ios
+        working-directory: MOBILE/ios
         run: |
           xcodebuild \
             -workspace ${{ steps.ios.outputs.workspace }} \
