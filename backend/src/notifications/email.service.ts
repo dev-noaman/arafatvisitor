@@ -204,63 +204,27 @@ export class EmailService {
 
   async sendHostWelcome(to: string, hostName: string, resetUrl: string): Promise<boolean> {
     const html = `
-      <div style="font-family: 'Manrope', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0;">
-        <!-- Brand Accent Bar -->
-        <div style="height: 6px; width: 100%; background: #4760ff;"></div>
-        <!-- Email Content -->
-        <div style="padding: 32px 32px 40px 32px;">
-          <!-- Logo -->
-          <div style="text-align: center; margin-bottom: 32px;">
-            <table cellpadding="0" cellspacing="0" border="0" style="margin: 0 auto;">
-              <tr>
-                <td style="background: rgba(71,96,255,0.1); padding: 8px; border-radius: 12px; vertical-align: middle;">
-                  <img src="https://img.icons8.com/material-rounded/24/4760ff/building.png" alt="" width="24" height="24" style="display: block;" />
-                </td>
-                <td style="padding-left: 12px; vertical-align: middle;">
-                  <span style="font-size: 20px; font-weight: 800; color: #0f172a; letter-spacing: -0.5px;">Arafat Visitor</span>
-                </td>
-              </tr>
-            </table>
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: linear-gradient(135deg, #1E3A8A, #3B82F6); padding: 30px; text-align: center;">
+          <h1 style="color: white; margin: 0; font-size: 28px;">WELCOME TO ARAFAT VMS</h1>
+          <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0;">Arafat Visitor Management System</p>
+        </div>
+        <div style="padding: 40px 30px; background: #f9fafb;">
+          <h2 style="color: #1E3A8A; margin-top: 0;">Hello ${hostName},</h2>
+          <p style="color: #374151; line-height: 1.6;">A host account has been created for you on the Arafat Visitor Management System. You can now log in to view and manage visitors for your company.</p>
+          <p style="color: #374151; line-height: 1.6;">To get started, please set your password by clicking the button below:</p>
+          <div style="text-align: center; padding: 30px 0;">
+            <a href="${resetUrl}" style="display: inline-block; background: linear-gradient(135deg, #1E3A8A, #3B82F6); color: white; text-decoration: none; padding: 15px 40px; border-radius: 8px; font-weight: bold; font-size: 16px;">Set Password</a>
           </div>
-          <!-- Hero Section -->
-          <div style="background: rgba(71,96,255,0.05); border-radius: 12px; padding: 40px 0; text-align: center; margin-bottom: 40px;">
-            <div style="width: 80px; height: 80px; background: #ffffff; border-radius: 50%; margin: 0 auto 16px auto; line-height: 80px; font-size: 40px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">&#127881;</div>
-          </div>
-          <!-- Messaging -->
-          <div style="text-align: center;">
-            <h2 style="font-size: 28px; font-weight: 800; color: #0f172a; line-height: 1.2; margin: 0 0 16px 0;">
-              Welcome to Arafat Visitor
-            </h2>
-            <p style="font-weight: 600; color: #1e293b; font-size: 16px; margin: 0 0 16px 0;">Hello ${hostName},</p>
-            <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 16px 0;">
-              Your account has been successfully created. We're excited to have you on board with Arafat Visitor&mdash;your new home for seamless visitor management.
-            </p>
-            <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 40px 0;">
-              To get started and access your personalized dashboard, please set up your secure password by clicking the button below.
-            </p>
-            <!-- CTA Button -->
-            <div style="margin-bottom: 32px;">
-              <a href="${resetUrl}" style="display: inline-block; background: #4760ff; color: #ffffff; text-decoration: none; padding: 16px 32px; border-radius: 8px; font-size: 16px; font-weight: 700;">Set Your Password &#8594;</a>
-            </div>
-            <!-- Divider -->
-            <hr style="border: none; border-top: 1px solid #f1f5f9; margin: 32px 0;" />
-            <!-- Fallback Link -->
-            <p style="color: #6b7280; font-size: 14px; line-height: 1.6; margin: 0 0 12px 0;">Or copy and paste this link into your browser:</p>
-            <div style="background: #f5f6f8; padding: 12px; border-radius: 8px; margin-bottom: 24px;">
-              <a href="${resetUrl}" style="color: #4760ff; font-size: 14px; font-weight: 500; text-decoration: underline; word-break: break-all;">${resetUrl}</a>
-            </div>
-            <!-- Expiry + Support -->
-            <p style="color: #94a3b8; font-size: 14px; margin: 0 0 8px 0;">This link expires in <strong>72 hours</strong>.</p>
-            <p style="color: #94a3b8; font-size: 14px; margin: 0;">
-              If you didn't request this account, please ignore this email.
-            </p>
+          <p style="color: #6b7280; font-size: 14px; line-height: 1.6;">Or copy and paste this link into your browser:</p>
+          <p style="color: #3B82F6; font-size: 13px; word-break: break-all; background: #e5e7eb; padding: 12px; border-radius: 6px;">${resetUrl}</p>
+          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+            <p style="color: #9ca3af; font-size: 13px; margin: 0;">This link expires in <strong>72 hours</strong>.</p>
+            <p style="color: #9ca3af; font-size: 13px; margin: 8px 0 0 0;">Once you set your password, you can log in at the admin panel to view your visitors, approve or reject visit requests, and more.</p>
           </div>
         </div>
-        <!-- Footer -->
-        <div style="background: #f8fafc; padding: 24px; text-align: center; border-top: 1px solid #f1f5f9;">
-          <p style="color: #94a3b8; font-size: 12px; font-weight: 500; margin: 0;">
-            &copy; ${new Date().getFullYear()} Arafat Visitor &bull; Powered by Arafat Visitor Management System
-          </p>
+        <div style="padding: 20px; text-align: center; background: #1E3A8A; color: rgba(255,255,255,0.8); font-size: 13px;">
+          Powered by Arafat Visitor Management System
         </div>
       </div>
     `;
@@ -273,52 +237,27 @@ export class EmailService {
 
   async sendPasswordReset(to: string, resetUrl: string): Promise<boolean> {
     const html = `
-      <div style="font-family: 'Manrope', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid rgba(71,96,255,0.1);">
-        <!-- Branding Header -->
-        <div style="padding: 40px 0 24px 0; text-align: center;">
-          <table cellpadding="0" cellspacing="0" border="0" style="margin: 0 auto;">
-            <tr>
-              <td style="background: #4760ff; padding: 8px; border-radius: 8px; vertical-align: middle;">
-                <img src="https://img.icons8.com/material-rounded/24/ffffff/shield.png" alt="" width="24" height="24" style="display: block;" />
-              </td>
-              <td style="padding-left: 8px; vertical-align: middle;">
-                <span style="font-size: 20px; font-weight: 800; color: #0f1223; letter-spacing: -0.5px;">Arafat Visitor</span>
-              </td>
-            </tr>
-          </table>
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: linear-gradient(135deg, #1E3A8A, #3B82F6); padding: 30px; text-align: center;">
+          <h1 style="color: white; margin: 0; font-size: 28px;">PASSWORD RESET</h1>
+          <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0;">Arafat Visitor Management System</p>
         </div>
-        <!-- Main Content -->
-        <div style="padding: 0 32px 40px 32px; text-align: center;">
-          <!-- Hero Image -->
-          <div style="width: 100%; height: 192px; background: linear-gradient(135deg, #4760ff, #6b7dff, #4760ff); border-radius: 12px; margin-bottom: 32px;"></div>
-          <!-- Heading -->
-          <h1 style="color: #101118; font-size: 28px; font-weight: 700; line-height: 1.2; margin: 0 0 16px 0;">Reset Your Password</h1>
-          <!-- Description -->
-          <p style="color: #5e648d; font-size: 16px; font-weight: 400; line-height: 1.6; max-width: 440px; margin: 0 auto 32px auto;">
-            Hi there, we received a request to reset the password for your <span style="font-weight: 600; color: #4760ff;">Arafat Visitor</span> account. Click the button below to proceed and choose a new password.
-          </p>
-          <!-- CTA Button -->
-          <div style="margin-bottom: 32px;">
-            <a href="${resetUrl}" style="display: inline-block; min-width: 200px; background: #4760ff; color: #ffffff; text-decoration: none; padding: 16px 32px; border-radius: 12px; font-size: 16px; font-weight: 700; letter-spacing: 0.3px;">Reset Password</a>
+        <div style="padding: 40px 30px; background: #f9fafb;">
+          <h2 style="color: #1E3A8A; margin-top: 0;">Hello,</h2>
+          <p style="color: #374151; line-height: 1.6;">We received a request to reset your password for your Arafat VMS account.</p>
+          <p style="color: #374151; line-height: 1.6;">Click the button below to set a new password:</p>
+          <div style="text-align: center; padding: 30px 0;">
+            <a href="${resetUrl}" style="display: inline-block; background: linear-gradient(135deg, #1E3A8A, #3B82F6); color: white; text-decoration: none; padding: 15px 40px; border-radius: 8px; font-weight: bold; font-size: 16px;">Reset Password</a>
           </div>
-          <!-- Fallback Link -->
-          <div style="padding-top: 24px; border-top: 1px solid #f0f0f5;">
-            <p style="color: #5e648d; font-size: 14px; font-weight: 400; margin: 0 0 12px 0;">
-              If the button above doesn't work, copy and paste this link into your browser:
-            </p>
-            <div style="background: #f5f6f8; padding: 12px; border-radius: 8px;">
-              <a href="${resetUrl}" style="color: #4760ff; font-size: 14px; font-weight: 500; text-decoration: underline; word-break: break-all;">${resetUrl}</a>
-            </div>
+          <p style="color: #6b7280; font-size: 14px; line-height: 1.6;">Or copy and paste this link into your browser:</p>
+          <p style="color: #3B82F6; font-size: 13px; word-break: break-all; background: #e5e7eb; padding: 12px; border-radius: 6px;">${resetUrl}</p>
+          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+            <p style="color: #9ca3af; font-size: 13px; margin: 0;">This link expires in <strong>1 hour</strong>.</p>
+            <p style="color: #9ca3af; font-size: 13px; margin: 8px 0 0 0;">If you didn't request this password reset, you can safely ignore this email.</p>
           </div>
         </div>
-        <!-- Security Footer -->
-        <div style="background: rgba(245,246,248,0.5); padding: 24px 32px; text-align: center;">
-          <p style="color: #5e648d; font-size: 12px; font-weight: 400; line-height: 1.5; margin: 0;">
-            If you did not request a password reset, please ignore this email. This link will expire in <strong>60 minutes</strong>.
-          </p>
-          <p style="color: #5e648d; font-size: 12px; margin: 16px 0 0 0;">
-            &copy; ${new Date().getFullYear()} Arafat Visitor &bull; Powered by Arafat Visitor Management System
-          </p>
+        <div style="padding: 20px; text-align: center; background: #1E3A8A; color: rgba(255,255,255,0.8); font-size: 13px;">
+          Powered by Arafat Visitor Management System
         </div>
       </div>
     `;
