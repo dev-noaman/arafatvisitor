@@ -529,12 +529,12 @@ Professional HTML email with:
 - Confirm password field must match (Zod `.refine()`)
 
 ### Password Reset Email Template
-Professional HTML email matching QR email design:
-- Gradient header (blue) with "PASSWORD RESET" branding
-- Styled "Reset Password" button
-- Fallback URL for copy/paste
-- Expiry notice (1 hour)
-- Security message for unexpected requests
+Identical layout to `sendHostWelcome` — same div-based structure:
+- Gradient header with "PASSWORD RESET" + "Arafat Visitor Management System"
+- Greeting "Hello," + description text
+- Gradient blue button with white text: "Reset Password"
+- Fallback URL in gray box
+- Expiry: 1 hour (welcome email uses 72 hours)
 - "Powered by Arafat Visitor Management System" footer
 
 ### Pages
@@ -570,11 +570,14 @@ WHATSAPP_API_KEY=<secret>
 ```
 
 ### Email Template Style (Unified)
-All emails use the same branded layout matching the QR VISITOR PASS email:
-- Blue gradient header (`#1E3A8A → #3B82F6`) with title + "Arafat Group"
-- Compact body (`30px` padding) with simple table (`10px` row padding, bottom borders)
-- Small gray footer (`15px` padding, `12px` font) — "Powered by Arafat Visitor Management System"
+All emails use the same branded `<div>`-based layout (NOT table-based — div layout renders correctly in email clients):
+- Blue gradient header (`#1E3A8A → #3B82F6`) with title + "Arafat Visitor Management System"
+- Light gray body (`#f9fafb`, `40px 30px` padding) with greeting, body text, gradient button (white text, `15px 40px` padding)
+- Fallback URL in gray box (`#e5e7eb`) for copy/paste
+- Divider with expiry notice and security message
+- Dark blue footer (`#1E3A8A`) — "Powered by Arafat Visitor Management System"
 - Templates: `sendVisitorArrival`, `sendVisitorCheckin`, `sendHostWelcome`, `sendPasswordReset`, QR email (inline in controller)
+- **IMPORTANT**: Do not use table-based HTML or external image URLs (like icons8.com) — keep simple `<div>` layout matching `sendHostWelcome`
 
 ### Notification Triggers
 | Event | Email | WhatsApp | Recipient |
