@@ -53,6 +53,7 @@ nul
 .claude/
 New Text Document.txt
 *.zip
+CLAUDE.md
 
 # Working directories
 specs/
