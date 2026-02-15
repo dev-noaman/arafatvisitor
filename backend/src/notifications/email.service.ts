@@ -293,9 +293,15 @@ export class EmailService {
                 </tr>
                 <tr>
                   <td align="center" style="padding:20px 40px 28px 40px;">
-                    <a href="${resetUrl}" style="display:inline-block;padding:12px 32px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;background:linear-gradient(135deg,#2563eb,#4f46e5);border-radius:999px;box-shadow:0 12px 20px rgba(37,99,235,0.35);">
-                      Reset Password
-                    </a>
+                    <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;border-collapse:separate;border-radius:8px;">
+                      <tr>
+                        <td align="center" style="border-radius:8px;background-color:#2563eb;padding:14px 32px;">
+                          <a href="${resetUrl}" style="font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;display:inline-block;">
+                            Reset Password
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
                   </td>
                 </tr>
                 <tr>
