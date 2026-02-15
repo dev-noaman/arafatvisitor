@@ -150,10 +150,19 @@ export class WhatsAppService {
       });
 
       const responseText = await res.text();
-      console.log("[WhatsAppService] Response status:", res.status, "body:", responseText);
+      console.log(
+        "[WhatsAppService] Response status:",
+        res.status,
+        "body:",
+        responseText,
+      );
 
       if (!res.ok) {
-        console.error("[WhatsAppService] Image API error:", res.status, responseText);
+        console.error(
+          "[WhatsAppService] Image API error:",
+          res.status,
+          responseText,
+        );
         return false;
       }
 

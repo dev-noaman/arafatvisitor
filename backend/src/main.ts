@@ -28,7 +28,11 @@ async function bootstrap() {
         directives: {
           defaultSrc: ["'self'"],
           scriptSrc: ["'self'", "https://static.cloudflareinsights.com"],
-          styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+          styleSrc: [
+            "'self'",
+            "'unsafe-inline'",
+            "https://fonts.googleapis.com",
+          ],
           imgSrc: ["'self'", "data:"],
           fontSrc: ["'self'", "https://fonts.gstatic.com"],
           connectSrc: ["'self'", "https://cloudflareinsights.com"],

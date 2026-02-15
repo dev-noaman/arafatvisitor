@@ -45,7 +45,7 @@ type DeliveryWithHost = Prisma.DeliveryGetPayload<{ include: { host: true } }>;
 // They use JWT auth with Bearer token or httpOnly cookie
 // Individual endpoints have specific rate limiting applied
 
-@SkipThrottle({ default: true, 'login-account': true, 'login-ip': true })
+@SkipThrottle({ default: true, "login-account": true, "login-ip": true })
 @Controller("admin/api")
 export class AdminApiController {
   private readonly logger = new Logger(AdminApiController.name);
@@ -62,8 +62,14 @@ export class AdminApiController {
   /**
    * Returns host scope for HOST users (hostId + company). Null for ADMIN/RECEPTION.
    */
-  private async getHostScope(req: any): Promise<{ hostId: bigint; company: string } | null> {
-    if ((req.user?.role !== 'HOST' && req.user?.role !== 'STAFF') || !req.user?.hostId) return null;
+  private async getHostScope(
+    req: any,
+  ): Promise<{ hostId: bigint; company: string } | null> {
+    if (
+      (req.user?.role !== "HOST" && req.user?.role !== "STAFF") ||
+      !req.user?.hostId
+    )
+      return null;
     const host = await this.prisma.host.findUnique({
       where: { id: req.user.hostId },
       select: { id: true, company: true },
@@ -103,10 +109,18 @@ export class AdminApiController {
     }
 
     if (user.status === "INACTIVE") {
-      throw new HttpException("Account is deactivated. Contact your administrator.", HttpStatus.FORBIDDEN);
+      throw new HttpException(
+        "Account is deactivated. Contact your administrator.",
+        HttpStatus.FORBIDDEN,
+      );
     }
 
-    const payload = { sub: user.id, email: user.email, role: user.role, name: user.name };
+    const payload = {
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+      name: user.name,
+    };
     const token = this.jwtService.sign(payload, {
       expiresIn: this.configService.get("JWT_EXPIRES_IN") || "24h",
     });
@@ -150,7 +164,10 @@ export class AdminApiController {
     try {
       decoded = this.jwtService.verify(incomingToken);
     } catch {
-      throw new HttpException("Invalid or expired token", HttpStatus.UNAUTHORIZED);
+      throw new HttpException(
+        "Invalid or expired token",
+        HttpStatus.UNAUTHORIZED,
+      );
     }
 
     // Look up the user
@@ -168,7 +185,12 @@ export class AdminApiController {
     }
 
     // Issue a new 24h admin token
-    const payload = { sub: user.id, email: user.email, role: user.role, name: user.name };
+    const payload = {
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+      name: user.name,
+    };
     const newToken = this.jwtService.sign(payload, {
       expiresIn: this.configService.get("JWT_EXPIRES_IN") || "24h",
     });
@@ -209,7 +231,8 @@ export class AdminApiController {
       { expiresIn: "1h" },
     );
     const adminUrl =
-      this.configService.get("ADMIN_URL") || "https://arafatvisitor.cloud/admin";
+      this.configService.get("ADMIN_URL") ||
+      "https://arafatvisitor.cloud/admin";
     const resetUrl = `${adminUrl}/reset-password?token=${resetToken}`;
     await this.emailService
       .sendPasswordReset(user.email, resetUrl)
@@ -273,17 +296,19 @@ export class AdminApiController {
   @Get("profile")
   async getProfile(@Req() req: any, @Query("email") email?: string) {
     // DEBUG LOGGING
-    console.log('[DEBUG] /admin/api/profile called');
-    console.log('[DEBUG] Query params:', { email });
-    console.log('[DEBUG] Headers:', {
-      authorization: req.headers?.authorization ? 'Bearer [REDACTED]' : 'MISSING',
-      contentType: req.headers?.['content-type'],
+    console.log("[DEBUG] /admin/api/profile called");
+    console.log("[DEBUG] Query params:", { email });
+    console.log("[DEBUG] Headers:", {
+      authorization: req.headers?.authorization
+        ? "Bearer [REDACTED]"
+        : "MISSING",
+      contentType: req.headers?.["content-type"],
       origin: req.headers?.origin,
       referer: req.headers?.referer,
     });
-    console.log('[DEBUG] Request URL:', req.url);
-    console.log('[DEBUG] Request method:', req.method);
-    
+    console.log("[DEBUG] Request URL:", req.url);
+    console.log("[DEBUG] Request method:", req.method);
+
     // Try to get email from query param, JWT token, or session
     let userEmail = email;
 
@@ -295,54 +320,84 @@ export class AdminApiController {
           const token = authHeader.substring(7);
           const decoded = this.jwtService.verify(token) as { email: string };
           userEmail = decoded.email;
-          console.log('[DEBUG] Successfully decoded JWT token for email:', userEmail);
+          console.log(
+            "[DEBUG] Successfully decoded JWT token for email:",
+            userEmail,
+          );
         } catch (err) {
-          console.log('[DEBUG] Failed to decode JWT token:', err);
+          console.log("[DEBUG] Failed to decode JWT token:", err);
           // Token invalid or expired
         }
       }
     }
 
     if (!userEmail) {
-      console.log('[DEBUG] No user email found - throwing UNAUTHORIZED');
-      throw new HttpException("Authentication required", HttpStatus.UNAUTHORIZED);
+      console.log("[DEBUG] No user email found - throwing UNAUTHORIZED");
+      throw new HttpException(
+        "Authentication required",
+        HttpStatus.UNAUTHORIZED,
+      );
     }
 
-    console.log('[DEBUG] Looking up user with email:', userEmail);
-    const user = await this.prisma.user.findUnique({ where: { email: userEmail } });
+    console.log("[DEBUG] Looking up user with email:", userEmail);
+    const user = await this.prisma.user.findUnique({
+      where: { email: userEmail },
+    });
     if (!user) {
-      console.log('[DEBUG] User not found - throwing NOT_FOUND');
+      console.log("[DEBUG] User not found - throwing NOT_FOUND");
       throw new HttpException("User not found", HttpStatus.NOT_FOUND);
     }
-    console.log('[DEBUG] User found:', { id: user.id, name: user.name, email: user.email, role: user.role });
-    return { id: user.id, name: user.name, email: user.email, role: user.role, createdAt: user.createdAt, updatedAt: user.updatedAt };
+    console.log("[DEBUG] User found:", {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    });
+    return {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
   }
 
   @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST, Role.STAFF)
   @Get("profile/preferences")
   async getPreferences(@Req() req: any) {
     // DEBUG LOGGING
-    console.log('[DEBUG] /admin/api/profile/preferences called');
-    console.log('[DEBUG] Headers:', {
-      authorization: req.headers?.authorization ? 'Bearer [REDACTED]' : 'MISSING',
-      contentType: req.headers?.['content-type'],
+    console.log("[DEBUG] /admin/api/profile/preferences called");
+    console.log("[DEBUG] Headers:", {
+      authorization: req.headers?.authorization
+        ? "Bearer [REDACTED]"
+        : "MISSING",
+      contentType: req.headers?.["content-type"],
       origin: req.headers?.origin,
       referer: req.headers?.referer,
     });
-    console.log('[DEBUG] Request URL:', req.url);
-    console.log('[DEBUG] Request method:', req.method);
-    
+    console.log("[DEBUG] Request URL:", req.url);
+    console.log("[DEBUG] Request method:", req.method);
+
     // Get user from JWT token
     const authHeader = req.headers?.authorization;
     if (!authHeader?.startsWith("Bearer ")) {
-      console.log('[DEBUG] No Authorization header found - throwing UNAUTHORIZED');
-      throw new HttpException("Authentication required", HttpStatus.UNAUTHORIZED);
+      console.log(
+        "[DEBUG] No Authorization header found - throwing UNAUTHORIZED",
+      );
+      throw new HttpException(
+        "Authentication required",
+        HttpStatus.UNAUTHORIZED,
+      );
     }
 
     try {
       const token = authHeader.substring(7);
       const decoded = this.jwtService.verify(token) as { email: string };
-      console.log('[DEBUG] Successfully decoded JWT token for email:', decoded.email);
+      console.log(
+        "[DEBUG] Successfully decoded JWT token for email:",
+        decoded.email,
+      );
 
       // Return default preferences (can be extended to store in DB)
       return {
@@ -352,8 +407,11 @@ export class AdminApiController {
         language: "en",
       };
     } catch (err) {
-      console.log('[DEBUG] Failed to decode JWT token:', err);
-      throw new HttpException("Invalid or expired token", HttpStatus.UNAUTHORIZED);
+      console.log("[DEBUG] Failed to decode JWT token:", err);
+      throw new HttpException(
+        "Invalid or expired token",
+        HttpStatus.UNAUTHORIZED,
+      );
     }
   }
 
@@ -363,7 +421,10 @@ export class AdminApiController {
     // Get user from JWT token
     const authHeader = req.headers?.authorization;
     if (!authHeader?.startsWith("Bearer ")) {
-      throw new HttpException("Authentication required", HttpStatus.UNAUTHORIZED);
+      throw new HttpException(
+        "Authentication required",
+        HttpStatus.UNAUTHORIZED,
+      );
     }
 
     try {
@@ -371,7 +432,10 @@ export class AdminApiController {
       // For now, just return the submitted preferences (can be stored in DB later)
       return body;
     } catch {
-      throw new HttpException("Invalid or expired token", HttpStatus.UNAUTHORIZED);
+      throw new HttpException(
+        "Invalid or expired token",
+        HttpStatus.UNAUTHORIZED,
+      );
     }
   }
 
@@ -686,9 +750,12 @@ export class AdminApiController {
                   { expiresIn: "72h" },
                 );
                 const adminUrl =
-                  this.configService.get("ADMIN_URL") || "https://arafatvisitor.cloud/admin";
+                  this.configService.get("ADMIN_URL") ||
+                  "https://arafatvisitor.cloud/admin";
                 const resetUrl = `${adminUrl}/reset-password?token=${resetToken}`;
-                this.emailService.sendHostWelcome(userEmail, name, resetUrl).catch(() => {});
+                this.emailService
+                  .sendHostWelcome(userEmail, name, resetUrl)
+                  .catch(() => {});
               }
             }
           }
@@ -1100,9 +1167,12 @@ export class AdminApiController {
                 { expiresIn: "72h" },
               );
               const adminUrl =
-                this.configService.get("ADMIN_URL") || "https://arafatvisitor.cloud/admin";
+                this.configService.get("ADMIN_URL") ||
+                "https://arafatvisitor.cloud/admin";
               const resetUrl = `${adminUrl}/reset-password?token=${resetToken}`;
-              this.emailService.sendHostWelcome(userEmail, name, resetUrl).catch(() => {});
+              this.emailService
+                .sendHostWelcome(userEmail, name, resetUrl)
+                .catch(() => {});
             }
           }
         }
@@ -1205,7 +1275,8 @@ export class AdminApiController {
 
     // Parallelize all date range queries using Promise.all
     const visitsPerDayPromises: Promise<{ date: string; count: number }>[] = [];
-    const deliveriesPerDayPromises: Promise<{ date: string; count: number }>[] = [];
+    const deliveriesPerDayPromises: Promise<{ date: string; count: number }>[] =
+      [];
 
     for (let i = 6; i >= 0; i--) {
       const date = new Date(today);
@@ -1332,7 +1403,9 @@ export class AdminApiController {
     // HOST can only approve visits to their own company
     const hostScope = await this.getHostScope(req);
     if (hostScope && visit.host?.company !== hostScope.company) {
-      throw new ForbiddenException("You can only approve visits to your company");
+      throw new ForbiddenException(
+        "You can only approve visits to your company",
+      );
     }
 
     // Allow approving from PENDING_APPROVAL or REJECTED (re-approve)
@@ -1381,7 +1454,9 @@ export class AdminApiController {
     // HOST can only reject visits to their own company
     const hostScope = await this.getHostScope(req);
     if (hostScope && visit.host?.company !== hostScope.company) {
-      throw new ForbiddenException("You can only reject visits to your company");
+      throw new ForbiddenException(
+        "You can only reject visits to your company",
+      );
     }
 
     if (visit.status !== "PENDING_APPROVAL") {
@@ -1554,7 +1629,7 @@ export class AdminApiController {
         const sent = await this.whatsappService.sendImage(
           visit.visitorPhone,
           qrBase64,
-          caption
+          caption,
         );
         console.log("[send-qr] WhatsApp image result:", sent);
 
@@ -1752,16 +1827,28 @@ export class AdminApiController {
         where: { createdAt: { gte: start, lte: end }, ...visitHostFilter },
       }),
       this.prisma.visit.count({
-        where: { status: "APPROVED", createdAt: { gte: start, lte: end }, ...visitHostFilter },
+        where: {
+          status: "APPROVED",
+          createdAt: { gte: start, lte: end },
+          ...visitHostFilter,
+        },
       }),
       this.prisma.visit.count({
-        where: { status: "CHECKED_IN", createdAt: { gte: start, lte: end }, ...visitHostFilter },
+        where: {
+          status: "CHECKED_IN",
+          createdAt: { gte: start, lte: end },
+          ...visitHostFilter,
+        },
       }),
       this.prisma.delivery.count({
         where: { createdAt: { gte: start, lte: end }, ...deliveryHostFilter },
       }),
       this.prisma.delivery.count({
-        where: { status: "PICKED_UP", createdAt: { gte: start, lte: end }, ...deliveryHostFilter },
+        where: {
+          status: "PICKED_UP",
+          createdAt: { gte: start, lte: end },
+          ...deliveryHostFilter,
+        },
       }),
       this.prisma.host.count({ where: { status: 1, ...hostFilter } }),
     ]);
@@ -1772,30 +1859,50 @@ export class AdminApiController {
       select: { createdAt: true, status: true },
     });
 
-    const visitsByDate = new Map<string, { total: number; approved: number; checkedIn: number; checkedOut: number; pending: number; rejected: number }>();
+    const visitsByDate = new Map<
+      string,
+      {
+        total: number;
+        approved: number;
+        checkedIn: number;
+        checkedOut: number;
+        pending: number;
+        rejected: number;
+      }
+    >();
     visits.forEach((v) => {
       const dateKey = v.createdAt.toISOString().split("T")[0];
       if (!visitsByDate.has(dateKey)) {
-        visitsByDate.set(dateKey, { total: 0, approved: 0, checkedIn: 0, checkedOut: 0, pending: 0, rejected: 0 });
+        visitsByDate.set(dateKey, {
+          total: 0,
+          approved: 0,
+          checkedIn: 0,
+          checkedOut: 0,
+          pending: 0,
+          rejected: 0,
+        });
       }
       const entry = visitsByDate.get(dateKey)!;
       entry.total++;
       if (v.status === "APPROVED") entry.approved++;
       else if (v.status === "CHECKED_IN") entry.checkedIn++;
       else if (v.status === "CHECKED_OUT") entry.checkedOut++;
-      else if (v.status === "PENDING_APPROVAL" || v.status === "PRE_REGISTERED") entry.pending++;
+      else if (v.status === "PENDING_APPROVAL" || v.status === "PRE_REGISTERED")
+        entry.pending++;
       else if (v.status === "REJECTED") entry.rejected++;
     });
 
-    const visitReports = Array.from(visitsByDate.entries()).map(([date, data]) => ({
-      date,
-      totalVisits: data.total,
-      checkedIn: data.checkedIn,
-      checkedOut: data.checkedOut,
-      pending: data.pending,
-      approved: data.approved,
-      rejected: data.rejected,
-    }));
+    const visitReports = Array.from(visitsByDate.entries()).map(
+      ([date, data]) => ({
+        date,
+        totalVisits: data.total,
+        checkedIn: data.checkedIn,
+        checkedOut: data.checkedOut,
+        pending: data.pending,
+        approved: data.approved,
+        rejected: data.rejected,
+      }),
+    );
 
     // Get delivery reports grouped by date
     const deliveries = await this.prisma.delivery.findMany({
@@ -1803,7 +1910,10 @@ export class AdminApiController {
       select: { createdAt: true, status: true },
     });
 
-    const deliveriesByDate = new Map<string, { total: number; pickedUp: number; pending: number }>();
+    const deliveriesByDate = new Map<
+      string,
+      { total: number; pickedUp: number; pending: number }
+    >();
     deliveries.forEach((d) => {
       const dateKey = d.createdAt.toISOString().split("T")[0];
       if (!deliveriesByDate.has(dateKey)) {
@@ -1815,12 +1925,14 @@ export class AdminApiController {
       else entry.pending++;
     });
 
-    const deliveryReports = Array.from(deliveriesByDate.entries()).map(([date, data]) => ({
-      date,
-      totalDeliveries: data.total,
-      pickedUp: data.pickedUp,
-      pending: data.pending,
-    }));
+    const deliveryReports = Array.from(deliveriesByDate.entries()).map(
+      ([date, data]) => ({
+        date,
+        totalDeliveries: data.total,
+        pickedUp: data.pickedUp,
+        pending: data.pending,
+      }),
+    );
 
     // Get host reports
     const hostsWithVisits = await this.prisma.host.findMany({
@@ -2116,7 +2228,9 @@ export class AdminApiController {
     return {
       id: "settings",
       smtpHost: process.env.SMTP_HOST || "",
-      smtpPort: process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : 587,
+      smtpPort: process.env.SMTP_PORT
+        ? parseInt(process.env.SMTP_PORT, 10)
+        : 587,
       smtpSecure: process.env.SMTP_SECURE === "true",
       smtpUser: process.env.SMTP_USER || "",
       smtpFrom: process.env.SMTP_FROM || "",
@@ -2130,7 +2244,9 @@ export class AdminApiController {
         timezone: process.env.SITE_TIMEZONE || "Asia/Qatar",
       },
       whatsapp: {
-        enabled: !!(process.env.WHATSAPP_ENDPOINT && process.env.WHATSAPP_API_KEY),
+        enabled: !!(
+          process.env.WHATSAPP_ENDPOINT && process.env.WHATSAPP_API_KEY
+        ),
         provider: "wbiztool",
         configured: !!(
           process.env.WHATSAPP_ENDPOINT &&
@@ -2182,9 +2298,11 @@ export class AdminApiController {
 
       if (body.smtpHost !== undefined) updateEnvVar("SMTP_HOST", body.smtpHost);
       if (body.smtpPort !== undefined) updateEnvVar("SMTP_PORT", body.smtpPort);
-      if (body.smtpSecure !== undefined) updateEnvVar("SMTP_SECURE", body.smtpSecure);
+      if (body.smtpSecure !== undefined)
+        updateEnvVar("SMTP_SECURE", body.smtpSecure);
       if (body.smtpUser !== undefined) updateEnvVar("SMTP_USER", body.smtpUser);
-      if (body.smtpPassword !== undefined) updateEnvVar("SMTP_PASS", body.smtpPassword);
+      if (body.smtpPassword !== undefined)
+        updateEnvVar("SMTP_PASS", body.smtpPassword);
       if (body.smtpFrom !== undefined) updateEnvVar("SMTP_FROM", body.smtpFrom);
 
       fs.writeFileSync(envPath, envContent);
@@ -2225,10 +2343,14 @@ export class AdminApiController {
         process.env[key] = value;
       };
 
-      if (body.whatsappApiKey !== undefined) updateEnvVar("WHATSAPP_API_KEY", body.whatsappApiKey);
-      if (body.whatsappPhoneNumber !== undefined) updateEnvVar("WHATSAPP_CLIENT", body.whatsappPhoneNumber);
-      if (body.whatsappEndpoint !== undefined) updateEnvVar("WHATSAPP_ENDPOINT", body.whatsappEndpoint);
-      if (body.whatsappClientId !== undefined) updateEnvVar("WHATSAPP_CLIENT_ID", body.whatsappClientId);
+      if (body.whatsappApiKey !== undefined)
+        updateEnvVar("WHATSAPP_API_KEY", body.whatsappApiKey);
+      if (body.whatsappPhoneNumber !== undefined)
+        updateEnvVar("WHATSAPP_CLIENT", body.whatsappPhoneNumber);
+      if (body.whatsappEndpoint !== undefined)
+        updateEnvVar("WHATSAPP_ENDPOINT", body.whatsappEndpoint);
+      if (body.whatsappClientId !== undefined)
+        updateEnvVar("WHATSAPP_CLIENT_ID", body.whatsappClientId);
 
       fs.writeFileSync(envPath, envContent);
 
@@ -2244,11 +2366,16 @@ export class AdminApiController {
 
   @Roles(Role.ADMIN)
   @Post("settings/test-whatsapp")
-  async testWhatsapp(@Body() body: { phone?: string; recipientPhone?: string }) {
+  async testWhatsapp(
+    @Body() body: { phone?: string; recipientPhone?: string },
+  ) {
     const phone = body.phone || body.recipientPhone;
 
     if (!phone) {
-      throw new HttpException("Phone number is required", HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        "Phone number is required",
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     if (!process.env.WHATSAPP_API_KEY || !process.env.WHATSAPP_ENDPOINT) {
@@ -2493,14 +2620,19 @@ export class AdminApiController {
     },
   ) {
     // HOST/STAFF auto-sets hostId from their user account
-    if ((req.user?.role === 'STAFF' || req.user?.role === 'HOST') && req.user?.hostId) {
+    if (
+      (req.user?.role === "STAFF" || req.user?.role === "HOST") &&
+      req.user?.hostId
+    ) {
       body.hostId = String(req.user.hostId);
     }
 
     // Resolve location from host if not provided
     let location = body.location;
     if (!location) {
-      const host = await this.prisma.host.findUnique({ where: { id: BigInt(body.hostId) } });
+      const host = await this.prisma.host.findUnique({
+        where: { id: BigInt(body.hostId) },
+      });
       location = host?.location || "BARWA_TOWERS";
     }
 
@@ -2559,15 +2691,23 @@ export class AdminApiController {
     }
 
     const updateData: Prisma.VisitUpdateInput = {};
-    if (body.visitorName !== undefined) updateData.visitorName = body.visitorName;
-    if (body.visitorCompany !== undefined) updateData.visitorCompany = body.visitorCompany;
-    if (body.visitorPhone !== undefined) updateData.visitorPhone = body.visitorPhone;
-    if (body.visitorEmail !== undefined) updateData.visitorEmail = body.visitorEmail;
+    if (body.visitorName !== undefined)
+      updateData.visitorName = body.visitorName;
+    if (body.visitorCompany !== undefined)
+      updateData.visitorCompany = body.visitorCompany;
+    if (body.visitorPhone !== undefined)
+      updateData.visitorPhone = body.visitorPhone;
+    if (body.visitorEmail !== undefined)
+      updateData.visitorEmail = body.visitorEmail;
     if (body.purpose !== undefined) updateData.purpose = body.purpose;
     if (body.location !== undefined)
-      updateData.location = body.location as "BARWA_TOWERS" | "MARINA_50" | "ELEMENT_MARIOTT";
+      updateData.location = body.location as
+        | "BARWA_TOWERS"
+        | "MARINA_50"
+        | "ELEMENT_MARIOTT";
     if (body.status !== undefined)
-      updateData.status = body.status as Prisma.EnumVisitStatusFieldUpdateOperationsInput["set"];
+      updateData.status =
+        body.status as Prisma.EnumVisitStatusFieldUpdateOperationsInput["set"];
     if (body.hostId !== undefined) {
       updateData.host = { connect: { id: BigInt(body.hostId) } };
     }
@@ -2646,7 +2786,10 @@ export class AdminApiController {
     }
 
     if (visit.status !== "APPROVED") {
-      throw new HttpException("Visit must be approved to check in", HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        "Visit must be approved to check in",
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     await this.prisma.visit.update({
@@ -2669,7 +2812,10 @@ export class AdminApiController {
     }
 
     if (visit.status !== "CHECKED_IN") {
-      throw new HttpException("Visit must be checked in to check out", HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        "Visit must be checked in to check out",
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     await this.prisma.visit.update({
@@ -2851,7 +2997,11 @@ export class AdminApiController {
         company: body.company,
         email: body.email,
         phone: body.phone,
-        location: body.location as "BARWA_TOWERS" | "MARINA_50" | "ELEMENT_MARIOTT" | undefined,
+        location: body.location as
+          | "BARWA_TOWERS"
+          | "MARINA_50"
+          | "ELEMENT_MARIOTT"
+          | undefined,
         status: body.status ?? 1,
         externalId: body.externalId,
       },
@@ -2889,9 +3039,12 @@ export class AdminApiController {
             { expiresIn: "72h" },
           );
           const adminUrl =
-            this.configService.get("ADMIN_URL") || "https://arafatvisitor.cloud/admin";
+            this.configService.get("ADMIN_URL") ||
+            "https://arafatvisitor.cloud/admin";
           const resetUrl = `${adminUrl}/reset-password?token=${resetToken}`;
-          this.emailService.sendHostWelcome(userEmail, body.name, resetUrl).catch(() => {});
+          this.emailService
+            .sendHostWelcome(userEmail, body.name, resetUrl)
+            .catch(() => {});
         }
       }
     }
@@ -2928,7 +3081,11 @@ export class AdminApiController {
         company: body.company,
         email: body.email,
         phone: body.phone,
-        location: body.location as "BARWA_TOWERS" | "MARINA_50" | "ELEMENT_MARIOTT" | undefined,
+        location: body.location as
+          | "BARWA_TOWERS"
+          | "MARINA_50"
+          | "ELEMENT_MARIOTT"
+          | undefined,
         status: body.status,
       },
     });
@@ -3050,7 +3207,11 @@ export class AdminApiController {
         company: body.company || "Arafat Group",
         email: body.email,
         phone: body.phone,
-        location: body.location as "BARWA_TOWERS" | "MARINA_50" | "ELEMENT_MARIOTT" | undefined,
+        location: body.location as
+          | "BARWA_TOWERS"
+          | "MARINA_50"
+          | "ELEMENT_MARIOTT"
+          | undefined,
         status: body.status ?? 1,
         externalId: body.externalId,
         type: "STAFF",
@@ -3089,9 +3250,12 @@ export class AdminApiController {
             { expiresIn: "72h" },
           );
           const adminUrl =
-            this.configService.get("ADMIN_URL") || "https://arafatvisitor.cloud/admin";
+            this.configService.get("ADMIN_URL") ||
+            "https://arafatvisitor.cloud/admin";
           const resetUrl = `${adminUrl}/reset-password?token=${resetToken}`;
-          this.emailService.sendHostWelcome(userEmail, body.name, resetUrl).catch(() => {});
+          this.emailService
+            .sendHostWelcome(userEmail, body.name, resetUrl)
+            .catch(() => {});
         }
       }
     }
@@ -3128,7 +3292,11 @@ export class AdminApiController {
         company: body.company,
         email: body.email,
         phone: body.phone,
-        location: body.location as "BARWA_TOWERS" | "MARINA_50" | "ELEMENT_MARIOTT" | undefined,
+        location: body.location as
+          | "BARWA_TOWERS"
+          | "MARINA_50"
+          | "ELEMENT_MARIOTT"
+          | undefined,
         status: body.status,
       },
     });
@@ -3183,8 +3351,16 @@ export class AdminApiController {
     let records: Record<string, unknown>[];
     try {
       const csvParseModule = await import("csv-parse/sync");
-      const parse = (csvParseModule as { parse: (input: string, options: unknown) => Record<string, unknown>[] }).parse;
-      records = parse(csvContent, { columns: true, skip_empty_lines: true, trim: true });
+      const parse = (
+        csvParseModule as {
+          parse: (input: string, options: unknown) => Record<string, unknown>[];
+        }
+      ).parse;
+      records = parse(csvContent, {
+        columns: true,
+        skip_empty_lines: true,
+        trim: true,
+      });
     } catch (e) {
       throw new HttpException(
         `Failed to parse CSV: ${e instanceof Error ? e.message : "Unknown error"}`,
@@ -3201,7 +3377,9 @@ export class AdminApiController {
     const workbook = XLSX.read(buffer, { type: "buffer" });
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
-    const records = XLSX.utils.sheet_to_json(worksheet, { defval: "" }) as Record<string, unknown>[];
+    const records = XLSX.utils.sheet_to_json(worksheet, {
+      defval: "",
+    }) as Record<string, unknown>[];
     return this.processStaffRecords(records);
   }
 
@@ -3238,7 +3416,10 @@ export class AdminApiController {
       if (v.startsWith("+")) v = v.slice(1);
       const isQatar = v.startsWith("974");
       if (!isQatar && /^\d{6}$/.test(v)) v = `974${v}`;
-      else if (isQatar) { const rest = v.slice(3); if (rest.length === 6) v = `974${rest}`; }
+      else if (isQatar) {
+        const rest = v.slice(3);
+        if (rest.length === 6) v = `974${rest}`;
+      }
       return v;
     };
 
@@ -3250,22 +3431,44 @@ export class AdminApiController {
       const reasons: string[] = [];
       const externalIdRaw = (row["ID"] || row["id"] || "").toString().trim();
       const nameRaw = (row["Name"] || row["name"] || "").toString().trim();
-      const companyRaw = (row["Company"] || row["company"] || "").toString().trim();
-      const emailRaw = (row["Email Address"] || row["Email"] || row["email"] || "").toString().trim();
-      const phoneRaw = (row["Phone Number"] || row["Phone"] || row["phone"] || "").toString().trim();
-      const locationRaw = (row["Location"] || row["location"] || "").toString().trim();
-      const statusRaw = (row["Status"] || row["status"] || "").toString().trim();
+      const companyRaw = (row["Company"] || row["company"] || "")
+        .toString()
+        .trim();
+      const emailRaw = (
+        row["Email Address"] ||
+        row["Email"] ||
+        row["email"] ||
+        ""
+      )
+        .toString()
+        .trim();
+      const phoneRaw = (
+        row["Phone Number"] ||
+        row["Phone"] ||
+        row["phone"] ||
+        ""
+      )
+        .toString()
+        .trim();
+      const locationRaw = (row["Location"] || row["location"] || "")
+        .toString()
+        .trim();
+      const statusRaw = (row["Status"] || row["status"] || "")
+        .toString()
+        .trim();
 
       const name = nameRaw || "";
       if (!name) reasons.push("Missing name");
 
       const company = companyRaw || null;
       const email = emailRaw ? emailRaw.toLowerCase() : null;
-      if (email && !emailRegex.test(email)) reasons.push("Invalid email format");
+      if (email && !emailRegex.test(email))
+        reasons.push("Invalid email format");
 
       const phone = cleanPhone(phoneRaw);
       if (!phone) reasons.push("Invalid or missing phone");
-      else if (/[a-zA-Z]/.test(phone)) reasons.push("Invalid phone (contains letters)");
+      else if (/[a-zA-Z]/.test(phone))
+        reasons.push("Invalid phone (contains letters)");
 
       const location = mapLocation(locationRaw || null);
       const status = mapStatus(statusRaw || null);
@@ -3279,8 +3482,13 @@ export class AdminApiController {
       const externalId = externalIdRaw || null;
 
       if (externalId) {
-        const existingHost = await this.prisma.host.findUnique({ where: { externalId } });
-        if (existingHost) { skipped++; continue; }
+        const existingHost = await this.prisma.host.findUnique({
+          where: { externalId },
+        });
+        if (existingHost) {
+          skipped++;
+          continue;
+        }
       }
 
       try {
@@ -3291,7 +3499,11 @@ export class AdminApiController {
             company: company || "Arafat Group",
             email,
             phone,
-            location: location as "BARWA_TOWERS" | "ELEMENT_MARIOTT" | "MARINA_50" | null,
+            location: location as
+              | "BARWA_TOWERS"
+              | "ELEMENT_MARIOTT"
+              | "MARINA_50"
+              | null,
             status: status ?? 1,
             type: "STAFF",
           },
@@ -3300,11 +3512,15 @@ export class AdminApiController {
 
         // Auto-create User account for new Staff member
         const userEmail = email || `staff_${createdStaff.id}@system.local`;
-        const existingUserByEmail = await this.prisma.user.findUnique({ where: { email: userEmail } });
+        const existingUserByEmail = await this.prisma.user.findUnique({
+          where: { email: userEmail },
+        });
         if (existingUserByEmail) {
           usersSkipped++;
         } else {
-          const existingUserByHostId = await this.prisma.user.findFirst({ where: { hostId: createdStaff.id } });
+          const existingUserByHostId = await this.prisma.user.findFirst({
+            where: { hostId: createdStaff.id },
+          });
           if (existingUserByHostId) {
             usersSkipped++;
           } else {
@@ -3326,14 +3542,19 @@ export class AdminApiController {
                 { sub: Number(newUser.id), purpose: "reset" },
                 { expiresIn: "72h" },
               );
-              const adminUrl = this.configService.get("ADMIN_URL") || "https://arafatvisitor.cloud/admin";
+              const adminUrl =
+                this.configService.get("ADMIN_URL") ||
+                "https://arafatvisitor.cloud/admin";
               const resetUrl = `${adminUrl}/reset-password?token=${resetToken}`;
-              this.emailService.sendHostWelcome(userEmail, name, resetUrl).catch(() => {});
+              this.emailService
+                .sendHostWelcome(userEmail, name, resetUrl)
+                .catch(() => {});
             }
           }
         }
       } catch (e) {
-        const errorMsg = e instanceof Error ? e.message : "Unknown database error";
+        const errorMsg =
+          e instanceof Error ? e.message : "Unknown database error";
         rejectedRows.push({ rowNumber, reason: `Database error: ${errorMsg}` });
       }
     }
@@ -3490,7 +3711,10 @@ export class AdminApiController {
     if (body.courier !== undefined) updateData.courier = body.courier;
     if (body.notes !== undefined) updateData.notes = body.notes;
     if (body.location !== undefined)
-      updateData.location = body.location as "BARWA_TOWERS" | "MARINA_50" | "ELEMENT_MARIOTT";
+      updateData.location = body.location as
+        | "BARWA_TOWERS"
+        | "MARINA_50"
+        | "ELEMENT_MARIOTT";
     if (body.status !== undefined) {
       updateData.status = body.status as "RECEIVED" | "PICKED_UP";
       if (body.status === "PICKED_UP") {
@@ -3498,7 +3722,9 @@ export class AdminApiController {
       }
     }
     if (body.hostId !== undefined) {
-      updateData.host = body.hostId ? { connect: { id: BigInt(body.hostId) } } : { disconnect: true };
+      updateData.host = body.hostId
+        ? { connect: { id: BigInt(body.hostId) } }
+        : { disconnect: true };
     }
 
     const delivery = await this.prisma.delivery.update({
@@ -3540,7 +3766,10 @@ export class AdminApiController {
     }
 
     if (delivery.status === "PICKED_UP") {
-      throw new HttpException("Delivery already picked up", HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        "Delivery already picked up",
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     await this.prisma.delivery.update({
@@ -3626,7 +3855,10 @@ export class AdminApiController {
     });
 
     if (!visit) {
-      throw new HttpException("Pre-registration not found", HttpStatus.NOT_FOUND);
+      throw new HttpException(
+        "Pre-registration not found",
+        HttpStatus.NOT_FOUND,
+      );
     }
 
     // HOST can only view pre-registrations for their company
@@ -3656,11 +3888,12 @@ export class AdminApiController {
       notes?: string;
     },
   ) {
-
     // Resolve location from host if not provided
     let location = body.location;
     if (!location) {
-      const host = await this.prisma.host.findUnique({ where: { id: BigInt(body.hostId) } });
+      const host = await this.prisma.host.findUnique({
+        where: { id: BigInt(body.hostId) },
+      });
       location = host?.location || "BARWA_TOWERS";
     }
 
@@ -3725,19 +3958,31 @@ export class AdminApiController {
   ) {
     const existing = await this.prisma.visit.findUnique({ where: { id } });
     if (!existing) {
-      throw new HttpException("Pre-registration not found", HttpStatus.NOT_FOUND);
+      throw new HttpException(
+        "Pre-registration not found",
+        HttpStatus.NOT_FOUND,
+      );
     }
 
     const updateData: Prisma.VisitUpdateInput = {};
-    if (body.visitorName !== undefined) updateData.visitorName = body.visitorName;
-    if (body.visitorCompany !== undefined) updateData.visitorCompany = body.visitorCompany;
-    if (body.visitorPhone !== undefined) updateData.visitorPhone = body.visitorPhone;
-    if (body.visitorEmail !== undefined) updateData.visitorEmail = body.visitorEmail;
+    if (body.visitorName !== undefined)
+      updateData.visitorName = body.visitorName;
+    if (body.visitorCompany !== undefined)
+      updateData.visitorCompany = body.visitorCompany;
+    if (body.visitorPhone !== undefined)
+      updateData.visitorPhone = body.visitorPhone;
+    if (body.visitorEmail !== undefined)
+      updateData.visitorEmail = body.visitorEmail;
     if (body.purpose !== undefined) updateData.purpose = body.purpose;
     if (body.location !== undefined)
-      updateData.location = body.location as "BARWA_TOWERS" | "MARINA_50" | "ELEMENT_MARIOTT";
+      updateData.location = body.location as
+        | "BARWA_TOWERS"
+        | "MARINA_50"
+        | "ELEMENT_MARIOTT";
     if (body.expectedDate !== undefined)
-      updateData.expectedDate = body.expectedDate ? new Date(body.expectedDate) : null;
+      updateData.expectedDate = body.expectedDate
+        ? new Date(body.expectedDate)
+        : null;
     if (body.hostId !== undefined) {
       updateData.host = { connect: { id: BigInt(body.hostId) } };
     }
@@ -3756,7 +4001,10 @@ export class AdminApiController {
   async deletePreRegistration(@Param("id") id: string) {
     const existing = await this.prisma.visit.findUnique({ where: { id } });
     if (!existing) {
-      throw new HttpException("Pre-registration not found", HttpStatus.NOT_FOUND);
+      throw new HttpException(
+        "Pre-registration not found",
+        HttpStatus.NOT_FOUND,
+      );
     }
 
     await this.prisma.visit.delete({ where: { id } });
@@ -3771,13 +4019,18 @@ export class AdminApiController {
       include: { host: true },
     });
     if (!visit) {
-      throw new HttpException("Pre-registration not found", HttpStatus.NOT_FOUND);
+      throw new HttpException(
+        "Pre-registration not found",
+        HttpStatus.NOT_FOUND,
+      );
     }
 
     // HOST can only approve pre-registrations for their company
     const hostScope = await this.getHostScope(req);
     if (hostScope && visit.host?.company !== hostScope.company) {
-      throw new ForbiddenException("You can only approve pre-registrations for your company");
+      throw new ForbiddenException(
+        "You can only approve pre-registrations for your company",
+      );
     }
 
     await this.prisma.visit.update({
@@ -3805,13 +4058,18 @@ export class AdminApiController {
       include: { host: true },
     });
     if (!visit) {
-      throw new HttpException("Pre-registration not found", HttpStatus.NOT_FOUND);
+      throw new HttpException(
+        "Pre-registration not found",
+        HttpStatus.NOT_FOUND,
+      );
     }
 
     // HOST can only reject pre-registrations for their company
     const hostScope = await this.getHostScope(req);
     if (hostScope && visit.host?.company !== hostScope.company) {
-      throw new ForbiddenException("You can only reject pre-registrations for your company");
+      throw new ForbiddenException(
+        "You can only reject pre-registrations for your company",
+      );
     }
 
     await this.prisma.visit.update({
@@ -3834,17 +4092,25 @@ export class AdminApiController {
       include: { host: true },
     });
     if (!visit) {
-      throw new HttpException("Pre-registration not found", HttpStatus.NOT_FOUND);
+      throw new HttpException(
+        "Pre-registration not found",
+        HttpStatus.NOT_FOUND,
+      );
     }
 
     // HOST can only re-approve pre-registrations for their company
     const hostScope = await this.getHostScope(req);
     if (hostScope && visit.host?.company !== hostScope.company) {
-      throw new ForbiddenException("You can only re-approve pre-registrations for your company");
+      throw new ForbiddenException(
+        "You can only re-approve pre-registrations for your company",
+      );
     }
 
     if (visit.status !== "REJECTED") {
-      throw new HttpException("Only rejected pre-registrations can be re-approved", HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        "Only rejected pre-registrations can be re-approved",
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     await this.prisma.visit.update({
@@ -4055,12 +4321,15 @@ export class AdminApiController {
     const updateData: Prisma.UserUpdateInput = {};
     if (body.email !== undefined) updateData.email = body.email;
     if (body.name !== undefined) updateData.name = body.name;
-    if (body.role !== undefined) updateData.role = body.role as "ADMIN" | "RECEPTION" | "HOST";
-    if (body.password && body.password.trim() !== '') {
+    if (body.role !== undefined)
+      updateData.role = body.role as "ADMIN" | "RECEPTION" | "HOST";
+    if (body.password && body.password.trim() !== "") {
       updateData.password = await bcrypt.hash(body.password, 12);
     }
     if (body.hostId !== undefined) {
-      updateData.host = body.hostId ? { connect: { id: BigInt(body.hostId) } } : { disconnect: true };
+      updateData.host = body.hostId
+        ? { connect: { id: BigInt(body.hostId) } }
+        : { disconnect: true };
     }
 
     const user = await this.prisma.user.update({
@@ -4088,7 +4357,16 @@ export class AdminApiController {
     const user = await this.prisma.user.update({
       where: { id: userId },
       data: { status: "ACTIVE" },
-      select: { id: true, email: true, name: true, role: true, status: true, hostId: true, createdAt: true, updatedAt: true },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        status: true,
+        hostId: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
     return user;
   }
@@ -4100,7 +4378,16 @@ export class AdminApiController {
     const user = await this.prisma.user.update({
       where: { id: userId },
       data: { status: "INACTIVE" },
-      select: { id: true, email: true, name: true, role: true, status: true, hostId: true, createdAt: true, updatedAt: true },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        status: true,
+        hostId: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
     return user;
   }
@@ -4175,8 +4462,16 @@ export class AdminApiController {
     let records: Record<string, unknown>[];
     try {
       const csvParseModule = await import("csv-parse/sync");
-      const parse = (csvParseModule as { parse: (input: string, options: unknown) => Record<string, unknown>[] }).parse;
-      records = parse(csvContent, { columns: true, skip_empty_lines: true, trim: true });
+      const parse = (
+        csvParseModule as {
+          parse: (input: string, options: unknown) => Record<string, unknown>[];
+        }
+      ).parse;
+      records = parse(csvContent, {
+        columns: true,
+        skip_empty_lines: true,
+        trim: true,
+      });
     } catch (e) {
       throw new HttpException(
         `Failed to parse CSV: ${e instanceof Error ? e.message : "Unknown error"}`,
@@ -4193,7 +4488,9 @@ export class AdminApiController {
     const workbook = XLSX.read(buffer, { type: "buffer" });
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
-    const records = XLSX.utils.sheet_to_json(worksheet, { defval: "" }) as Record<string, unknown>[];
+    const records = XLSX.utils.sheet_to_json(worksheet, {
+      defval: "",
+    }) as Record<string, unknown>[];
     return this.processUserRecords(records);
   }
 
@@ -4222,9 +4519,26 @@ export class AdminApiController {
 
       const reasons: string[] = [];
       const nameRaw = (row["Name"] || row["name"] || "").toString().trim();
-      const emailRaw = (row["Email"] || row["email"] || row["Email Address"] || "").toString().trim();
-      const phoneRaw = (row["Phone"] || row["phone"] || row["Phone Number"] || "").toString().trim();
-      const roleRaw = (row["Role"] || row["role"] || "").toString().trim().toUpperCase();
+      const emailRaw = (
+        row["Email"] ||
+        row["email"] ||
+        row["Email Address"] ||
+        ""
+      )
+        .toString()
+        .trim();
+      const phoneRaw = (
+        row["Phone"] ||
+        row["phone"] ||
+        row["Phone Number"] ||
+        ""
+      )
+        .toString()
+        .trim();
+      const roleRaw = (row["Role"] || row["role"] || "")
+        .toString()
+        .trim()
+        .toUpperCase();
 
       const name = nameRaw || "";
       if (!name) reasons.push("Missing name");
@@ -4235,7 +4549,10 @@ export class AdminApiController {
 
       const phone = cleanPhone(phoneRaw);
 
-      if (!validRoles.includes(roleRaw)) reasons.push(`Invalid role: ${roleRaw || "(empty)"}. Must be ADMIN, RECEPTION, STAFF, or HOST`);
+      if (!validRoles.includes(roleRaw))
+        reasons.push(
+          `Invalid role: ${roleRaw || "(empty)"}. Must be ADMIN, RECEPTION, STAFF, or HOST`,
+        );
 
       if (reasons.length > 0) {
         rejectedRows.push({ rowNumber, reason: reasons.join("; ") });
@@ -4243,13 +4560,18 @@ export class AdminApiController {
       }
 
       // Skip demo/system accounts
-      if (email.endsWith("@arafatvisitor.cloud") || email.endsWith("@system.local")) {
+      if (
+        email.endsWith("@arafatvisitor.cloud") ||
+        email.endsWith("@system.local")
+      ) {
         skipped++;
         continue;
       }
 
       // Check for duplicate email
-      const existingUser = await this.prisma.user.findUnique({ where: { email } });
+      const existingUser = await this.prisma.user.findUnique({
+        where: { email },
+      });
       if (existingUser) {
         skipped++;
         continue;
@@ -4324,11 +4646,16 @@ export class AdminApiController {
           { sub: Number(newUser.id), purpose: "reset" },
           { expiresIn: "72h" },
         );
-        const adminUrl = this.configService.get("ADMIN_URL") || "https://arafatvisitor.cloud/admin";
+        const adminUrl =
+          this.configService.get("ADMIN_URL") ||
+          "https://arafatvisitor.cloud/admin";
         const resetUrl = `${adminUrl}/reset-password?token=${resetToken}`;
-        this.emailService.sendHostWelcome(email, name, resetUrl).catch(() => {});
+        this.emailService
+          .sendHostWelcome(email, name, resetUrl)
+          .catch(() => {});
       } catch (e) {
-        const errorMsg = e instanceof Error ? e.message : "Unknown database error";
+        const errorMsg =
+          e instanceof Error ? e.message : "Unknown database error";
         rejectedRows.push({ rowNumber, reason: `Database error: ${errorMsg}` });
       }
     }

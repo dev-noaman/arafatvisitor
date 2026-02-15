@@ -44,8 +44,7 @@ export class OfficeRndSyncService {
       this.configService.get("OFFICERND_CLIENT_SECRET") ||
       "Be4GtOyNcl4BcWFZPiBQlwH71KO7QP3l";
     const ORG_SLUG =
-      this.configService.get("OFFICERND_ORG_SLUG") ||
-      "arafat-business-centers";
+      this.configService.get("OFFICERND_ORG_SLUG") || "arafat-business-centers";
     const BASE = `https://app.officernd.com/api/v2/organizations/${ORG_SLUG}`;
     const TOKEN_SCOPE =
       "flex.community.companies.read flex.community.members.read flex.space.locations.read";
@@ -92,9 +91,7 @@ export class OfficeRndSyncService {
         },
         select: { externalId: true },
       });
-      const existingIds = new Set(
-        existingHosts.map((h) => h.externalId),
-      );
+      const existingIds = new Set(existingHosts.map((h) => h.externalId));
 
       // 5. Filter to only new companies
       const newCompanies = companies.filter(
@@ -171,9 +168,7 @@ export class OfficeRndSyncService {
         const hostEmail = memberEmail || email;
 
         const cleanedPhone = this.cleanPhone(phone);
-        const locName = c.location
-          ? locationById.get(c.location)
-          : null;
+        const locName = c.location ? locationById.get(c.location) : null;
         const location = this.mapLocation(locName);
 
         // Validate resolved email
@@ -201,8 +196,7 @@ export class OfficeRndSyncService {
           inserted++;
 
           // Auto-create HOST user
-          const userEmail =
-            hostEmail || `host_${createdHost.id}@system.local`;
+          const userEmail = hostEmail || `host_${createdHost.id}@system.local`;
           const existingUser = await this.prisma.user.findUnique({
             where: { email: userEmail },
           });
@@ -211,9 +205,7 @@ export class OfficeRndSyncService {
               where: { hostId: createdHost.id },
             });
             if (!existingByHostId) {
-              const randomPassword = crypto
-                .randomBytes(16)
-                .toString("hex");
+              const randomPassword = crypto.randomBytes(16).toString("hex");
               const hashedPassword = await bcrypt.hash(randomPassword, 12);
               const newUser = await this.prisma.user.create({
                 data: {
@@ -309,7 +301,11 @@ export class OfficeRndSyncService {
     if (!locName) return null;
     const v = locName.toLowerCase();
     if (v.includes("barwa")) return "BARWA_TOWERS";
-    if (v.includes("element") || v.includes("mariott") || v.includes("marriott"))
+    if (
+      v.includes("element") ||
+      v.includes("mariott") ||
+      v.includes("marriott")
+    )
       return "ELEMENT_MARIOTT";
     if (v.includes("marina")) return "MARINA_50";
     return null;

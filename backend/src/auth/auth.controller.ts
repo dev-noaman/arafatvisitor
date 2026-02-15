@@ -12,9 +12,15 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Public()
-  @Throttle({ 'login-account': { limit: 5, ttl: 900000 }, 'login-ip': { limit: 20, ttl: 900000 } })
+  @Throttle({
+    "login-account": { limit: 5, ttl: 900000 },
+    "login-ip": { limit: 20, ttl: 900000 },
+  })
   @Post("login")
-  async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
+  async login(
+    @Body() dto: LoginDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const result = await this.authService.login(dto);
 
     // Set httpOnly cookies for access and refresh tokens
@@ -44,7 +50,10 @@ export class AuthController {
   @Public()
   @Throttle({ default: { limit: 10, ttl: 60000 } })
   @Post("refresh")
-  async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+  async refresh(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const refreshToken = req.cookies?.refresh_token;
     if (!refreshToken) {
       return {
@@ -75,8 +84,8 @@ export class AuthController {
     }
 
     // Clear cookies
-    res.clearCookie('access_token', { path: '/' });
-    res.clearCookie('refresh_token', { path: '/api/auth' });
+    res.clearCookie("access_token", { path: "/" });
+    res.clearCookie("refresh_token", { path: "/api/auth" });
 
     return { message: "Logged out successfully" };
   }

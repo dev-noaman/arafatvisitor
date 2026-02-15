@@ -1,8 +1,8 @@
-import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { DashboardGateway } from './dashboard.gateway';
-import { PrismaModule } from '../prisma/prisma.module';
+import { Module } from "@nestjs/common";
+import { JwtModule } from "@nestjs/jwt";
+import { ConfigModule, ConfigService } from "@nestjs/config";
+import { DashboardGateway } from "./dashboard.gateway";
+import { PrismaModule } from "../prisma/prisma.module";
 
 @Module({
   imports: [
@@ -10,7 +10,8 @@ import { PrismaModule } from '../prisma/prisma.module';
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: (config: ConfigService) => ({
-        secret: config.get<string>('JWT_SECRET') || 'fallback-secret-min-32-chars',
+        secret:
+          config.get<string>("JWT_SECRET") || "fallback-secret-min-32-chars",
       }),
       inject: [ConfigService],
     }),
