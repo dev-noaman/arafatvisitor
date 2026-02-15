@@ -158,7 +158,7 @@ jobs:
         run: |
           mkdir -p ${{ runner.temp }}/ipa
           mkdir -p ${{ runner.temp }}/Payload
-          APP_BUNDLE=$(ls ${{ runner.temp }}/app.xcarchive/Products/Applications/*.app | head -1)
+          APP_BUNDLE=$(ls -d ${{ runner.temp }}/app.xcarchive/Products/Applications/*.app | head -1)
           cp -r "$APP_BUNDLE" ${{ runner.temp }}/Payload/
           cd ${{ runner.temp }}
           zip -r ${{ runner.temp }}/ipa/ArafatVisitor.ipa Payload
