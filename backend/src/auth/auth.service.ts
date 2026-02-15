@@ -183,7 +183,7 @@ export class AuthService {
       { expiresIn: "1h" },
     );
     const adminUrl =
-      this.configService.get("ADMIN_URL") || "http://localhost:3000/admin";
+      this.configService.get("ADMIN_URL") || "https://arafatvisitor.cloud/admin";
     const resetUrl = `${adminUrl}/reset-password?token=${resetToken}`;
     await this.emailService
       .sendPasswordReset(user.email, resetUrl)
