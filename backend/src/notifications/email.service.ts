@@ -237,28 +237,98 @@ export class EmailService {
 
   async sendPasswordReset(to: string, resetUrl: string): Promise<boolean> {
     const html = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <div style="background: linear-gradient(135deg, #1E3A8A, #3B82F6); padding: 30px; text-align: center;">
-          <h1 style="color: white; margin: 0; font-size: 28px;">PASSWORD RESET</h1>
-          <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0;">Arafat Visitor Management System</p>
-        </div>
-        <div style="padding: 40px 30px; background: #f9fafb;">
-          <h2 style="color: #1E3A8A; margin-top: 0;">Hello,</h2>
-          <p style="color: #374151; line-height: 1.6;">We received a request to reset your password for your Arafat VMS account.</p>
-          <p style="color: #374151; line-height: 1.6;">Click the button below to set a new password:</p>
-          <div style="text-align: center; padding: 30px 0;">
-            <a href="${resetUrl}" style="display: inline-block; background: linear-gradient(135deg, #1E3A8A, #3B82F6); color: white; text-decoration: none; padding: 15px 40px; border-radius: 8px; font-weight: bold; font-size: 16px;">Reset Password</a>
-          </div>
-          <p style="color: #6b7280; font-size: 14px; line-height: 1.6;">Or copy and paste this link into your browser:</p>
-          <p style="color: #3B82F6; font-size: 13px; word-break: break-all; background: #e5e7eb; padding: 12px; border-radius: 6px;">${resetUrl}</p>
-          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-            <p style="color: #9ca3af; font-size: 13px; margin: 0;">This link expires in <strong>1 hour</strong>.</p>
-            <p style="color: #9ca3af; font-size: 13px; margin: 8px 0 0 0;">If you didn't request this password reset, you can safely ignore this email.</p>
-          </div>
-        </div>
-        <div style="padding: 20px; text-align: center; background: #1E3A8A; color: rgba(255,255,255,0.8); font-size: 13px;">
-          Powered by Arafat Visitor Management System
-        </div>
+      <div style="margin:0;padding:24px 0;background-color:#f4f6fb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1f2933;">
+        <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;background-color:#f4f6fb;">
+          <tr>
+            <td align="center">
+              <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:560px;width:100%;background-color:#ffffff;border-radius:20px;box-shadow:0 18px 45px rgba(15,23,42,0.08);overflow:hidden;">
+                <tr>
+                  <td style="height:4px;background:linear-gradient(90deg,#2563eb,#4f46e5);"></td>
+                </tr>
+                <tr>
+                  <td align="center" style="padding:22px 32px 12px 32px;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+                      <tr>
+                        <td style="background:rgba(37,99,235,0.08);border-radius:999px;padding:6px 14px;">
+                          <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+                            <tr>
+                              <td style="background:#eef2ff;border-radius:999px;width:28px;height:28px;text-align:center;vertical-align:middle;font-size:18px;color:#2563eb;">
+                                🏢
+                              </td>
+                              <td style="width:10px;"></td>
+                              <td style="font-size:14px;font-weight:600;color:#111827;">
+                                Arafat Visitor
+                              </td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:0 32px;">
+                    <div style="margin:4px 0 4px 0;border-radius:18px;background:linear-gradient(135deg,#e5edff,#f5f7ff);padding:32px 24px;text-align:center;">
+                      <div style="margin:0 auto;width:64px;height:64px;border-radius:999px;background-color:#ffffff;display:inline-block;box-shadow:0 10px 25px rgba(15,23,42,0.12);">
+                        <table role="presentation" cellpadding="0" cellspacing="0" width="100%" height="100%" style="border-collapse:collapse;width:100%;height:100%;">
+                          <tr>
+                            <td align="center" valign="middle" style="font-size:26px;color:#2563eb;">
+                              🔐
+                            </td>
+                          </tr>
+                        </table>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center" style="padding:28px 40px 8px 40px;">
+                    <h1 style="margin:0 0 8px 0;font-size:24px;line-height:1.3;font-weight:700;color:#111827;">Reset Your Password</h1>
+                    <p style="margin:0;font-size:14px;line-height:1.6;color:#4b5563;">
+                      Hi there, we received a request to reset the password for your
+                      <span style="font-weight:600;color:#2563eb;">Arafat Visitor</span>
+                      account. Click the button below to proceed and choose a new password.
+                    </p>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center" style="padding:20px 40px 28px 40px;">
+                    <a href="${resetUrl}" style="display:inline-block;padding:12px 32px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;background:linear-gradient(135deg,#2563eb,#4f46e5);border-radius:999px;box-shadow:0 12px 20px rgba(37,99,235,0.35);">
+                      Reset Password
+                    </a>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:0 40px 24px 40px;">
+                    <p style="margin:0 0 10px 0;font-size:12px;line-height:1.6;color:#6b7280;text-align:left;">
+                      If the button above doesn't work, copy and paste this link into your browser:
+                    </p>
+                    <div style="background-color:#f3f4ff;border-radius:12px;padding:12px 14px;word-break:break-all;font-size:12px;color:#1d4ed8;">
+                      <a href="${resetUrl}" style="color:#1d4ed8;text-decoration:none;">
+                        ${resetUrl}
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:0 40px 28px 40px;">
+                    <p style="margin:0 0 12px 0;font-size:11px;line-height:1.6;color:#9ca3af;text-align:left;">
+                      If you did not request a password reset, please ignore this email or contact support if you have concerns. This link will expire in
+                      <span style="font-weight:600;color:#4b5563;">60 minutes</span>.
+                    </p>
+                    <p style="margin:0;font-size:11px;line-height:1.6;color:#9ca3af;text-align:center;">
+                      &copy; ${new Date().getFullYear()} Arafat Visitor Inc.
+                      &nbsp;&nbsp;&bull;&nbsp;&nbsp;
+                      <a href="https://arafatvisitor.cloud/privacy" style="color:#9ca3af;text-decoration:underline;">Privacy Policy</a>
+                      &nbsp;&nbsp;&bull;&nbsp;&nbsp;
+                      <a href="https://arafatvisitor.cloud/terms" style="color:#9ca3af;text-decoration:underline;">Terms of Service</a>
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
       </div>
     `;
     return this.send({
