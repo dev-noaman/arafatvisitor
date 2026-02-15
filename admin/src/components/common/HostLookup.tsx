@@ -20,7 +20,7 @@ export default function HostLookup({ hosts, value, onChange, disabled, isLoading
     if (value) {
       const host = hosts.find((h) => String(h.id) === String(value))
       if (host) {
-        setQuery(`${host.type === 'STAFF' ? '[Staff] ' : ''}${host.name} — ${host.company}`)
+        setQuery(host.name)
       }
     } else {
       setQuery('')
@@ -38,23 +38,15 @@ export default function HostLookup({ hosts, value, onChange, disabled, isLoading
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const filtered = query && !hosts.find((h) => {
-    const label = `${h.type === 'STAFF' ? '[Staff] ' : ''}${h.name} — ${h.company}`
-    return label === query
-  })
-    ? hosts.filter((h) => {
-        const q = query.toLowerCase()
-        return (
-          h.name.toLowerCase().includes(q) ||
-          h.company.toLowerCase().includes(q) ||
-          (h.email && h.email.toLowerCase().includes(q))
-        )
-      })
+  const isSelected = hosts.some((h) => h.name === query && String(h.id) === String(value))
+
+  const filtered = query && !isSelected
+    ? hosts.filter((h) => h.name.toLowerCase().includes(query.toLowerCase()))
     : hosts
 
   const handleSelect = (host: Host) => {
     onChange(String(host.id))
-    setQuery(`${host.type === 'STAFF' ? '[Staff] ' : ''}${host.name} — ${host.company}`)
+    setQuery(host.name)
     setIsOpen(false)
   }
 
@@ -73,7 +65,7 @@ export default function HostLookup({ hosts, value, onChange, disabled, isLoading
         value={query}
         onChange={handleInputChange}
         onFocus={() => setIsOpen(true)}
-        placeholder={isLoading ? 'Loading hosts...' : 'Search host by name, company, or email...'}
+        placeholder={isLoading ? 'Loading hosts...' : 'Search host by name...'}
         disabled={disabled || isLoading}
         className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
           error ? 'border-red-300' : 'border-gray-300'
@@ -96,14 +88,7 @@ export default function HostLookup({ hosts, value, onChange, disabled, isLoading
                 String(host.id) === String(value) ? 'bg-blue-50 font-medium' : ''
               }`}
             >
-              <div className="flex justify-between items-center">
-                <span>
-                  {host.type === 'STAFF' ? <span className="text-purple-600 font-medium">[Staff] </span> : ''}
-                  {host.name}
-                </span>
-                <span className="text-gray-500 text-xs">{host.company}</span>
-              </div>
-              {host.email && <div className="text-xs text-gray-400">{host.email}</div>}
+              {host.name}
             </li>
           ))}
           {filtered.length > 50 && (
