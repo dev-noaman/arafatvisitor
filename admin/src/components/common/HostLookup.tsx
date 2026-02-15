@@ -20,7 +20,7 @@ export default function HostLookup({ hosts, value, onChange, disabled, isLoading
     if (value) {
       const host = hosts.find((h) => String(h.id) === String(value))
       if (host) {
-        setQuery(host.name)
+        setQuery(host.company)
       }
     } else {
       setQuery('')
@@ -38,15 +38,15 @@ export default function HostLookup({ hosts, value, onChange, disabled, isLoading
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const isSelected = hosts.some((h) => h.name === query && String(h.id) === String(value))
+  const isSelected = hosts.some((h) => h.company === query && String(h.id) === String(value))
 
   const filtered = query && !isSelected
-    ? hosts.filter((h) => h.name.toLowerCase().includes(query.toLowerCase()))
+    ? hosts.filter((h) => h.company.toLowerCase().includes(query.toLowerCase()))
     : hosts
 
   const handleSelect = (host: Host) => {
     onChange(String(host.id))
-    setQuery(host.name)
+    setQuery(host.company)
     setIsOpen(false)
   }
 
@@ -65,7 +65,7 @@ export default function HostLookup({ hosts, value, onChange, disabled, isLoading
         value={query}
         onChange={handleInputChange}
         onFocus={() => setIsOpen(true)}
-        placeholder={isLoading ? 'Loading hosts...' : 'Search host by name...'}
+        placeholder={isLoading ? 'Loading hosts...' : 'Search by company name...'}
         disabled={disabled || isLoading}
         className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
           error ? 'border-red-300' : 'border-gray-300'
@@ -88,7 +88,7 @@ export default function HostLookup({ hosts, value, onChange, disabled, isLoading
                 String(host.id) === String(value) ? 'bg-blue-50 font-medium' : ''
               }`}
             >
-              {host.name}
+              {host.company}
             </li>
           ))}
           {filtered.length > 50 && (
@@ -100,7 +100,7 @@ export default function HostLookup({ hosts, value, onChange, disabled, isLoading
       )}
       {isOpen && query && filtered.length === 0 && (
         <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg px-3 py-3 text-sm text-gray-500 text-center">
-          No hosts found matching "{query}"
+          No company found matching "{query}"
         </div>
       )}
     </div>
