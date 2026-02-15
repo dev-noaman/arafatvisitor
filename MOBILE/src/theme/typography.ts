@@ -50,7 +50,7 @@ export const fontWeights = {
   bold: 700,
   extrabold: 800,
   black: 900,
-};
+} as const;
 
 export const letterSpacing = {
   tight: -0.5,

@@ -129,21 +129,21 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   scrollContent: {
     flexGrow: 1,
-    padding: spacing[4],
-    paddingTop: spacing[6],
+    padding: spacing.lg,
+    paddingTop: spacing['2xl'],
   },
   backText: {
-    fontSize: typography.fontSize.base,
+    fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold,
-    marginBottom: spacing[4],
+    marginBottom: spacing.lg,
   },
   header: {
-    marginBottom: spacing[6],
+    marginBottom: spacing['2xl'],
   },
   title: {
     fontSize: typography.fontSize['2xl'],
     fontWeight: typography.fontWeight.bold,
-    marginBottom: spacing[2],
+    marginBottom: spacing.sm,
   },
   subtitle: {
     fontSize: typography.fontSize.sm,
@@ -151,32 +151,32 @@ const styles = StyleSheet.create({
   },
   form: {},
   submitButton: {
-    marginTop: spacing[3],
+    marginTop: spacing.md,
   },
   sentContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: spacing[6],
+    padding: spacing['2xl'],
   },
   sentIcon: {
     fontSize: 64,
-    marginBottom: spacing[4],
+    marginBottom: spacing.lg,
   },
   sentTitle: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.bold,
-    marginBottom: spacing[3],
+    marginBottom: spacing.md,
     textAlign: 'center',
   },
   sentMessage: {
-    fontSize: typography.fontSize.base,
+    fontSize: typography.fontSize.lg,
     textAlign: 'center',
     lineHeight: 24,
-    marginBottom: spacing[6],
+    marginBottom: spacing['2xl'],
   },
   backLink: {
-    fontSize: typography.fontSize.base,
+    fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold,
   },
 });

@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
   },
   container: {
     borderRadius: 16,
-    padding: spacing[4],
+    padding: spacing.lg,
     width: '90%',
     maxWidth: 400,
   },
@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing[2],
+    marginBottom: spacing.sm,
   },
   title: {
     fontSize: typography.fontSize.xl,
@@ -164,23 +164,23 @@ const styles = StyleSheet.create({
   closeButton: {
     fontSize: 20,
     fontWeight: typography.fontWeight.bold,
-    padding: spacing[1],
+    padding: spacing.xs,
   },
   visitorName: {
-    fontSize: typography.fontSize.base,
-    marginBottom: spacing[3],
+    fontSize: typography.fontSize.lg,
+    marginBottom: spacing.md,
   },
   loadingContainer: {
     alignItems: 'center',
-    padding: spacing[8],
+    padding: spacing['3xl'],
   },
   loadingText: {
-    marginTop: spacing[3],
-    fontSize: typography.fontSize.base,
+    marginTop: spacing.md,
+    fontSize: typography.fontSize.lg,
   },
   qrContainer: {
     alignItems: 'center',
-    padding: spacing[4],
+    padding: spacing.lg,
   },
   qrImage: {
     width: 250,
@@ -188,40 +188,40 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   hint: {
-    marginTop: spacing[3],
+    marginTop: spacing.md,
     fontSize: typography.fontSize.sm,
     textAlign: 'center',
   },
   errorContainer: {
     alignItems: 'center',
-    padding: spacing[4],
+    padding: spacing.lg,
   },
   errorText: {
-    fontSize: typography.fontSize.base,
+    fontSize: typography.fontSize.lg,
     color: colors.error[500],
-    marginBottom: spacing[3],
+    marginBottom: spacing.md,
     textAlign: 'center',
   },
   retryButton: {
     backgroundColor: colors.brand[500],
-    paddingVertical: spacing[2],
-    paddingHorizontal: spacing[4],
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
     borderRadius: 8,
   },
   retryButtonText: {
     color: '#fff',
-    fontSize: typography.fontSize.base,
+    fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold,
   },
   doneButton: {
-    marginTop: spacing[3],
-    paddingVertical: spacing[3],
+    marginTop: spacing.md,
+    paddingVertical: spacing.md,
     borderRadius: 8,
     alignItems: 'center',
   },
   doneButtonText: {
     color: '#fff',
-    fontSize: typography.fontSize.base,
+    fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold,
   },
 });

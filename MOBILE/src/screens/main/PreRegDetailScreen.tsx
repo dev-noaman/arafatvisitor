@@ -118,7 +118,7 @@ export default function PreRegDetailScreen() {
         <LoadingButton
           title="Go Back"
           onPress={() => navigation.goBack()}
-          style={{ marginTop: spacing[3] }}
+          style={{ marginTop: spacing.md }}
         />
       </View>
     );
@@ -276,23 +276,23 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: spacing[8],
+    padding: spacing['3xl'],
   },
   loadingText: {
-    marginTop: spacing[3],
-    fontSize: typography.fontSize.base,
+    marginTop: spacing.md,
+    fontSize: typography.fontSize.lg,
   },
   errorText: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold,
   },
-  backButton: { padding: spacing[4], paddingBottom: 0 },
-  backText: { fontSize: typography.fontSize.base, fontWeight: typography.fontWeight.semibold },
+  backButton: { padding: spacing.lg, paddingBottom: 0 },
+  backText: { fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.semibold },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: spacing[4],
+    padding: spacing.lg,
     borderBottomWidth: 1,
   },
   title: {
@@ -301,21 +301,21 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   section: {
-    padding: spacing[4],
+    padding: spacing.lg,
     borderBottomWidth: 1,
   },
   label: {
     fontSize: typography.fontSize.sm,
-    marginBottom: spacing[1],
+    marginBottom: spacing.xs,
   },
   value: {
-    fontSize: typography.fontSize.base,
+    fontSize: typography.fontSize.lg,
   },
   actions: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    padding: spacing[4],
-    gap: spacing[3],
+    padding: spacing.lg,
+    gap: spacing.md,
   },
   actionButton: { flex: 1 },
 });

@@ -102,15 +102,15 @@ export default function ChangePasswordScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { padding: spacing[4] },
+  header: { padding: spacing.lg },
   title: {
     fontSize: typography.fontSize['2xl'],
     fontWeight: typography.fontWeight.bold,
-    marginBottom: spacing[1],
+    marginBottom: spacing.xs,
   },
   subtitle: {
     fontSize: typography.fontSize.sm,
   },
-  form: { padding: spacing[4] },
-  submitButton: { marginTop: spacing[4] },
+  form: { padding: spacing.lg },
+  submitButton: { marginTop: spacing.lg },
 });
