@@ -528,14 +528,21 @@ Professional HTML email with:
 - **Backend**: DTO `@MinLength(6)` — returns 400 if too short
 - Confirm password field must match (Zod `.refine()`)
 
-### Password Reset Email Template
-Identical layout to `sendHostWelcome` — same div-based structure:
-- Gradient header with "PASSWORD RESET" + "Arafat Visitor Management System"
-- Greeting "Hello," + description text
-- Gradient blue button with white text: "Reset Password"
-- Fallback URL in gray box
-- Expiry: 1 hour (welcome email uses 72 hours)
-- "Powered by Arafat Visitor Management System" footer
+### Password Reset Email Template (`sendPasswordReset`)
+Same layout style as Welcome email but different content:
+- Header: "PASSWORD RESET" (welcome uses "WELCOME TO ARAFAT VMS")
+- Greeting: "Hello," (welcome uses "Hello {hostName},")
+- Button text: "Reset Password" (welcome uses "Set Password")
+- Expiry: 1 hour (welcome uses 72 hours)
+- Both share: gradient header, gradient button with white text, fallback URL box, branded footer
+
+### Welcome Email Template (`sendHostWelcome`)
+Sent when a new host/staff user is created (single or bulk import):
+- Header: "WELCOME TO ARAFAT VMS"
+- Greeting: "Hello {hostName},"
+- Button text: "Set Password"
+- Expiry: 72 hours
+- Describes account creation and admin panel access
 
 ### Pages
 - `/admin/forgot-password` - Request reset link
