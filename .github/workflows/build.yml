@@ -135,7 +135,7 @@ jobs:
         id: ios
         working-directory: MOBILE/ios
         run: |
-          WORKSPACE=$(ls *.xcworkspace 2>/dev/null | head -1)
+          WORKSPACE=$(ls -d *.xcworkspace 2>/dev/null | head -1)
           SCHEME="${WORKSPACE%.xcworkspace}"
           echo "workspace=$WORKSPACE" >> $GITHUB_OUTPUT
           echo "scheme=$SCHEME" >> $GITHUB_OUTPUT
