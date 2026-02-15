@@ -1,6 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
-import { PrismaService } from '../prisma/prisma.service';
+import { Injectable, Logger } from "@nestjs/common";
+import { Cron, CronExpression } from "@nestjs/schedule";
+import { PrismaService } from "../prisma/prisma.service";
 
 @Injectable()
 export class CleanupService {
@@ -13,7 +13,7 @@ export class CleanupService {
    * Runs daily at 2:00 AM
    * Deletes tokens that expired more than 30 days ago
    */
-  @Cron('0 2 * * *') // 2:00 AM every day
+  @Cron("0 2 * * *") // 2:00 AM every day
   async cleanupExpiredQrTokens() {
     try {
       const thirtyDaysAgo = new Date();
@@ -31,7 +31,7 @@ export class CleanupService {
         `Cleanup job completed: Deleted ${result.count} expired QR tokens`,
       );
     } catch (error) {
-      this.logger.error('QR token cleanup failed:', error);
+      this.logger.error("QR token cleanup failed:", error);
     }
   }
 
@@ -40,7 +40,7 @@ export class CleanupService {
    * Runs daily at 2:15 AM
    * Deletes tokens that have been revoked or expired for more than 7 days
    */
-  @Cron('15 2 * * *') // 2:15 AM every day
+  @Cron("15 2 * * *") // 2:15 AM every day
   async cleanupExpiredRefreshTokens() {
     try {
       const sevenDaysAgo = new Date();
@@ -69,7 +69,7 @@ export class CleanupService {
         `Cleanup job completed: Deleted ${result.count} expired/revoked refresh tokens`,
       );
     } catch (error) {
-      this.logger.error('Refresh token cleanup failed:', error);
+      this.logger.error("Refresh token cleanup failed:", error);
     }
   }
 }

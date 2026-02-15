@@ -66,24 +66,24 @@ export class AuthService {
       // Cookie metadata for client
       cookies: {
         accessToken: {
-          name: 'access_token',
+          name: "access_token",
           value: accessToken,
           options: {
             httpOnly: true,
-            secure: this.configService.get('NODE_ENV') === 'production',
-            sameSite: 'strict' as const,
-            path: '/',
+            secure: this.configService.get("NODE_ENV") === "production",
+            sameSite: "strict" as const,
+            path: "/",
             maxAge: this.ACCESS_TOKEN_EXPIRES * 1000,
           },
         },
         refreshToken: {
-          name: 'refresh_token',
+          name: "refresh_token",
           value: refreshTokenString,
           options: {
             httpOnly: true,
-            secure: this.configService.get('NODE_ENV') === 'production',
-            sameSite: 'strict' as const,
-            path: '/api/auth',
+            secure: this.configService.get("NODE_ENV") === "production",
+            sameSite: "strict" as const,
+            path: "/api/auth",
             maxAge: this.REFRESH_TOKEN_EXPIRES * 1000,
           },
         },
@@ -93,7 +93,7 @@ export class AuthService {
 
   private async generateRefreshToken(userId: number): Promise<string> {
     // Create a refresh token and store it in database
-    const refreshTokenString = randomBytes(32).toString('hex');
+    const refreshTokenString = randomBytes(32).toString("hex");
     const hashedToken = await bcrypt.hash(refreshTokenString, 10);
     const expiresAt = new Date(Date.now() + this.REFRESH_TOKEN_EXPIRES * 1000);
 
@@ -118,13 +118,16 @@ export class AuthService {
       });
 
       if (!refreshToken) {
-        throw new UnauthorizedException('Invalid or expired refresh token');
+        throw new UnauthorizedException("Invalid or expired refresh token");
       }
 
       // Verify the token matches
-      const isValid = await bcrypt.compare(refreshTokenString, refreshToken.token);
+      const isValid = await bcrypt.compare(
+        refreshTokenString,
+        refreshToken.token,
+      );
       if (!isValid) {
-        throw new UnauthorizedException('Invalid refresh token');
+        throw new UnauthorizedException("Invalid refresh token");
       }
 
       // Get user
@@ -133,7 +136,7 @@ export class AuthService {
       });
 
       if (!user) {
-        throw new UnauthorizedException('User not found');
+        throw new UnauthorizedException("User not found");
       }
 
       // Generate new access token
@@ -146,20 +149,20 @@ export class AuthService {
         token: accessToken,
         cookies: {
           accessToken: {
-            name: 'access_token',
+            name: "access_token",
             value: accessToken,
             options: {
               httpOnly: true,
-              secure: this.configService.get('NODE_ENV') === 'production',
-              sameSite: 'strict' as const,
-              path: '/',
+              secure: this.configService.get("NODE_ENV") === "production",
+              sameSite: "strict" as const,
+              path: "/",
               maxAge: this.ACCESS_TOKEN_EXPIRES * 1000,
             },
           },
         },
       };
     } catch (error) {
-      throw new UnauthorizedException('Invalid or expired refresh token');
+      throw new UnauthorizedException("Invalid or expired refresh token");
     }
   }
 
@@ -183,7 +186,8 @@ export class AuthService {
       { expiresIn: "1h" },
     );
     const adminUrl =
-      this.configService.get("ADMIN_URL") || "https://arafatvisitor.cloud/admin";
+      this.configService.get("ADMIN_URL") ||
+      "https://arafatvisitor.cloud/admin";
     const resetUrl = `${adminUrl}/reset-password?token=${resetToken}`;
     await this.emailService
       .sendPasswordReset(user.email, resetUrl)
@@ -212,7 +216,9 @@ export class AuthService {
 
     // One-time use: if password hash tail doesn't match, token was already used
     if (payload.ph && user.password.slice(-10) !== payload.ph) {
-      throw new BadRequestException("This reset link has already been used. Please request a new one.");
+      throw new BadRequestException(
+        "This reset link has already been used. Please request a new one.",
+      );
     }
 
     const hash = await bcrypt.hash(dto.newPassword, BCRYPT_ROUNDS);

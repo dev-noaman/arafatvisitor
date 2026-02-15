@@ -31,7 +31,9 @@ export class BadgeGeneratorService {
         console.log("[BadgeGenerator] Canvas module loaded successfully");
       } catch (e) {
         console.error("[BadgeGenerator] Failed to load canvas module:", e);
-        throw new Error("Canvas module not available - native dependencies may be missing");
+        throw new Error(
+          "Canvas module not available - native dependencies may be missing",
+        );
       }
     }
     return this.canvasModule;
@@ -91,7 +93,11 @@ export class BadgeGeneratorService {
     // Visitor name
     ctx.fillStyle = "#111827";
     ctx.font = "bold 64px Arial";
-    const visitorName = this.truncateText(ctx, data.visitorName.toUpperCase(), this.WIDTH - 100);
+    const visitorName = this.truncateText(
+      ctx,
+      data.visitorName.toUpperCase(),
+      this.WIDTH - 100,
+    );
     ctx.fillText(visitorName, this.WIDTH / 2, 380);
 
     // Visitor company (if available)
@@ -118,7 +124,14 @@ export class BadgeGeneratorService {
       // QR code background box
       ctx.fillStyle = "#F3F4F6";
       ctx.beginPath();
-      this.roundRect(ctx, (this.WIDTH - qrSize - 60) / 2, qrY - 30, qrSize + 60, qrSize + 60, 20);
+      this.roundRect(
+        ctx,
+        (this.WIDTH - qrSize - 60) / 2,
+        qrY - 30,
+        qrSize + 60,
+        qrSize + 60,
+        20,
+      );
       ctx.fill();
 
       // Draw QR code
@@ -130,7 +143,11 @@ export class BadgeGeneratorService {
     // Instruction text
     ctx.fillStyle = "#6B7280";
     ctx.font = "28px Arial";
-    ctx.fillText("Scan this QR code at reception for check-in", this.WIDTH / 2, qrY + qrSize + 80);
+    ctx.fillText(
+      "Scan this QR code at reception for check-in",
+      this.WIDTH / 2,
+      qrY + qrSize + 80,
+    );
 
     // Details section background
     const detailsY = qrY + qrSize + 140;
@@ -149,13 +166,31 @@ export class BadgeGeneratorService {
     currentY += 80;
 
     // Location and Purpose
-    this.drawDetailRow(ctx, leftX, currentY, "LOCATION", this.formatLocation(data.location));
+    this.drawDetailRow(
+      ctx,
+      leftX,
+      currentY,
+      "LOCATION",
+      this.formatLocation(data.location),
+    );
     this.drawDetailRow(ctx, rightX, currentY, "PURPOSE", data.purpose);
     currentY += 80;
 
     // Date
-    this.drawDetailRow(ctx, leftX, currentY, "DATE", this.formatDate(data.visitDate));
-    this.drawDetailRow(ctx, rightX, currentY, "TIME", this.formatTime(data.visitDate));
+    this.drawDetailRow(
+      ctx,
+      leftX,
+      currentY,
+      "DATE",
+      this.formatDate(data.visitDate),
+    );
+    this.drawDetailRow(
+      ctx,
+      rightX,
+      currentY,
+      "TIME",
+      this.formatTime(data.visitDate),
+    );
 
     // Footer
     const footerY = this.HEIGHT - 200;
@@ -172,7 +207,8 @@ export class BadgeGeneratorService {
     ctx.fillText("ACTIVE", this.WIDTH / 2, footerY + 35);
 
     // Badge ID
-    const badgeId = data.badgeId || data.sessionId.substring(0, 12).toUpperCase();
+    const badgeId =
+      data.badgeId || data.sessionId.substring(0, 12).toUpperCase();
     ctx.fillStyle = "#9CA3AF";
     ctx.font = "24px Arial";
     ctx.fillText(`Badge ID: ${badgeId}`, this.WIDTH / 2, footerY + 100);
@@ -188,7 +224,11 @@ export class BadgeGeneratorService {
     // Copyright
     ctx.fillStyle = "#D1D5DB";
     ctx.font = "20px Arial";
-    ctx.fillText("Powered by Arafat Visitor Management", this.WIDTH / 2, this.HEIGHT - 30);
+    ctx.fillText(
+      "Powered by Arafat Visitor Management",
+      this.WIDTH / 2,
+      this.HEIGHT - 30,
+    );
 
     // Return base64 without the data URL prefix
     const dataUrl = canvas.toDataURL("image/png");
@@ -223,7 +263,10 @@ export class BadgeGeneratorService {
     if (metrics.width <= maxWidth) return text;
 
     let truncated = text;
-    while (ctx.measureText(truncated + "...").width > maxWidth && truncated.length > 0) {
+    while (
+      ctx.measureText(truncated + "...").width > maxWidth &&
+      truncated.length > 0
+    ) {
       truncated = truncated.slice(0, -1);
     }
     return truncated + "...";

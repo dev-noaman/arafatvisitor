@@ -1,9 +1,9 @@
-import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { CleanupService } from './cleanup.service';
-import { OfficeRndSyncService } from './officernd-sync.service';
-import { PrismaModule } from '../prisma/prisma.module';
+import { Module } from "@nestjs/common";
+import { JwtModule } from "@nestjs/jwt";
+import { ConfigModule, ConfigService } from "@nestjs/config";
+import { CleanupService } from "./cleanup.service";
+import { OfficeRndSyncService } from "./officernd-sync.service";
+import { PrismaModule } from "../prisma/prisma.module";
 
 @Module({
   imports: [
@@ -12,9 +12,9 @@ import { PrismaModule } from '../prisma/prisma.module';
       imports: [ConfigModule],
       useFactory: async (config: ConfigService) => ({
         secret:
-          config.get<string>('JWT_SECRET') || 'fallback-secret-min-32-chars',
+          config.get<string>("JWT_SECRET") || "fallback-secret-min-32-chars",
         signOptions: {
-          expiresIn: config.get<string>('JWT_EXPIRES_IN') || '24h',
+          expiresIn: config.get<string>("JWT_EXPIRES_IN") || "24h",
         },
       }),
       inject: [ConfigService],

@@ -270,9 +270,7 @@ export class VisitsService {
       throw new BadRequestException("Visitor has already checked out");
     }
     if (visit.status !== "APPROVED") {
-      throw new BadRequestException(
-        "Visit must be approved before check-in",
-      );
+      throw new BadRequestException("Visit must be approved before check-in");
     }
     const now = new Date();
     await this.prisma.visit.update({

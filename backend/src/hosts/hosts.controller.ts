@@ -31,7 +31,7 @@ class ImportDto {
   xlsxContent?: string;
 }
 
-@SkipThrottle({ default: true, 'login-account': true, 'login-ip': true })
+@SkipThrottle({ default: true, "login-account": true, "login-ip": true })
 @Controller("hosts")
 export class HostsController {
   constructor(

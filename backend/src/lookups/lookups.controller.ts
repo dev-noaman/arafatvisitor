@@ -4,7 +4,7 @@ import { SkipThrottle } from "@nestjs/throttler";
 import { Public } from "../common/decorators/public.decorator";
 import { PrismaService } from "../prisma/prisma.service";
 
-@SkipThrottle({ default: true, 'login-account': true, 'login-ip': true })
+@SkipThrottle({ default: true, "login-account": true, "login-ip": true })
 @Controller("lookups")
 export class LookupsController {
   constructor(private readonly prisma: PrismaService) {}

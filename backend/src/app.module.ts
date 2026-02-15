@@ -27,17 +27,17 @@ import { RolesGuard } from "./common/guards/roles.guard";
     ConfigModule.forRoot({ isGlobal: true }),
     ThrottlerModule.forRoot([
       {
-        name: 'default',
+        name: "default",
         ttl: 60000,
         limit: 60,
       },
       {
-        name: 'login-account',
+        name: "login-account",
         ttl: 15 * 60 * 1000, // 15 minutes
         limit: 5,
       },
       {
-        name: 'login-ip',
+        name: "login-ip",
         ttl: 15 * 60 * 1000, // 15 minutes
         limit: 20,
       },

@@ -1,15 +1,13 @@
 # 📱 Arafat VMS - Build Instructions
 
-Quick reference for building the Flutter mobile app locally or via GitHub Actions.
+Quick reference for building the Flutter mobile app locally.
 
 ---
 
 ## 🚀 Quick Start
 
-### Local Build (Recommended for Development)
-
 ```bash
-cd MOBILE
+cd flutter
 
 # Get dependencies
 flutter pub get
@@ -24,19 +22,9 @@ flutter build ios --release --no-codesign
 flutter build appbundle --release
 ```
 
-### GitHub Actions (CI/CD)
-
-1. Go to **Actions** tab → **Flutter Build APK & IPA**
-2. Click **Run workflow**
-3. Toggle platforms (APK/IPA) as needed
-4. Wait for build to complete
-5. Download from **Artifacts** section
-
 ---
 
 ## 📋 Prerequisites
-
-### Local Building
 
 **All Platforms**:
 - Flutter SDK 3.10.8+
@@ -53,12 +41,6 @@ flutter build appbundle --release
 - Xcode 13+
 - CocoaPods
 
-### GitHub Actions
-
-No local setup needed! Everything runs on GitHub servers:
-- Ubuntu runners for Android builds
-- macOS runners for iOS builds
-
 ---
 
 ## 📦 Build Outputs
@@ -66,7 +48,7 @@ No local setup needed! Everything runs on GitHub servers:
 ### Local Builds
 
 ```
-MOBILE/build/
+flutter/build/
 ├── app/
 │   ├── outputs/
 │   │   ├── flutter-apk/
@@ -79,13 +61,6 @@ MOBILE/build/
         └── FlutterIpaExport.ipa          (Packaged IPA)
 ```
 
-### GitHub Actions Artifacts
-
-Available in **Actions** → **[Workflow Run]** → **Artifacts** (30-day retention):
-- `arafat-vms-apk-{number}` - Android APK
-- `arafat-vms-ipa-{number}` - iOS IPA
-- `arafat-vms-aab-{number}` - Android App Bundle
-
 ---
 
 ## 🔧 Detailed Build Instructions
@@ -93,7 +68,7 @@ Available in **Actions** → **[Workflow Run]** → **Artifacts** (30-day retent
 ### Android APK (Local)
 
 ```bash
-cd MOBILE
+cd flutter
 
 # Clean previous builds
 flutter clean
@@ -105,7 +80,7 @@ flutter pub get
 flutter build apk --release
 
 # Output location
-# MOBILE/build/app/outputs/flutter-apk/app-release.apk
+# flutter/build/app/outputs/flutter-apk/app-release.apk
 
 # Verify APK
 file build/app/outputs/flutter-apk/app-release.apk
@@ -122,13 +97,13 @@ adb install build/app/outputs/flutter-apk/app-release.apk
 ### Android App Bundle (Local)
 
 ```bash
-cd MOBILE
+cd flutter
 
 # Build App Bundle (for Google Play Store)
 flutter build appbundle --release
 
 # Output location
-# MOBILE/build/app/outputs/bundle/release/app-release.aab
+# flutter/build/app/outputs/bundle/release/app-release.aab
 
 # Upload to Google Play Console for distribution
 ```
@@ -136,7 +111,7 @@ flutter build appbundle --release
 ### iOS IPA (Local - macOS only)
 
 ```bash
-cd MOBILE
+cd flutter
 
 # Update CocoaPods
 cd ios
@@ -154,11 +129,11 @@ mv Runner.app Payload/
 zip -r -9 FlutterIpaExport.ipa Payload
 
 # Output location
-# MOBILE/build/ios/iphoneos/FlutterIpaExport.ipa
+# flutter/build/ios/iphoneos/FlutterIpaExport.ipa
 ```
 
 **Install on Device** (requires code signing):
-1. Open Xcode: `File` → `Open` → Select `MOBILE/ios`
+1. Open Xcode: `File` → `Open` → Select `flutter/ios`
 2. Select your Apple Developer team
 3. Connect iOS device
 4. Build & Run: `Product` → `Run` (or `Cmd+R`)
@@ -217,7 +192,7 @@ flutter build apk --release
 ```bash
 # Install CocoaPods
 sudo gem install cocoapods
-cd MOBILE/ios
+cd flutter/ios
 pod install
 ```
 
@@ -237,7 +212,7 @@ rm -rf build/
 
 #### "Module not found" errors
 ```bash
-cd MOBILE
+cd flutter
 flutter clean
 flutter pub get
 flutter pub cache repair
@@ -252,11 +227,6 @@ flutter pub cache repair
 - APK: 10-15 minutes
 - IPA: 15-20 minutes
 - AAB: 10-15 minutes
-
-**GitHub Actions** (first build):
-- APK: ~30 minutes
-- IPA: ~40 minutes
-- Both parallel: ~40 minutes
 
 *Subsequent builds are faster due to caching.*
 
@@ -285,7 +255,7 @@ adb install app-release.apk
 ### iOS
 
 **Method 1: Xcode (Development)**
-1. Open `MOBILE/ios/Runner.xcworkspace`
+1. Open `flutter/ios/Runner.xcworkspace`
 2. Select your team
 3. Connect device
 4. `Product` → `Run`
@@ -356,8 +326,7 @@ Before releasing to production:
 - [ ] Code reviewed and merged to main
 - [ ] Create git tag: `git tag v1.0.0`
 - [ ] Push tag: `git push origin v1.0.0`
-- [ ] Wait for GitHub Actions to complete
-- [ ] Download artifacts from Releases
+- [ ] Run local builds (APK, IPA, AAB)
 - [ ] Test builds on real devices
 - [ ] Submit to app stores if ready
 
@@ -366,7 +335,6 @@ Before releasing to production:
 ## 📚 Additional Resources
 
 - [Flutter Build Documentation](https://flutter.dev/docs/deployment)
-- [GitHub Actions Guide](.github/GITHUB_ACTIONS_GUIDE.md)
 - [Google Play Console](https://play.google.com/console)
 - [App Store Connect](https://appstoreconnect.apple.com)
 

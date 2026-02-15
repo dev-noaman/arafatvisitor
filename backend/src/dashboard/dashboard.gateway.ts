@@ -3,11 +3,11 @@ import {
   WebSocketServer,
   OnGatewayConnection,
   OnGatewayDisconnect,
-} from '@nestjs/websockets';
-import { Logger } from '@nestjs/common';
-import { Server, Socket } from 'socket.io';
-import { JwtService } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
+} from "@nestjs/websockets";
+import { Logger } from "@nestjs/common";
+import { Server, Socket } from "socket.io";
+import { JwtService } from "@nestjs/jwt";
+import { ConfigService } from "@nestjs/config";
 
 interface AuthenticatedSocket extends Socket {
   userId?: number;
@@ -15,18 +15,19 @@ interface AuthenticatedSocket extends Socket {
 }
 
 @WebSocketGateway({
-  namespace: '/dashboard',
+  namespace: "/dashboard",
   cors: {
     origin: [
-      'http://localhost:5174',
-      'http://127.0.0.1:5174',
-      'https://arafatvisitor.cloud',
+      "http://localhost:5174",
+      "http://127.0.0.1:5174",
+      "https://arafatvisitor.cloud",
     ],
     credentials: true,
   },
 })
 export class DashboardGateway
-  implements OnGatewayConnection, OnGatewayDisconnect {
+  implements OnGatewayConnection, OnGatewayDisconnect
+{
   @WebSocketServer()
   server: Server;
 
@@ -42,7 +43,7 @@ export class DashboardGateway
       // Extract and verify JWT from handshake auth
       const token = socket.handshake.auth?.token;
       if (!token) {
-        this.logger.warn('Connection attempt without token');
+        this.logger.warn("Connection attempt without token");
         socket.disconnect();
         return;
       }
@@ -50,8 +51,8 @@ export class DashboardGateway
       try {
         const payload = this.jwtService.verify(token, {
           secret:
-            this.configService.get<string>('JWT_SECRET') ||
-            'fallback-secret-min-32-chars',
+            this.configService.get<string>("JWT_SECRET") ||
+            "fallback-secret-min-32-chars",
         });
 
         socket.userId = payload.sub;
@@ -65,7 +66,7 @@ export class DashboardGateway
         return;
       }
     } catch (error) {
-      this.logger.error('Error in handleConnection:', error);
+      this.logger.error("Error in handleConnection:", error);
       socket.disconnect();
     }
   }
@@ -83,7 +84,7 @@ export class DashboardGateway
     hostName: string;
     checkInAt: string;
   }) {
-    this.server.emit('visitor:checkin', data);
+    this.server.emit("visitor:checkin", data);
   }
 
   emitVisitorApproved(data: {
@@ -91,7 +92,7 @@ export class DashboardGateway
     visitorName: string;
     hostName: string;
   }) {
-    this.server.emit('visitor:approved', data);
+    this.server.emit("visitor:approved", data);
   }
 
   emitVisitorRejected(data: {
@@ -99,7 +100,7 @@ export class DashboardGateway
     visitorName: string;
     reason?: string;
   }) {
-    this.server.emit('visitor:rejected', data);
+    this.server.emit("visitor:rejected", data);
   }
 
   emitVisitorCheckout(data: {
@@ -107,7 +108,7 @@ export class DashboardGateway
     sessionId: string;
     visitorName: string;
   }) {
-    this.server.emit('visitor:checkout', data);
+    this.server.emit("visitor:checkout", data);
   }
 
   emitDeliveryReceived(data: {
@@ -115,14 +116,14 @@ export class DashboardGateway
     courier: string;
     recipient: string;
   }) {
-    this.server.emit('delivery:received', data);
+    this.server.emit("delivery:received", data);
   }
 
   emitDeliveryPickedup(data: { deliveryId: string; recipient: string }) {
-    this.server.emit('delivery:pickedup', data);
+    this.server.emit("delivery:pickedup", data);
   }
 
   emitDashboardRefresh() {
-    this.server.emit('dashboard:refresh', {});
+    this.server.emit("dashboard:refresh", {});
   }
 }

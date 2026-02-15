@@ -19,7 +19,7 @@ import { Public } from "../common/decorators/public.decorator";
 import { CurrentUser } from "../common/decorators/current-user.decorator";
 import { Role } from "@prisma/client";
 
-@SkipThrottle({ default: true, 'login-account': true, 'login-ip': true })
+@SkipThrottle({ default: true, "login-account": true, "login-ip": true })
 @Controller("visits")
 @UseGuards(JwtAuthGuard)
 export class VisitsController {
