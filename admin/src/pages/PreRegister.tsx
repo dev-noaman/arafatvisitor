@@ -49,7 +49,7 @@ export default function PreRegister() {
   const fetchHosts = useCallback(async () => {
     setIsLoadingHosts(true)
     try {
-      const response = await getHosts({ limit: 100 })
+      const response = await getHosts({ limit: 1000 })
       setHosts(response.data || [])
     } catch (err) {
       error('Failed to load hosts')
