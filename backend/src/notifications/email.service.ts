@@ -237,65 +237,29 @@ export class EmailService {
 
   async sendPasswordReset(to: string, resetUrl: string): Promise<boolean> {
     const html = `
-<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin: 0; padding: 0; background-color: #f3f4f6; font-family: Arial, Helvetica, sans-serif;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f3f4f6; padding: 40px 0;">
-<tr><td align="center">
-<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width: 600px; width: 100%; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.07);">
-  <!-- Header -->
-  <tr>
-    <td style="background-color: #1E3A8A; padding: 35px 40px; text-align: center;">
-      <h1 style="color: #ffffff; margin: 0; font-size: 26px; font-weight: 700; letter-spacing: 1px;">PASSWORD RESET</h1>
-      <p style="color: #93c5fd; margin: 8px 0 0 0; font-size: 14px;">Arafat Visitor Management System</p>
-    </td>
-  </tr>
-  <!-- Body -->
-  <tr>
-    <td style="padding: 40px;">
-      <h2 style="color: #1e293b; margin: 0 0 16px 0; font-size: 20px; font-weight: 600;">Hello,</h2>
-      <p style="color: #475569; font-size: 15px; line-height: 1.7; margin: 0 0 12px 0;">We received a request to reset your password for your Arafat VMS account.</p>
-      <p style="color: #475569; font-size: 15px; line-height: 1.7; margin: 0 0 30px 0;">Click the button below to set a new password:</p>
-      <!-- Button -->
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-        <tr>
-          <td align="center" style="padding: 0 0 30px 0;">
-            <table role="presentation" cellpadding="0" cellspacing="0">
-              <tr>
-                <td style="background-color: #1E3A8A; border-radius: 8px;">
-                  <a href="${resetUrl}" target="_blank" style="display: inline-block; color: #ffffff; font-size: 16px; font-weight: 700; text-decoration: none; padding: 16px 48px; border: 1px solid #1E3A8A; border-radius: 8px;">Reset Password</a>
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-      </table>
-      <!-- Link -->
-      <p style="color: #64748b; font-size: 13px; line-height: 1.6; margin: 0 0 10px 0;">Or copy and paste this link into your browser:</p>
-      <p style="margin: 0 0 30px 0; padding: 14px 16px; background-color: #f1f5f9; border-radius: 8px; border: 1px solid #e2e8f0;">
-        <a href="${resetUrl}" style="color: #2563eb; font-size: 13px; word-break: break-all; text-decoration: none;">${resetUrl}</a>
-      </p>
-      <!-- Divider -->
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-        <tr><td style="border-top: 1px solid #e2e8f0; padding-top: 20px;">
-          <p style="color: #94a3b8; font-size: 13px; line-height: 1.6; margin: 0;">This link expires in <strong>1 hour</strong>.</p>
-          <p style="color: #94a3b8; font-size: 13px; line-height: 1.6; margin: 8px 0 0 0;">If you didn't request this password reset, you can safely ignore this email.</p>
-        </td></tr>
-      </table>
-    </td>
-  </tr>
-  <!-- Footer -->
-  <tr>
-    <td style="background-color: #1e293b; padding: 20px 40px; text-align: center;">
-      <p style="color: #94a3b8; font-size: 12px; margin: 0;">Powered by Arafat Visitor Management System</p>
-    </td>
-  </tr>
-</table>
-</td></tr>
-</table>
-</body>
-</html>
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: linear-gradient(135deg, #1E3A8A, #3B82F6); padding: 30px; text-align: center;">
+          <h1 style="color: white; margin: 0; font-size: 28px;">PASSWORD RESET</h1>
+          <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0;">Arafat Visitor Management System</p>
+        </div>
+        <div style="padding: 40px 30px; background: #f9fafb;">
+          <h2 style="color: #1E3A8A; margin-top: 0;">Hello,</h2>
+          <p style="color: #374151; line-height: 1.6;">We received a request to reset your password for your Arafat VMS account.</p>
+          <p style="color: #374151; line-height: 1.6;">Click the button below to set a new password:</p>
+          <div style="text-align: center; padding: 30px 0;">
+            <a href="${resetUrl}" style="display: inline-block; background: linear-gradient(135deg, #1E3A8A, #3B82F6); color: white; text-decoration: none; padding: 15px 40px; border-radius: 8px; font-weight: bold; font-size: 16px;">Reset Password</a>
+          </div>
+          <p style="color: #6b7280; font-size: 14px; line-height: 1.6;">Or copy and paste this link into your browser:</p>
+          <p style="color: #3B82F6; font-size: 13px; word-break: break-all; background: #e5e7eb; padding: 12px; border-radius: 6px;">${resetUrl}</p>
+          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+            <p style="color: #9ca3af; font-size: 13px; margin: 0;">This link expires in <strong>1 hour</strong>.</p>
+            <p style="color: #9ca3af; font-size: 13px; margin: 8px 0 0 0;">If you didn't request this password reset, you can safely ignore this email.</p>
+          </div>
+        </div>
+        <div style="padding: 20px; text-align: center; background: #1E3A8A; color: rgba(255,255,255,0.8); font-size: 13px;">
+          Powered by Arafat Visitor Management System
+        </div>
+      </div>
     `;
     return this.send({
       to,
