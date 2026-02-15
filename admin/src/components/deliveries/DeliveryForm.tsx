@@ -5,6 +5,7 @@ import { z } from 'zod'
 import type { Host } from '@/types'
 import { getDeliveryTypeLookups, getCourierLookups, type LookupItem } from '@/services/lookups'
 import { getHosts } from '@/services/hosts'
+import HostLookup from '@/components/common/HostLookup'
 
 const deliverySchema = z.object({
   deliveryType: z.string().min(1, 'Please select delivery type'),
@@ -112,24 +113,17 @@ export default function DeliveryForm({ onSubmit, isLoading }: DeliveryFormProps)
 
       {/* Host */}
       <div>
-        <label htmlFor="hostId" className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-gray-700 mb-1">
           Host *
         </label>
-        <select
-          {...register('hostId')}
-          id="hostId"
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          disabled={isLoading || isLoadingLookups}
-        >
-          <option value="">
-            {isLoadingLookups ? 'Loading...' : 'Select a host'}
-          </option>
-          {hosts.map((host) => (
-            <option key={host.id} value={host.id}>
-              {host.name} - {host.company}
-            </option>
-          ))}
-        </select>
+        <HostLookup
+          hosts={hosts}
+          value={watch('hostId') || ''}
+          onChange={(id) => setValue('hostId', id, { shouldValidate: true })}
+          disabled={isLoading}
+          isLoading={isLoadingLookups}
+          error={errors.hostId?.message}
+        />
         {errors.hostId && (
           <p className="text-sm text-red-600 mt-1">{errors.hostId.message}</p>
         )}
