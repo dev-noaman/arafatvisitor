@@ -78,15 +78,39 @@ export function getAdminUrl(): string {
 }
 
 export function getAuthToken(): string | null {
-  return authToken ?? sessionStorage.getItem('vms_token')
+  return authToken ?? localStorage.getItem('vms_token')
 }
 
 export function setAuthToken(token: string | null) {
   authToken = token
   if (token) {
-    sessionStorage.setItem('vms_token', token)
+    localStorage.setItem('vms_token', token)
   } else {
-    sessionStorage.removeItem('vms_token')
+    localStorage.removeItem('vms_token')
+  }
+}
+
+/** Validate stored token by fetching the user profile. Returns role if valid, null otherwise. */
+export async function validateSession(): Promise<{ role: string } | null> {
+  const token = getAuthToken()
+  if (!token) return null
+
+  const base = getApiBase()
+  if (!base) return null
+
+  try {
+    const res = await fetch(`${base}/admin/api/profile`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!res.ok) {
+      setAuthToken(null)
+      return null
+    }
+    const user = await res.json()
+    return { role: user.role?.toLowerCase() }
+  } catch {
+    // Network error — keep token, don't force re-login
+    return { role: localStorage.getItem('vms_role') ?? 'admin' }
   }
 }
 

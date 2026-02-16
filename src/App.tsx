@@ -15,7 +15,7 @@ import { useIdleTimeout } from "@/hooks/useIdleTimeout"
 import { Toaster } from "sonner"
 import { Truck, LogOut, ArrowLeft, User, ArrowRight, AlertTriangle } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { setAuthToken, getAdminUrl } from "@/lib/api"
+import { setAuthToken, getAdminUrl, getAuthToken, validateSession } from "@/lib/api"
 import QRCode from "react-qr-code"
 
 type Role = "admin" | "reception"
@@ -49,6 +49,7 @@ function App() {
   const [badgeSessionId, setBadgeSessionId] = useState<string>("")
   const [showIdleWarning, setShowIdleWarning] = useState(false)
   const [idleWarningSeconds, setIdleWarningSeconds] = useState(30)
+  const [restoring, setRestoring] = useState(!!getAuthToken())
 
   // Handle idle timeout - reset to dashboard and clear form state
   const handleIdleTimeout = () => {
@@ -70,6 +71,19 @@ function App() {
     onWarning: handleIdleWarning,
   })
 
+  // Restore session from stored token on mount
+  useEffect(() => {
+    if (!getAuthToken()) return
+    validateSession().then((result) => {
+      if (result) {
+        const r = (result.role === "admin" || result.role === "reception" ? result.role : "admin") as Role
+        setIsLoggedIn(true)
+        setRole(r)
+      }
+      setRestoring(false)
+    })
+  }, [])
+
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000)
     return () => clearInterval(timer)
@@ -78,11 +92,13 @@ function App() {
   const handleLogin = (r?: Role) => {
     setIsLoggedIn(true)
     setRole(r ?? "admin")
+    localStorage.setItem("vms_role", r ?? "admin")
     setCurrentView("dashboard")
   }
 
   const handleLogout = () => {
     setAuthToken(null)
+    localStorage.removeItem("vms_role")
     setIsLoggedIn(false)
     setRole(null)
     setCurrentView("dashboard")
@@ -137,7 +153,7 @@ function App() {
                   className="gap-1.5"
                   title="Open Admin dashboard"
                   onClick={() => {
-                    const token = window.sessionStorage.getItem("vms_token")
+                    const token = localStorage.getItem("vms_token")
                     const adminUrl = getAdminUrl()
                     if (token) {
                       window.open(
@@ -184,7 +200,12 @@ function App() {
       )}
 
       <main className="flex-1 p-4 md:p-8 flex flex-col items-center justify-center w-full">
-        {!isLoggedIn && !isRegisterPage ? (
+        {restoring ? (
+          <div className="flex flex-col items-center gap-3 animate-pulse">
+            <img src="/logo.svg" className="h-16 w-auto opacity-50" alt="Loading" />
+            <p className="text-muted-foreground text-sm">Restoring session...</p>
+          </div>
+        ) : !isLoggedIn && !isRegisterPage ? (
           <div className="w-full max-w-md animate-in fade-in slide-in-from-bottom-4 duration-500">
             <LoginForm onLoginSuccess={handleLogin} />
           </div>

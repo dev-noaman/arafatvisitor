@@ -10,7 +10,7 @@ function getApiBase(): string | null {
 }
 
 function getAuthToken(): string | null {
-  return sessionStorage.getItem('vms_token')
+  return localStorage.getItem('vms_token')
 }
 
 export async function sendHostEmail(
