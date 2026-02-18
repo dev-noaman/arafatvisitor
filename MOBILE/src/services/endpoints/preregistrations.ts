@@ -13,7 +13,7 @@ import type {
 export const getPreRegistrations = async (
   params: GetPreRegistrationsParams
 ): Promise<PaginatedResponse<PreRegistration>> => {
-  const response = await apiClient.get('/admin/api/pre-register', { params });
+  const response = await apiClient.get('/admin/api/pre-registrations', { params });
   return response.data;
 };
 

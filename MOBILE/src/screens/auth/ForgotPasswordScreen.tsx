@@ -7,27 +7,21 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
 } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { FormInput } from '../../components/common/FormInput';
 import { LoadingButton } from '../../components/common/LoadingButton';
 import { toast } from '../../components/common/Toast';
 import { forgotPassword } from '../../services/endpoints/auth';
-import { useUIStore } from '../../store/uiStore';
 import { validateEmail } from '../../utils/validation';
-import { colors } from '../../theme/colors';
-import { spacing } from '../../theme/spacing';
-import { typography } from '../../theme/typography';
 
 export default function ForgotPasswordScreen() {
   const navigation = useNavigation();
-  const isDarkMode = useUIStore((s) => s.isDarkMode);
-  const theme = isDarkMode ? colors.dark : colors.light;
 
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
@@ -57,22 +51,24 @@ export default function ForgotPasswordScreen() {
 
   if (sent) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.background }]}>
-        <View style={styles.sentContainer}>
-          <Text style={styles.sentIcon}>📧</Text>
-          <Text style={[styles.sentTitle, { color: theme.text.primary }]}>
-            Check Your Email
-          </Text>
-          <Text style={[styles.sentMessage, { color: theme.text.secondary }]}>
-            We've sent a password reset link to {email}. Please check your inbox
-            and follow the instructions to reset your password.
-          </Text>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Text style={[styles.backLink, { color: colors.brand[500] }]}>
-              Back to Sign In
-            </Text>
-          </TouchableOpacity>
+      <View className="flex-1 bg-gray-50 dark:bg-dark-bg justify-center items-center px-8">
+        <View className="w-20 h-20 rounded-full bg-success-50 dark:bg-success-900/20 items-center justify-center mb-6">
+          <MaterialIcons name="mark-email-read" size={40} color="#12B76A" />
         </View>
+        <Text className="text-xl font-outfit-bold text-gray-900 dark:text-white mb-3 text-center">
+          Check Your Email
+        </Text>
+        <Text className="text-base font-outfit text-gray-500 dark:text-gray-400 text-center leading-6 mb-8">
+          We've sent a password reset link to {email}. Please check your inbox
+          and follow the instructions to reset your password.
+        </Text>
+        <TouchableOpacity
+          className="flex-row items-center"
+          onPress={() => navigation.goBack()}
+        >
+          <MaterialIcons name="arrow-back" size={18} color="#465FFF" />
+          <Text className="text-brand-500 font-outfit-bold text-base ml-1">Back to Sign In</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -83,27 +79,31 @@ export default function ForgotPasswordScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView
-        style={[styles.container, { backgroundColor: theme.background }]}
-        contentContainerStyle={styles.scrollContent}
+        className="flex-1 bg-gray-50 dark:bg-dark-bg"
+        contentContainerClassName="flex-grow justify-center px-6 py-10"
         keyboardShouldPersistTaps="handled"
       >
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={[styles.backText, { color: colors.brand[500] }]}>
-            ‹ Back to Sign In
-          </Text>
-        </TouchableOpacity>
+        <View className="w-full max-w-md self-center">
+          <TouchableOpacity
+            className="flex-row items-center mb-8"
+            onPress={() => navigation.goBack()}
+          >
+            <MaterialIcons name="arrow-back" size={20} color="#465FFF" />
+            <Text className="text-brand-500 font-outfit-bold text-base ml-1">Back to Sign In</Text>
+          </TouchableOpacity>
 
-        <View style={styles.header}>
-          <Text style={[styles.title, { color: theme.text.primary }]}>
-            Forgot Password
-          </Text>
-          <Text style={[styles.subtitle, { color: theme.text.secondary }]}>
-            Enter your email address and we'll send you a link to reset your
-            password.
-          </Text>
-        </View>
+          <View className="items-center mb-8">
+            <View className="w-16 h-16 bg-brand-500/10 rounded-2xl items-center justify-center mb-4">
+              <MaterialIcons name="lock-reset" size={36} color="#465FFF" />
+            </View>
+            <Text className="text-2xl font-outfit-bold text-gray-900 dark:text-white mb-2">
+              Forgot Password
+            </Text>
+            <Text className="text-sm font-outfit text-gray-500 dark:text-gray-400 leading-5 text-center">
+              Enter your email address and we'll send you a link to reset your password.
+            </Text>
+          </View>
 
-        <View style={styles.form}>
           <FormInput
             label="Email"
             value={email}
@@ -112,71 +112,16 @@ export default function ForgotPasswordScreen() {
             keyboardType="email-address"
             autoCapitalize="none"
             error={error}
+            icon="mail"
           />
           <LoadingButton
             title="Send Reset Link"
             onPress={handleSubmit}
             isLoading={isLoading}
-            style={styles.submitButton}
+            className="mt-4"
           />
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1 },
-  scrollContent: {
-    flexGrow: 1,
-    padding: spacing.lg,
-    paddingTop: spacing['2xl'],
-  },
-  backText: {
-    fontSize: typography.fontSize.lg,
-    fontWeight: typography.fontWeight.semibold,
-    marginBottom: spacing.lg,
-  },
-  header: {
-    marginBottom: spacing['2xl'],
-  },
-  title: {
-    fontSize: typography.fontSize['2xl'],
-    fontWeight: typography.fontWeight.bold,
-    marginBottom: spacing.sm,
-  },
-  subtitle: {
-    fontSize: typography.fontSize.sm,
-    lineHeight: 20,
-  },
-  form: {},
-  submitButton: {
-    marginTop: spacing.md,
-  },
-  sentContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: spacing['2xl'],
-  },
-  sentIcon: {
-    fontSize: 64,
-    marginBottom: spacing.lg,
-  },
-  sentTitle: {
-    fontSize: typography.fontSize.xl,
-    fontWeight: typography.fontWeight.bold,
-    marginBottom: spacing.md,
-    textAlign: 'center',
-  },
-  sentMessage: {
-    fontSize: typography.fontSize.lg,
-    textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: spacing['2xl'],
-  },
-  backLink: {
-    fontSize: typography.fontSize.lg,
-    fontWeight: typography.fontWeight.semibold,
-  },
-});

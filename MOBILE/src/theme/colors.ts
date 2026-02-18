@@ -28,7 +28,7 @@ export const colors = {
     warning: '#fdb022',        // warning-400
     error: '#f97066',          // error-400
     background: '#1a2231',     // gray-dark
-    card: '#1d2939',          // gray-800
+    card: '#252A3A',          // Stitch spec dark card
     border: '#344054',        // gray-700
     text: {
       primary: '#f9fafb',      // gray-50

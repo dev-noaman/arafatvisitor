@@ -11,7 +11,7 @@ const config: ExpoConfig = {
   splash: {
     image: './assets/splash-icon.png',
     resizeMode: 'contain',
-    backgroundColor: '#465fff', // brand-500
+    backgroundColor: '#dd282b',
   },
   ios: {
     supportsTablet: true,
@@ -20,7 +20,7 @@ const config: ExpoConfig = {
   android: {
     adaptiveIcon: {
       foregroundImage: './assets/adaptive-icon.png',
-      backgroundColor: '#465fff',
+      backgroundColor: '#dd282b',
     },
     package: 'com.arafat.visitor',
     edgeToEdgeEnabled: true,
@@ -35,6 +35,7 @@ const config: ExpoConfig = {
     VERSION: process.env.VERSION || '1.0.0',
   },
   plugins: [
+    'expo-font',
     [
       'expo-camera',
       {

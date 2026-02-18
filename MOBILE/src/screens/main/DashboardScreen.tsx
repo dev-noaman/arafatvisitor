@@ -1,6 +1,7 @@
 /**
  * DashboardScreen
- * Main dashboard with KPIs, pending approvals, and current visitors
+ * Main dashboard matching Stitch design specs
+ * Features: KPI cards with left border accent, 2-button quick actions, recent activity
  */
 
 import React from 'react';
@@ -11,17 +12,26 @@ import {
   RefreshControl,
   ActivityIndicator,
   TouchableOpacity,
-  Image,
 } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useDashboardKPIs, usePendingApprovals, useCurrentVisitors } from '../../hooks/useDashboard';
 import { StatusBadge } from '../../components/visitor/StatusBadge';
 import { useUIStore } from '../../store/uiStore';
+import { useAuthStore } from '../../store/authStore';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+function getGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good Morning';
+  if (hour < 17) return 'Good Afternoon';
+  return 'Good Evening';
+}
 
 export default function DashboardScreen() {
   const navigation = useNavigation<any>();
   const isDarkMode = useUIStore((s) => s.isDarkMode);
+  const user = useAuthStore((s) => s.user);
 
   const { data: kpis, isLoading: kpisLoading, refetch: refetchKpis } = useDashboardKPIs();
   const { data: pendingData, refetch: refetchPending } = usePendingApprovals(1, 5);
@@ -39,104 +49,109 @@ export default function DashboardScreen() {
     navigation.navigate('VisitorDetail', { sessionId: visit.sessionId || visit.id });
   };
 
-  const LoadingState = () => (
-    <View className="flex-1 justify-center items-center bg-white dark:bg-dark-bg p-8">
-      <ActivityIndicator size="large" color="#465FFF" />
-      <Text className="mt-4 text-gray-500 dark:text-gray-400">Loading dashboard...</Text>
-    </View>
-  );
-
-  if (kpisLoading && !kpis) return <LoadingState />;
+  if (kpisLoading && !kpis) {
+    return (
+      <View className="flex-1 justify-center items-center bg-gray-50 dark:bg-dark-bg p-8">
+        <ActivityIndicator size="large" color="#465FFF" />
+        <Text className="mt-4 text-gray-500 dark:text-gray-400 font-outfit">Loading dashboard...</Text>
+      </View>
+    );
+  }
 
   const currentDate = new Date();
   const dateStr = currentDate.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'short' });
 
   return (
-    <SafeAreaView className="flex-1 bg-white dark:bg-dark-bg" edges={['top']}>
+    <SafeAreaView className="flex-1 bg-gray-50 dark:bg-dark-bg" edges={['top']}>
+      {/* Sticky Header — per Stitch */}
+      <View className="flex-row items-center justify-between px-6 py-4 bg-white dark:bg-dark-card border-b border-gray-100 dark:border-gray-800">
+        <Text className="text-2xl font-outfit-bold text-gray-900 dark:text-white">Dashboard</Text>
+      </View>
+
       <ScrollView
         className="flex-1"
-        contentContainerClassName="pb-24 pt-4"
+        contentContainerClassName="pb-24 pt-6"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#465FFF" />}
       >
-        {/* Header */}
-        <View className="px-6 mb-8">
-          <Text className="text-gray-500 dark:text-gray-400 text-sm font-outfit uppercase tracking-wider mb-1">
-            {dateStr}
-          </Text>
+        {/* Greeting — per Stitch */}
+        <View className="px-6 mb-6">
+          <Text className="text-sm text-gray-500 dark:text-gray-400 font-outfit mb-1">{dateStr}</Text>
           <Text className="text-3xl font-outfit-bold text-gray-900 dark:text-white">
-            Good Morning, <Text className="text-brand-500">Admin</Text>
+            {getGreeting()}, {user?.name?.split(' ')[0] || 'Welcome'}
           </Text>
         </View>
 
-        {/* KPI Grid */}
+        {/* KPI Grid — per Stitch: 2x2 with border-l-4 accent */}
         <View className="flex-row flex-wrap px-4 gap-3 mb-8">
           <KpiCard
             title="Today's Visitors"
-            value={kpis?.todaysVisitors || 0}
-            icon="👥"
-            color="brand"
+            value={kpis?.visitsToday ?? 0}
+            iconName="group"
+            borderColor="#0BA5EC"
+            iconBg="bg-blue-light-50"
+            iconColor="#0BA5EC"
           />
           <KpiCard
             title="Checked In"
-            value={kpis?.checkedIn || 0}
-            icon="📍"
-            color="success"
+            value={currentVisitors?.length ?? 0}
+            iconName="login"
+            borderColor="#12B76A"
+            iconBg="bg-success-50"
+            iconColor="#12B76A"
           />
           <KpiCard
             title="Today's Deliveries"
-            value="8" // Placeholder
-            icon="📦"
-            color="orange"
-            isPlaceholder
+            value={kpis?.deliveriesToday ?? 0}
+            iconName="local-shipping"
+            borderColor="#F79009"
+            iconBg="bg-warning-50"
+            iconColor="#F79009"
           />
           <KpiCard
-            title="Overstay"
-            value="4" // Placeholder
-            icon="⚠️"
-            color="error"
-            isPlaceholder
+            title="Pending Approval"
+            value={pendingData?.length ?? 0}
+            iconName="pending-actions"
+            borderColor="#F04438"
+            iconBg="bg-error-50"
+            iconColor="#F04438"
           />
         </View>
 
-        {/* Quick Actions */}
+        {/* Quick Actions — per Stitch: 2 buttons, primary filled + outlined */}
         <View className="px-6 mb-8">
-          <Text className="text-xl font-outfit-bold text-gray-900 dark:text-white mb-4">
-            Quick Actions
-          </Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="-mx-6 px-6">
-            <View className="flex-row gap-4">
-              <ActionButton
-                title="Scan QR"
-                icon="qr-code-scanner" // Material Icon name (conceptual)
-                color="bg-brand-500"
-                onPress={() => navigation.getParent()?.navigate('QRScanTab')}
-              />
-              <ActionButton
-                title="Pre-Register"
-                icon="assignment"
-                color="bg-brand-600"
-                onPress={() => navigation.getParent()?.navigate('PreRegisterTab')}
-              />
-              <ActionButton
-                title="Visitors"
-                icon="group"
-                color="bg-gray-800"
-                onPress={() => navigation.getParent()?.navigate('VisitorsTab')}
-              />
-            </View>
-          </ScrollView>
+          <Text className="text-lg font-outfit-semibold text-gray-900 dark:text-white mb-4">Quick Actions</Text>
+          <View className="flex-row gap-3">
+            <TouchableOpacity
+              className="flex-1 flex-row items-center justify-center gap-2 py-3.5 bg-brand-500 rounded-xl"
+              style={{ shadowColor: '#465FFF', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 6, elevation: 4 }}
+              onPress={() => navigation.getParent()?.navigate('QRScanTab')}
+              activeOpacity={0.85}
+            >
+              <MaterialIcons name="qr-code-scanner" size={20} color="#fff" />
+              <Text className="text-white font-outfit-medium">Scan QR</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              className="flex-1 flex-row items-center justify-center gap-2 py-3.5 bg-white dark:bg-dark-card border border-brand-500 rounded-xl"
+              onPress={() => navigation.navigate('PreRegisterList')}
+              activeOpacity={0.85}
+            >
+              <MaterialIcons name="person-add" size={20} color="#465FFF" />
+              <Text className="text-brand-500 font-outfit-medium">Pre-Register</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {/* Recent Activity */}
+        {/* Recent Activity — per Stitch */}
         <View className="px-6">
-          <Text className="text-xl font-outfit-bold text-gray-900 dark:text-white mb-4">
-            Recent Activity
-          </Text>
+          <View className="flex-row items-center justify-between mb-4">
+            <Text className="text-lg font-outfit-semibold text-gray-900 dark:text-white">Recent Activity</Text>
+            <TouchableOpacity onPress={() => navigation.getParent()?.navigate('VisitorsTab')}>
+              <Text className="text-sm text-brand-500 font-outfit-medium">View All</Text>
+            </TouchableOpacity>
+          </View>
 
-          {/* Combined List for "Activity" feel */}
-          <View>
-            {/* Show pending first as priority */}
-            {pendingData?.data?.map((visit: any) => (
+          <View className="gap-3">
+            {pendingData?.map((visit: any) => (
               <VisitorItem
                 key={`pending-${visit.id}`}
                 visitor={visit}
@@ -145,17 +160,17 @@ export default function DashboardScreen() {
               />
             ))}
 
-            {/* Then current visitors */}
             {currentVisitors?.map((visitor: any) => (
               <VisitorItem
                 key={`current-${visitor.id}`}
                 visitor={visitor}
+                statusOverride="CHECKED_IN"
                 onPress={() => navigateToVisitor(visitor)}
               />
             ))}
 
-            {(!currentVisitors?.length && !pendingData?.data?.length) && (
-              <View className="bg-white dark:bg-dark-card rounded-2xl p-8 items-center border border-gray-100 dark:border-gray-800">
+            {(!currentVisitors?.length && !pendingData?.length) && (
+              <View className="bg-white dark:bg-dark-card rounded-xl p-8 items-center border border-gray-100 dark:border-gray-800">
                 <Text className="text-gray-400 dark:text-gray-500 font-outfit">No recent activity</Text>
               </View>
             )}
@@ -166,52 +181,29 @@ export default function DashboardScreen() {
   );
 }
 
-// Sub-components
-const KpiCard = ({ title, value, icon, color, isPlaceholder }: any) => {
-  const textColors: any = {
-    brand: 'text-brand-600 dark:text-brand-400',
-    success: 'text-success-600 dark:text-success-400',
-    warning: 'text-warning-600 dark:text-warning-400',
-    error: 'text-error-600 dark:text-error-400',
-    orange: 'text-orange-600 dark:text-orange-400',
-  };
-
-  const bgColors: any = {
-    brand: 'bg-brand-50 dark:bg-brand-900/20',
-    success: 'bg-success-50 dark:bg-success-900/20',
-    warning: 'bg-warning-50 dark:bg-warning-900/20',
-    error: 'bg-error-50 dark:bg-error-900/20',
-    orange: 'bg-orange-50 dark:bg-orange-900/20',
-  };
-
-  return (
-    <View className="w-[48%] bg-white dark:bg-dark-card p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800">
-      <View className={`w-10 h-10 rounded-full items-center justify-center mb-3 ${bgColors[color] || bgColors.brand}`}>
-        <Text className="text-lg">{icon}</Text>
-      </View>
-      <Text className="text-3xl font-outfit-bold text-gray-900 dark:text-white mb-1">{value}</Text>
-      <Text className="text-gray-500 dark:text-gray-400 text-xs font-outfit-medium">{title}</Text>
-      {isPlaceholder && (
-        <Text className="absolute top-4 right-4 text-[10px] text-gray-300">DEMO</Text>
-      )}
-    </View>
-  );
-};
-
-const ActionButton = ({ title, icon, color, onPress }: any) => (
-  <TouchableOpacity
-    className={`${color} w-28 h-28 rounded-2xl justify-between p-4 shadow-lg shadow-brand-500/20`}
-    onPress={onPress}
-    activeOpacity={0.8}
+// KPI Card — per Stitch: white card, left colored border, icon in colored bg
+const KpiCard = ({ title, value, iconName, borderColor, iconBg, iconColor }: any) => (
+  <View
+    className="w-[48%] bg-white dark:bg-dark-card p-4 rounded-xl border border-gray-100 dark:border-gray-800"
+    style={{
+      borderLeftWidth: 4,
+      borderLeftColor: borderColor,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.04,
+      shadowRadius: 8,
+      elevation: 2,
+    }}
   >
-    <View className="w-10 h-10 bg-white/20 rounded-full items-center justify-center">
-      {/* Real icon would go here */}
-      <Text className="text-white text-lg">⚡</Text>
+    <View className={`w-10 h-10 rounded-lg items-center justify-center mb-2 ${iconBg}`}>
+      <MaterialIcons name={iconName} size={20} color={iconColor} />
     </View>
-    <Text className="text-white font-outfit-bold text-sm">{title}</Text>
-  </TouchableOpacity>
+    <Text className="text-xs text-gray-500 dark:text-gray-400 font-outfit-medium">{title}</Text>
+    <Text className="text-2xl font-outfit-bold text-gray-900 dark:text-white mt-1">{value}</Text>
+  </View>
 );
 
+// Visitor Item — per Stitch: white card with avatar initials, name, subtitle, time
 const VisitorItem = ({ visitor, statusOverride, onPress }: any) => {
   const initials = visitor.visitorName
     ?.split(' ')
@@ -222,18 +214,19 @@ const VisitorItem = ({ visitor, statusOverride, onPress }: any) => {
 
   return (
     <TouchableOpacity
-      className="flex-row items-center bg-white dark:bg-dark-card p-4 rounded-2xl mb-3 border border-gray-100 dark:border-gray-800 shadow-[0_2px_8px_rgba(0,0,0,0.02)]"
+      className="flex-row items-center bg-white dark:bg-dark-card p-4 rounded-xl border border-gray-100 dark:border-gray-800"
+      style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 1 }}
       onPress={onPress}
       activeOpacity={0.7}
     >
-      <View className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-full items-center justify-center mr-4">
-        <Text className="text-gray-600 dark:text-gray-300 font-outfit-bold text-sm">{initials}</Text>
+      <View className="w-10 h-10 bg-blue-light-50 rounded-full items-center justify-center mr-4">
+        <Text className="text-blue-light-700 font-outfit-bold text-sm">{initials}</Text>
       </View>
       <View className="flex-1 mr-2">
-        <Text className="text-base font-outfit-bold text-gray-900 dark:text-white" numberOfLines={1}>
+        <Text className="text-sm font-outfit-bold text-gray-900 dark:text-white" numberOfLines={1}>
           {visitor.visitorName}
         </Text>
-        <Text className="text-sm text-gray-500 dark:text-gray-400 font-outfit mt-0.5" numberOfLines={1}>
+        <Text className="text-xs text-gray-500 dark:text-gray-400 font-outfit mt-0.5" numberOfLines={1}>
           {visitor.visitorCompany || visitor.hostName}
         </Text>
       </View>

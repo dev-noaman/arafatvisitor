@@ -8,28 +8,21 @@ import {
   View,
   Text,
   ScrollView,
-  StyleSheet,
   TouchableOpacity,
   Alert,
-  ActivityIndicator,
 } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { useApprovePreRegistration, useRejectPreRegistration, useReApprovePreRegistration } from '../../hooks/usePreRegistrations';
 import { StatusBadge } from '../../components/visitor/StatusBadge';
 import { LoadingButton } from '../../components/common/LoadingButton';
 import { Toast, toast } from '../../components/common/Toast';
 import { useAuthStore } from '../../store/authStore';
-import { useUIStore } from '../../store/uiStore';
-import { colors } from '../../theme/colors';
-import { spacing } from '../../theme/spacing';
-import { typography } from '../../theme/typography';
 import type { PreRegistration } from '../../types';
 
 export default function PreRegDetailScreen() {
   const route = useRoute<any>();
   const navigation = useNavigation();
-  const isDarkMode = useUIStore((s) => s.isDarkMode);
-  const theme = isDarkMode ? colors.dark : colors.light;
   const user = useAuthStore((s) => s.user);
 
   const preReg = route.params?.preReg as PreRegistration | undefined;
@@ -111,14 +104,13 @@ export default function PreRegDetailScreen() {
 
   if (!preReg) {
     return (
-      <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
-        <Text style={[styles.errorText, { color: theme.text.primary }]}>
+      <View className="flex-1 justify-center items-center bg-gray-50 dark:bg-dark-bg p-8">
+        <Text className="text-lg font-outfit-bold text-gray-900 dark:text-white mb-4">
           Pre-registration data not found
         </Text>
         <LoadingButton
           title="Go Back"
           onPress={() => navigation.goBack()}
-          style={{ marginTop: spacing.md }}
         />
       </View>
     );
@@ -138,131 +130,86 @@ export default function PreRegDetailScreen() {
         visible={toastState.visible}
         onDismiss={() => setToastState({ ...toastState, visible: false })}
       />
-      <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
+      <ScrollView className="flex-1 bg-gray-50 dark:bg-dark-bg">
         {/* Back button */}
         <TouchableOpacity
-          style={styles.backButton}
+          className="flex-row items-center px-6 pt-6"
           onPress={() => navigation.goBack()}
         >
-          <Text style={[styles.backText, { color: colors.brand[500] }]}>&#8249; Back</Text>
+          <MaterialIcons name="arrow-back" size={20} color="#465FFF" />
+          <Text className="text-brand-500 font-outfit-bold text-base ml-1">Back</Text>
         </TouchableOpacity>
 
         {/* Header */}
-        <View style={[styles.header, { borderBottomColor: theme.border }]}>
-          <Text style={[styles.title, { color: theme.text.primary }]}>Pre-Registration Details</Text>
+        <View className="flex-row justify-between items-center px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <Text className="text-2xl font-outfit-bold text-gray-900 dark:text-white flex-1">
+            Pre-Registration Details
+          </Text>
           <StatusBadge status={preReg.status} />
         </View>
 
-        {/* Visitor Info */}
-        <View style={[styles.section, { borderBottomColor: theme.border }]}>
-          <Text style={[styles.label, { color: theme.text.secondary }]}>Visitor Name</Text>
-          <Text style={[styles.value, { color: theme.text.primary }]}>
-            {preReg.visitorName}
-          </Text>
-        </View>
-
-        <View style={[styles.section, { borderBottomColor: theme.border }]}>
-          <Text style={[styles.label, { color: theme.text.secondary }]}>Email</Text>
-          <Text style={[styles.value, { color: theme.text.primary }]}>
-            {preReg.visitorEmail || 'N/A'}
-          </Text>
-        </View>
-
-        <View style={[styles.section, { borderBottomColor: theme.border }]}>
-          <Text style={[styles.label, { color: theme.text.secondary }]}>Phone</Text>
-          <Text style={[styles.value, { color: theme.text.primary }]}>
-            {preReg.visitorPhone || 'N/A'}
-          </Text>
-        </View>
-
-        <View style={[styles.section, { borderBottomColor: theme.border }]}>
-          <Text style={[styles.label, { color: theme.text.secondary }]}>Company</Text>
-          <Text style={[styles.value, { color: theme.text.primary }]}>
-            {preReg.visitorCompany || 'N/A'}
-          </Text>
-        </View>
-
-        <View style={[styles.section, { borderBottomColor: theme.border }]}>
-          <Text style={[styles.label, { color: theme.text.secondary }]}>Host</Text>
-          <Text style={[styles.value, { color: theme.text.primary }]}>
-            {preReg.hostName || 'N/A'}
-          </Text>
-        </View>
-
-        <View style={[styles.section, { borderBottomColor: theme.border }]}>
-          <Text style={[styles.label, { color: theme.text.secondary }]}>Purpose</Text>
-          <Text style={[styles.value, { color: theme.text.primary }]}>
-            {preReg.purpose || 'N/A'}
-          </Text>
-        </View>
-
-        <View style={[styles.section, { borderBottomColor: theme.border }]}>
-          <Text style={[styles.label, { color: theme.text.secondary }]}>Expected Date</Text>
-          <Text style={[styles.value, { color: theme.text.primary }]}>
-            {preReg.expectedArrivalDate
-              ? new Date(preReg.expectedArrivalDate).toLocaleString()
+        {/* Detail Rows */}
+        <View className="px-6">
+          <DetailRow label="Visitor Name" value={preReg.visitorName} />
+          <DetailRow label="Email" value={preReg.visitorEmail || 'N/A'} />
+          <DetailRow label="Phone" value={preReg.visitorPhone || 'N/A'} />
+          <DetailRow label="Company" value={preReg.visitorCompany || 'N/A'} />
+          <DetailRow label="Host" value={preReg.host?.name || preReg.hostName || 'N/A'} />
+          <DetailRow label="Purpose" value={preReg.purpose || 'N/A'} />
+          <DetailRow
+            label="Expected Date"
+            value={(preReg.expectedDate || preReg.expectedArrivalDate)
+              ? new Date((preReg.expectedDate || preReg.expectedArrivalDate)!).toLocaleString()
               : 'N/A'}
-          </Text>
+          />
+          {preReg.location && <DetailRow label="Location" value={preReg.location} />}
+          {preReg.notes && <DetailRow label="Notes" value={preReg.notes} />}
         </View>
-
-        {preReg.location && (
-          <View style={[styles.section, { borderBottomColor: theme.border }]}>
-            <Text style={[styles.label, { color: theme.text.secondary }]}>Location</Text>
-            <Text style={[styles.value, { color: theme.text.primary }]}>
-              {preReg.location}
-            </Text>
-          </View>
-        )}
-
-        {preReg.notes && (
-          <View style={[styles.section, { borderBottomColor: theme.border }]}>
-            <Text style={[styles.label, { color: theme.text.secondary }]}>Notes</Text>
-            <Text style={[styles.value, { color: theme.text.primary }]}>
-              {preReg.notes}
-            </Text>
-          </View>
-        )}
 
         {/* Action Buttons */}
-        <View style={styles.actions}>
+        <View className="flex-row justify-around px-6 py-6 gap-3">
           {isPending && canApprove && (
             <>
-              <LoadingButton
-                title="Approve"
-                onPress={handleApprove}
-                isLoading={approveMutation.isPending}
-                disabled={isActioning}
-                variant="success"
-                style={styles.actionButton}
-              />
-              <LoadingButton
-                title="Reject"
-                onPress={handleReject}
-                isLoading={rejectMutation.isPending}
-                disabled={isActioning}
-                variant="danger"
-                style={styles.actionButton}
-              />
+              <View className="flex-1">
+                <LoadingButton
+                  title="Approve"
+                  onPress={handleApprove}
+                  isLoading={approveMutation.isPending}
+                  disabled={isActioning}
+                  variant="success"
+                />
+              </View>
+              <View className="flex-1">
+                <LoadingButton
+                  title="Reject"
+                  onPress={handleReject}
+                  isLoading={rejectMutation.isPending}
+                  disabled={isActioning}
+                  variant="danger"
+                />
+              </View>
             </>
           )}
           {isRejected && canApprove && (
-            <LoadingButton
-              title="Re-Approve"
-              onPress={handleReApprove}
-              isLoading={reApproveMutation.isPending}
-              disabled={isActioning}
-              variant="primary"
-              style={styles.actionButton}
-            />
+            <View className="flex-1">
+              <LoadingButton
+                title="Re-Approve"
+                onPress={handleReApprove}
+                isLoading={reApproveMutation.isPending}
+                disabled={isActioning}
+                variant="primary"
+              />
+            </View>
           )}
           {isApproved && (
-            <LoadingButton
-              title="Approved"
-              onPress={() => {}}
-              disabled
-              variant="success"
-              style={styles.actionButton}
-            />
+            <View className="flex-1">
+              <LoadingButton
+                title="Approved"
+                onPress={() => {}}
+                disabled
+                variant="success"
+              />
+            </View>
           )}
         </View>
       </ScrollView>
@@ -270,52 +217,9 @@ export default function PreRegDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1 },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: spacing['3xl'],
-  },
-  loadingText: {
-    marginTop: spacing.md,
-    fontSize: typography.fontSize.lg,
-  },
-  errorText: {
-    fontSize: typography.fontSize.lg,
-    fontWeight: typography.fontWeight.semibold,
-  },
-  backButton: { padding: spacing.lg, paddingBottom: 0 },
-  backText: { fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.semibold },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: spacing.lg,
-    borderBottomWidth: 1,
-  },
-  title: {
-    fontSize: typography.fontSize['2xl'],
-    fontWeight: typography.fontWeight.bold,
-    flex: 1,
-  },
-  section: {
-    padding: spacing.lg,
-    borderBottomWidth: 1,
-  },
-  label: {
-    fontSize: typography.fontSize.sm,
-    marginBottom: spacing.xs,
-  },
-  value: {
-    fontSize: typography.fontSize.lg,
-  },
-  actions: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    padding: spacing.lg,
-    gap: spacing.md,
-  },
-  actionButton: { flex: 1 },
-});
+const DetailRow = ({ label, value }: { label: string; value: string }) => (
+  <View className="py-4 border-b border-gray-100 dark:border-gray-800">
+    <Text className="text-xs font-outfit text-gray-500 dark:text-gray-400 mb-1">{label}</Text>
+    <Text className="text-base font-outfit-medium text-gray-900 dark:text-white">{value}</Text>
+  </View>
+);

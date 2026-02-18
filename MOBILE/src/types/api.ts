@@ -3,7 +3,7 @@
  * Matches backend API contracts
  */
 
-import { User, Visit, Host, PreRegistration, Delivery, Notification, PaginatedResponse, DashboardKPIs } from './index';
+import { User, Visit, Host, PreRegistration, Delivery, Notification, PaginatedResponse, DashboardKPIs, VisitStatus } from './index';
 
 // ========== Auth Endpoints ==========
 
@@ -47,10 +47,9 @@ export interface ResetPasswordResponse {
 // ========== Dashboard Endpoints ==========
 
 export interface DashboardKPIsResponse {
-  todaysVisitors: number;
-  checkedIn: number;
-  expected: number;
-  pendingApprovals: number;
+  totalHosts: number;
+  visitsToday: number;
+  deliveriesToday: number;
 }
 
 export interface PendingApprovalsParams {
@@ -136,7 +135,32 @@ export interface CheckOutResponse {
   success: boolean;
 }
 
-export interface GetVisitBySessionIdResponse extends Visit {}
+export interface VisitorPassResponse {
+  id: string;
+  sessionId: string;
+  visitor: {
+    name: string;
+    company?: string;
+    phone?: string;
+    email?: string;
+  };
+  hostId: string;
+  host?: {
+    id: string;
+    name: string;
+    email?: string;
+    phone?: string;
+    company?: string;
+  };
+  purpose?: string;
+  location?: string;
+  status: VisitStatus;
+  expectedDate?: string | null;
+  checkInTimestamp?: string | null;
+  checkOutTimestamp?: string | null;
+}
+
+export type GetVisitBySessionIdResponse = VisitorPassResponse;
 
 // ========== Pre-Registration Endpoints ==========
 
@@ -152,7 +176,7 @@ export interface CreatePreRegistrationRequest {
   visitorPhone: string;
   visitorCompany: string;
   hostId: string;
-  expectedArrivalDate: string;
+  expectedDate: string;
   purpose?: string;
   location?: string;
   notes?: string;
@@ -164,7 +188,7 @@ export interface UpdatePreRegistrationRequest {
   visitorPhone?: string;
   visitorCompany?: string;
   hostId?: string;
-  expectedArrivalDate?: string;
+  expectedDate?: string;
   purpose?: string;
   location?: string;
   notes?: string;
@@ -278,37 +302,19 @@ export interface MarkAllAsReadResponse {
 
 // ========== Lookups Endpoints ==========
 
-export interface GetPurposesResponse {
-  purposes: Array<{
-    id: string;
-    name: string;
-    description?: string;
-  }>;
+export interface LookupItem {
+  id: number;
+  code: string;
+  label: string;
+  category?: string;
+  active: boolean;
+  sortOrder: number;
 }
 
-export interface GetDeliveryTypesResponse {
-  types: Array<{
-    id: string;
-    name: string;
-    description?: string;
-  }>;
-}
-
-export interface GetCouriersResponse {
-  couriers: Array<{
-    id: string;
-    name: string;
-    contact?: string;
-  }>;
-}
-
-export interface GetLocationsResponse {
-  locations: Array<{
-    id: string;
-    name: string;
-    description?: string;
-  }>;
-}
+export type GetPurposesResponse = LookupItem[];
+export type GetDeliveryTypesResponse = LookupItem[];
+export type GetCouriersResponse = LookupItem[];
+export type GetLocationsResponse = LookupItem[];
 
 // ========== Profile Endpoints ==========
 

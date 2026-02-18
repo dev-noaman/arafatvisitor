@@ -1225,6 +1225,7 @@ export class AdminApiController {
 
     return visits.map((v) => ({
       id: v.id,
+      sessionId: v.sessionId,
       visitorName: v.visitorName,
       visitorPhone: v.visitorPhone,
       hostName: v.host?.name || "Unknown",
@@ -1743,30 +1744,31 @@ export class AdminApiController {
   @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST, Role.STAFF)
   @Post("change-password")
   async changePassword(
+    @Req() req: any,
     @Body()
     body: {
       currentPassword: string;
       newPassword: string;
-      userEmail?: string;
+      userEmail?: string; // Kept for backward compatibility with admin panel
     },
   ) {
-    // Note: In real implementation, get user from AdminJS session
-    // For now, we'll require userEmail in the body (set by frontend from session)
+    // Use JWT token sub (userId) as primary auth; fall back to body email for admin panel
+    const userId: number | undefined = req.user?.sub;
     const { currentPassword, newPassword, userEmail } = body;
 
-    if (!userEmail) {
+    let user: { id: number; email: string; password: string } | null = null;
+
+    if (userId) {
+      user = await this.prisma.user.findUnique({ where: { id: userId } });
+    } else if (userEmail) {
+      user = await this.prisma.user.findUnique({ where: { email: userEmail } });
+    }
+
+    if (!user) {
       throw new HttpException(
         "User not authenticated",
         HttpStatus.UNAUTHORIZED,
       );
-    }
-
-    const user = await this.prisma.user.findUnique({
-      where: { email: userEmail },
-    });
-
-    if (!user) {
-      throw new HttpException("User not found", HttpStatus.NOT_FOUND);
     }
 
     const validPassword = await bcrypt.compare(currentPassword, user.password);
@@ -1780,7 +1782,7 @@ export class AdminApiController {
     const hashedPassword = await bcrypt.hash(newPassword, 12);
 
     await this.prisma.user.update({
-      where: { email: userEmail },
+      where: { id: user.id },
       data: { password: hashedPassword },
     });
 

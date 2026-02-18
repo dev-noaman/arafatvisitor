@@ -6,7 +6,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { StatusBadge } from './StatusBadge';
-import { useUIStore } from '../../store/uiStore';
 import type { Visit } from '../../types';
 
 interface VisitorCardProps {
@@ -28,8 +27,8 @@ export const VisitorCard: React.FC<VisitorCardProps> = ({ visitor, onPress }) =>
       onPress={onPress}
       activeOpacity={0.7}
     >
-      <View className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-full items-center justify-center mr-4">
-        <Text className="text-gray-600 dark:text-gray-300 font-outfit-bold text-sm">
+      <View className="w-12 h-12 bg-brand-50 dark:bg-brand-900/20 rounded-full items-center justify-center mr-4">
+        <Text className="text-brand-600 dark:text-brand-300 font-outfit-bold text-sm">
           {initials}
         </Text>
       </View>
@@ -41,7 +40,7 @@ export const VisitorCard: React.FC<VisitorCardProps> = ({ visitor, onPress }) =>
           </Text>
         </View>
         <Text className="text-sm text-gray-500 dark:text-gray-400 font-outfit" numberOfLines={1}>
-          {visitor.visitorCompany || `Host: ${visitor.hostName || 'N/A'}`}
+          {visitor.visitorCompany || `Host: ${visitor.host?.name || visitor.hostName || 'N/A'}`}
         </Text>
       </View>
 

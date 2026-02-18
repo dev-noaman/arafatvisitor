@@ -11,6 +11,7 @@ import {
   approveVisit,
   rejectVisit,
   checkOutVisitor,
+  type PendingApprovalItem,
 } from '../services/endpoints/dashboard';
 
 export const useDashboardKPIs = () => {

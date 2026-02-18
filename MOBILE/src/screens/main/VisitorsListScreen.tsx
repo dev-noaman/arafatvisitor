@@ -13,18 +13,21 @@ import {
   TextInput,
   TouchableOpacity,
 } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useVisitors } from '../../hooks/useVisitors';
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 import { VisitorCard } from '../../components/visitor/VisitorCard';
 import { EmptyState } from '../../components/common/EmptyState';
+import { useUIStore } from '../../store/uiStore';
 
 const STATUS_FILTERS = ['ALL', 'APPROVED', 'CHECKED_IN', 'CHECKED_OUT'];
 
 export default function VisitorsListScreen() {
   const navigation = useNavigation<any>();
   const { isConnected } = useNetworkStatus();
+  const isDarkMode = useUIStore((s) => s.isDarkMode);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -73,7 +76,7 @@ export default function VisitorsListScreen() {
         <EmptyState
           title="Failed to load visitors"
           description={isConnected ? 'Something went wrong.' : 'You are offline.'}
-          icon="⚠️"
+          icon="error_outline"
           actionLabel="Retry"
           onAction={refetch}
         />
@@ -88,7 +91,7 @@ export default function VisitorsListScreen() {
               ? `No visitors found for "${debouncedSearch}"`
               : 'No visitors found'
           }
-          icon="👤"
+          icon="person_search"
         />
       );
     }
@@ -116,9 +119,12 @@ export default function VisitorsListScreen() {
         </Text>
 
         {/* Search Bar */}
-        <View className="mb-4">
+        <View className="mb-4 relative">
+          <View className="absolute left-4 top-0 bottom-0 z-10 justify-center">
+            <MaterialIcons name="search" size={20} color={isDarkMode ? '#6B7280' : '#9CA3AF'} />
+          </View>
           <TextInput
-            className={`h-12 bg-gray-50 dark:bg-dark-card rounded-2xl px-5 text-base font-outfit text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700 focus:border-brand-500 ${!isConnected ? 'opacity-50' : ''}`}
+            className={`h-12 bg-gray-50 dark:bg-dark-card rounded-2xl pl-12 pr-5 text-base font-outfit text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700 focus:border-brand-500 ${!isConnected ? 'opacity-50' : ''}`}
             placeholder={isConnected ? 'Search visitors...' : 'Search disabled offline'}
             placeholderTextColor="#9CA3AF"
             value={searchQuery}

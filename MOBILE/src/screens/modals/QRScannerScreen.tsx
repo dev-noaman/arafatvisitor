@@ -17,6 +17,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 // Web-safe: camera and haptics are native-only
 const isWeb = Platform.OS === 'web';
 
@@ -78,13 +79,8 @@ export default function QRScannerScreen() {
     }
   }, [permission, requestPermission]);
 
-  /**
-   * Core session processing logic shared by QR scan and manual entry.
-   * Fetches visitor data, validates status, and performs check-in.
-   */
   const processSessionId = async (sessionId: string) => {
     try {
-      // Fetch visitor data
       const visitor = await getVisitBySessionId(sessionId);
 
       if (visitor.status === 'CHECKED_IN') {
@@ -97,16 +93,13 @@ export default function QRScannerScreen() {
         throw new Error(`Cannot check in: visitor status is ${visitor.status}`);
       }
 
-      // Auto check-in
       await checkIn(sessionId);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-      // Show success result
-      setResultMessage(`${visitor.visitorName} checked in successfully!`);
+      setResultMessage(`${visitor.visitor?.name || 'Visitor'} checked in successfully!`);
       setResultType('success');
       setShowResult(true);
 
-      // Auto-reset after 5 seconds
       setTimeout(() => {
         setShowResult(false);
         setScanned(false);
@@ -135,15 +128,12 @@ export default function QRScannerScreen() {
     setProcessing(true);
 
     try {
-      // Parse QR payload
       const qrToken = parseAndValidateQRCode(data);
       if (!qrToken) {
         throw new Error('Invalid QR code format');
       }
 
-      // Haptic feedback on successful scan
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-
       await processSessionId(qrToken.sessionId);
     } catch (error: any) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -168,7 +158,6 @@ export default function QRScannerScreen() {
       return;
     }
 
-    // Close the modal and start processing
     setShowManualEntry(false);
     setScanned(true);
     setProcessing(true);
@@ -188,13 +177,17 @@ export default function QRScannerScreen() {
       <View className="flex-1 bg-gray-900 justify-center items-center p-6">
         {showResult ? (
           <View className={`p-8 rounded-2xl items-center ${resultType === 'success' ? 'bg-success-500' : 'bg-error-500'}`}>
-            <Text className="text-6xl text-white mb-4">{resultType === 'success' ? '✓' : '✕'}</Text>
-            <Text className="text-xl font-outfit-bold text-white text-center mb-2">{resultMessage}</Text>
+            <MaterialIcons
+              name={resultType === 'success' ? 'check-circle' : 'cancel'}
+              size={64}
+              color="#fff"
+            />
+            <Text className="text-xl font-outfit-bold text-white text-center mb-2 mt-4">{resultMessage}</Text>
           </View>
         ) : (
           <View className="w-full max-w-md items-center">
-            <Text className="text-5xl text-gray-400 mb-4">⊞</Text>
-            <Text className="text-white font-outfit text-center mb-6">
+            <MaterialIcons name="qr-code-scanner" size={64} color="#6B7280" />
+            <Text className="text-white font-outfit text-center mb-6 mt-4">
               QR scanning requires a native device.{'\n'}Use manual entry instead.
             </Text>
             <TextInput
@@ -208,7 +201,7 @@ export default function QRScannerScreen() {
               onSubmitEditing={handleManualSubmit}
             />
             <TouchableOpacity
-              className={`w-full py-3 rounded-xl items-center ${!manualId.trim() ? 'bg-brand-500/50' : 'bg-brand-500'}`}
+              className={`w-full py-3 rounded-full items-center ${!manualId.trim() ? 'bg-brand-500/50' : 'bg-brand-500'}`}
               onPress={handleManualSubmit}
               disabled={!manualId.trim() || processing}
             >
@@ -240,7 +233,7 @@ export default function QRScannerScreen() {
           Please enable it in your device settings.
         </Text>
         <TouchableOpacity
-          className="bg-brand-500 px-6 py-3 rounded-lg"
+          className="bg-brand-500 px-6 py-3 rounded-full"
           onPress={requestPermission}
         >
           <Text className="text-white font-outfit-bold">Grant Permission</Text>
@@ -253,10 +246,12 @@ export default function QRScannerScreen() {
   if (showResult) {
     return (
       <View className={`flex-1 justify-center items-center p-8 ${resultType === 'success' ? 'bg-success-500' : 'bg-error-500'}`}>
-        <Text className="text-7xl text-white mb-6">
-          {resultType === 'success' ? '✓' : '✕'}
-        </Text>
-        <Text className="text-2xl font-outfit-bold text-white text-center mb-2">{resultMessage}</Text>
+        <MaterialIcons
+          name={resultType === 'success' ? 'check-circle' : 'cancel'}
+          size={80}
+          color="#fff"
+        />
+        <Text className="text-2xl font-outfit-bold text-white text-center mb-2 mt-4">{resultMessage}</Text>
         {resultType === 'success' && (
           <Text className="text-white/80 font-outfit text-sm">Returning to scanner...</Text>
         )}
@@ -332,7 +327,7 @@ export default function QRScannerScreen() {
           className="flex-1 justify-center items-center bg-black/80"
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
-          <View className="bg-white dark:bg-dark-elem rounded-2xl p-6 w-[90%] max-w-sm">
+          <View className="bg-white dark:bg-dark-card rounded-2xl p-6 w-[90%] max-w-sm">
             {/* Modal Header */}
             <Text className="text-xl font-outfit-bold text-gray-900 dark:text-white mb-1">Manual ID Entry</Text>
             <Text className="text-sm text-gray-500 dark:text-gray-400 font-outfit mb-6">
@@ -356,14 +351,14 @@ export default function QRScannerScreen() {
             {/* Modal Actions */}
             <View className="flex-row gap-3">
               <TouchableOpacity
-                className="flex-1 py-3 rounded-xl border border-gray-200 dark:border-gray-700 items-center"
+                className="flex-1 py-3 rounded-full border border-gray-200 dark:border-gray-700 items-center"
                 onPress={handleManualCancel}
                 activeOpacity={0.7}
               >
                 <Text className="text-gray-600 dark:text-gray-300 font-outfit-bold">Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                className={`flex-1 py-3 rounded-xl items-center ${!manualId.trim() ? 'bg-brand-200 dark:bg-brand-900/30' : 'bg-brand-500'}`}
+                className={`flex-1 py-3 rounded-full items-center ${!manualId.trim() ? 'bg-brand-200 dark:bg-brand-900/30' : 'bg-brand-500'}`}
                 onPress={handleManualSubmit}
                 activeOpacity={0.7}
                 disabled={!manualId.trim()}
