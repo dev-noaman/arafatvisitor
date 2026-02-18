@@ -4,19 +4,13 @@
  */
 
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { useChangePassword } from '../../hooks/useChangePassword';
 import { FormInput } from '../../components/common/FormInput';
 import { LoadingButton } from '../../components/common/LoadingButton';
 import { toast } from '../../components/common/Toast';
-import { useUIStore } from '../../store/uiStore';
-import { colors } from '../../theme/colors';
-import { spacing } from '../../theme/spacing';
-import { typography } from '../../theme/typography';
 
 export default function ChangePasswordScreen({ navigation }: any) {
-  const isDarkMode = useUIStore((s) => s.isDarkMode);
-  const theme = isDarkMode ? colors.dark : colors.light;
   const changePasswordMutation = useChangePassword();
 
   const [currentPassword, setCurrentPassword] = useState('');
@@ -53,17 +47,19 @@ export default function ChangePasswordScreen({ navigation }: any) {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView
-        style={[styles.container, { backgroundColor: theme.background }]}
+        className="flex-1 bg-gray-50 dark:bg-dark-bg"
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.header}>
-          <Text style={[styles.title, { color: theme.text.primary }]}>Change Password</Text>
-          <Text style={[styles.subtitle, { color: theme.text.secondary }]}>
+        <View className="p-6">
+          <Text className="text-2xl font-outfit-bold text-gray-900 dark:text-white mb-1">
+            Change Password
+          </Text>
+          <Text className="text-sm font-outfit text-gray-500 dark:text-gray-400 mb-6">
             Enter your current password and choose a new one.
           </Text>
         </View>
 
-        <View style={styles.form}>
+        <View className="px-6">
           <FormInput
             label="Current Password"
             value={currentPassword}
@@ -71,6 +67,7 @@ export default function ChangePasswordScreen({ navigation }: any) {
             placeholder="Enter current password"
             secureTextEntry
             error={errors.currentPassword}
+            icon="lock"
           />
           <FormInput
             label="New Password"
@@ -79,6 +76,7 @@ export default function ChangePasswordScreen({ navigation }: any) {
             placeholder="Enter new password (min 6 chars)"
             secureTextEntry
             error={errors.newPassword}
+            icon="lock"
           />
           <FormInput
             label="Confirm Password"
@@ -87,30 +85,17 @@ export default function ChangePasswordScreen({ navigation }: any) {
             placeholder="Confirm new password"
             secureTextEntry
             error={errors.confirmPassword}
+            icon="lock"
           />
-          <LoadingButton
-            title="Change Password"
-            onPress={handleSubmit}
-            isLoading={changePasswordMutation.isPending}
-            style={styles.submitButton}
-          />
+          <View className="mt-4">
+            <LoadingButton
+              title="Change Password"
+              onPress={handleSubmit}
+              isLoading={changePasswordMutation.isPending}
+            />
+          </View>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1 },
-  header: { padding: spacing.lg },
-  title: {
-    fontSize: typography.fontSize['2xl'],
-    fontWeight: typography.fontWeight.bold,
-    marginBottom: spacing.xs,
-  },
-  subtitle: {
-    fontSize: typography.fontSize.sm,
-  },
-  form: { padding: spacing.lg },
-  submitButton: { marginTop: spacing.lg },
-});

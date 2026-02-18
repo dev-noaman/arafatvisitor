@@ -4,12 +4,12 @@
  */
 
 import React, { useState } from 'react';
-import { View } from 'react-native';
+import { View, TouchableOpacity } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import { FormInput } from '../common';
 import { LoadingButton } from '../common';
 import { useUIStore } from '../../store/uiStore';
-import { colors } from '../../theme';
-import { validateEmail, validatePassword, validateRequired, hasValidationErrors } from '../../utils/validation';
+import { validateEmail, validatePassword } from '../../utils/validation';
 
 interface LoginFormProps {
   onSubmit: (email: string, password: string) => void;
@@ -23,6 +23,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
   const isDarkMode = useUIStore((state) => state.isDarkMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const validate = (): boolean => {
@@ -60,6 +61,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
         autoComplete="email"
         error={errors.email}
         editable={!isLoading}
+        icon="mail"
         containerStyle={{ marginBottom: 20 }}
       />
       <FormInput
@@ -67,10 +69,20 @@ export const LoginForm: React.FC<LoginFormProps> = ({
         placeholder="Enter your password"
         value={password}
         onChangeText={setPassword}
-        secureTextEntry
+        secureTextEntry={!showPassword}
         autoComplete="password"
         error={errors.password}
         editable={!isLoading}
+        icon="lock"
+        rightElement={
+          <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+            <MaterialIcons
+              name={showPassword ? 'visibility' : 'visibility-off'}
+              size={20}
+              color={isDarkMode ? '#6B7280' : '#9CA3AF'}
+            />
+          </TouchableOpacity>
+        }
         containerStyle={{ marginBottom: 8 }}
       />
       <LoadingButton

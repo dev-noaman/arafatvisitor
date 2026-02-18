@@ -5,6 +5,7 @@ import {
   View,
   Text,
 } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import { useUIStore } from '../../store/uiStore';
 import { colors } from '../../theme';
 
@@ -13,6 +14,8 @@ interface FormInputProps extends TextInputProps {
   error?: string;
   helperText?: string;
   containerStyle?: any;
+  icon?: string;
+  rightElement?: React.ReactNode;
 }
 
 export const FormInput: React.FC<FormInputProps> = ({
@@ -20,6 +23,8 @@ export const FormInput: React.FC<FormInputProps> = ({
   error,
   helperText,
   containerStyle,
+  icon,
+  rightElement,
   style,
   ...props
 }) => {
@@ -32,16 +37,32 @@ export const FormInput: React.FC<FormInputProps> = ({
           {label}
         </Text>
       )}
-      <TextInput
-        className={`w-full px-4 py-3 rounded-xl border text-base ${error
-            ? 'border-error-500 bg-red-50 dark:bg-red-900/10'
-            : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800'
-          } ${props.editable === false ? 'opacity-60' : ''
-          } text-gray-900 dark:text-white`}
-        placeholderTextColor={isDarkMode ? colors.dark.text.muted : colors.gray[400]}
-        style={style}
-        {...props}
-      />
+      <View className="relative">
+        {icon && (
+          <View className="absolute left-4 top-0 bottom-0 z-10 justify-center">
+            <MaterialIcons
+              name={icon as any}
+              size={20}
+              color={isDarkMode ? colors.gray[400] : colors.gray[400]}
+            />
+          </View>
+        )}
+        <TextInput
+          className={`w-full ${icon ? 'pl-12' : 'px-4'} ${rightElement ? 'pr-12' : 'pr-4'} py-3 rounded-xl border text-base ${error
+              ? 'border-error-500 bg-red-50 dark:bg-red-900/10'
+              : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800'
+            } ${props.editable === false ? 'opacity-60' : ''
+            } text-gray-900 dark:text-white`}
+          placeholderTextColor={isDarkMode ? colors.dark.text.muted : colors.gray[400]}
+          style={style}
+          {...props}
+        />
+        {rightElement && (
+          <View className="absolute right-3 top-0 bottom-0 z-10 justify-center">
+            {rightElement}
+          </View>
+        )}
+      </View>
       {error && (
         <Text className="text-xs text-error-500 mt-1.5">
           {error}

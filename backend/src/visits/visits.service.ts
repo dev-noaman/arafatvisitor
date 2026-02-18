@@ -245,8 +245,9 @@ export class VisitsService {
       purpose: visit.purpose,
       location: visit.location,
       status: visit.status,
-      checkInTimestamp: visit.checkInAt,
-      checkOutTimestamp: visit.checkOutAt,
+      expectedDate: visit.expectedDate?.toISOString() ?? null,
+      checkInTimestamp: visit.checkInAt?.toISOString() ?? null,
+      checkOutTimestamp: visit.checkOutAt?.toISOString() ?? null,
     };
   }
 

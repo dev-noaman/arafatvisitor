@@ -15,8 +15,8 @@ import {
   RefreshControl,
   ActivityIndicator,
 } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { usePreRegistrations, useCreatePreRegistration } from '../../hooks/usePreRegistrations';
 import { useHosts } from '../../hooks/useHosts';
 import { usePurposes } from '../../hooks/useLookups';
@@ -107,7 +107,7 @@ export default function PreRegisterScreen() {
         visitorPhone,
         visitorCompany,
         hostId,
-        expectedArrivalDate: expectedDate.toISOString(),
+        expectedDate: expectedDate.toISOString(),
         purpose,
         notes: notes || undefined,
       });
@@ -128,10 +128,11 @@ export default function PreRegisterScreen() {
           <Text className="text-3xl font-outfit-bold text-gray-900 dark:text-white">Pre-Registrations</Text>
           {canCreate && (
             <TouchableOpacity
-              className="bg-brand-500 px-4 py-2 rounded-lg shadow-sm active:bg-brand-600"
+              className="bg-brand-500 px-4 py-2.5 rounded-full shadow-sm active:bg-brand-600 flex-row items-center"
               onPress={() => setViewMode('form')}
             >
-              <Text className="text-white font-outfit-bold text-sm">+ Add Visitor</Text>
+              <MaterialIcons name="add" size={18} color="#fff" />
+              <Text className="text-white font-outfit-bold text-sm ml-1">Add Visitor</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -141,7 +142,7 @@ export default function PreRegisterScreen() {
             <ActivityIndicator size="large" color="#465FFF" />
           </View>
         ) : !preRegs?.data?.length ? (
-          <EmptyState title="No pending pre-registrations" icon="📋" />
+          <EmptyState title="No pending pre-registrations" icon="assignment" />
         ) : (
           <FlatList
             data={preRegs.data}
@@ -150,7 +151,7 @@ export default function PreRegisterScreen() {
             contentContainerClassName="p-4"
             renderItem={({ item }: { item: PreRegistration }) => (
               <TouchableOpacity
-                className="bg-white dark:bg-dark-elem p-4 mb-3 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm flex-row items-center justify-between"
+                className="bg-white dark:bg-dark-card p-4 mb-3 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm flex-row items-center justify-between"
                 onPress={() => navigation.navigate('PreRegDetail', { preReg: item })}
                 activeOpacity={0.7}
               >
@@ -162,7 +163,7 @@ export default function PreRegisterScreen() {
                     {item.visitorCompany}
                   </Text>
                   <Text className="text-xs font-outfit text-gray-400 dark:text-gray-500">
-                    Host: {item.hostName || 'N/A'}
+                    Host: {item.host?.name || item.hostName || 'N/A'}
                   </Text>
                 </View>
                 <StatusBadge status={item.status} />
@@ -187,8 +188,12 @@ export default function PreRegisterScreen() {
         className="flex-1"
       >
         <View className="flex-row items-center px-6 pt-6 pb-2">
-          <TouchableOpacity onPress={() => { resetForm(); setViewMode('list'); }} className="mr-4">
-            <Text className="text-brand-600 font-outfit-bold text-base">‹ Back</Text>
+          <TouchableOpacity
+            onPress={() => { resetForm(); setViewMode('list'); }}
+            className="mr-4 flex-row items-center"
+          >
+            <MaterialIcons name="arrow-back" size={20} color="#465FFF" />
+            <Text className="text-brand-600 font-outfit-bold text-base ml-1">Back</Text>
           </TouchableOpacity>
           <Text className="text-2xl font-outfit-bold text-gray-900 dark:text-white">Pre-register Visitor</Text>
         </View>
@@ -200,6 +205,7 @@ export default function PreRegisterScreen() {
             onChangeText={setVisitorName}
             placeholder="Enter visitor name"
             error={errors.visitorName}
+            icon="person"
           />
           <FormInput
             label="Email"
@@ -209,6 +215,7 @@ export default function PreRegisterScreen() {
             keyboardType="email-address"
             autoCapitalize="none"
             error={errors.visitorEmail}
+            icon="mail"
           />
           <FormInput
             label="Phone"
@@ -217,6 +224,7 @@ export default function PreRegisterScreen() {
             placeholder="Enter phone number"
             keyboardType="phone-pad"
             error={errors.visitorPhone}
+            icon="phone"
           />
           <FormInput
             label="Company"
@@ -224,6 +232,7 @@ export default function PreRegisterScreen() {
             onChangeText={setVisitorCompany}
             placeholder="Enter company name"
             error={errors.visitorCompany}
+            icon="apartment"
           />
 
           {/* Host Picker */}
@@ -257,20 +266,20 @@ export default function PreRegisterScreen() {
           <View className="mb-2">
             <Text className="text-sm font-outfit-medium text-gray-700 dark:text-gray-300 mb-2">Purpose *</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row py-1">
-              {purposesData?.purposes?.map((p: { id: string; name: string }) => (
+              {purposesData?.map((p) => (
                 <TouchableOpacity
                   key={p.id}
-                  className={`px-4 py-2 rounded-full border mr-2 ${purpose === p.name
+                  className={`px-4 py-2 rounded-full border mr-2 ${purpose === p.label
                       ? 'bg-brand-500 border-brand-500'
                       : 'bg-transparent border-gray-200 dark:border-gray-700'
                     }`}
-                  onPress={() => setPurpose(p.name)}
+                  onPress={() => setPurpose(p.label)}
                 >
                   <Text
-                    className={`text-sm font-outfit-medium ${purpose === p.name ? 'text-white' : 'text-gray-700 dark:text-gray-300'
+                    className={`text-sm font-outfit-medium ${purpose === p.label ? 'text-white' : 'text-gray-700 dark:text-gray-300'
                       }`}
                   >
-                    {p.name}
+                    {p.label}
                   </Text>
                 </TouchableOpacity>
               ))}

@@ -5,6 +5,7 @@
 
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 
 interface EmptyStateProps {
   icon?: string;
@@ -15,7 +16,7 @@ interface EmptyStateProps {
 }
 
 export const EmptyState: React.FC<EmptyStateProps> = ({
-  icon = '📭',
+  icon = 'inbox',
   title,
   description,
   actionLabel,
@@ -23,7 +24,9 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
 }) => {
   return (
     <View className="flex-1 justify-center items-center p-8 min-h-[300px]">
-      <Text className="text-6xl mb-4">{icon}</Text>
+      <View className="w-20 h-20 rounded-full bg-gray-100 dark:bg-gray-800 items-center justify-center mb-4">
+        <MaterialIcons name={icon as any} size={36} color="#9CA3AF" />
+      </View>
       <Text className="text-lg font-outfit-bold text-gray-900 dark:text-white mb-2 text-center">
         {title}
       </Text>

@@ -28,16 +28,38 @@ module.exports = {
           950: "#062C41",
         },
         success: {
+          50: "#ECFDF3",
+          400: "#32D583",
           500: "#12B76A",
+          600: "#039855",
+          900: "#054F31",
         },
         error: {
+          50: "#FEF3F2",
+          400: "#F97066",
           500: "#F04438",
+          600: "#D92D20",
+          900: "#7A271A",
         },
         warning: {
+          50: "#FFFAEB",
+          400: "#FDB022",
           500: "#F79009",
+          600: "#DC6803",
+          900: "#7A2E0E",
         },
         orange: {
+          50: "#FFF4ED",
+          100: "#FFE6D5",
+          200: "#FECDAA",
+          300: "#FDAD74",
+          400: "#FB8C3C",
           500: "#FB6514",
+          600: "#EC4A0A",
+          700: "#C4320A",
+          800: "#9C2A10",
+          900: "#7E2410",
+          950: "#431407",
         },
         gray: {
           50: "#F9FAFB",
@@ -58,6 +80,7 @@ module.exports = {
       fontFamily: {
         outfit: ["Outfit_400Regular", "System"],
         "outfit-medium": ["Outfit_500Medium", "System"],
+        "outfit-semibold": ["Outfit_600SemiBold", "System"],
         "outfit-bold": ["Outfit_700Bold", "System"],
       },
       spacing: {

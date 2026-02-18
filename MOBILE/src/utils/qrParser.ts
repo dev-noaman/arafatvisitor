@@ -15,26 +15,30 @@ export interface QRCodePayload {
 }
 
 /**
- * Parse QR code payload from string
+ * Parse QR code payload from string.
+ * Handles two formats produced by the kiosk:
+ *   1. Raw sessionId string: "VMS-123456"
+ *   2. JSON payload: { "sessionId": "VMS-123456", "visitor": {...}, ... }
  * @param qrString - The QR code string to parse
  * @returns Parsed QR payload or null if invalid
  */
 export function parseQRCode(qrString: string): QRCodePayload | null {
-  try {
-    // Try to parse as JSON
-    const payload = JSON.parse(qrString) as QRCodePayload;
-
-    // Validate required fields
-    if (!payload.sessionId) {
-      console.error('QR code missing sessionId');
-      return null;
-    }
-
-    return payload;
-  } catch (error) {
-    console.error('Failed to parse QR code:', error);
+  if (!qrString || !qrString.trim()) {
     return null;
   }
+
+  // Try JSON first (walk-in form format)
+  try {
+    const payload = JSON.parse(qrString) as QRCodePayload;
+    if (payload.sessionId) {
+      return payload;
+    }
+  } catch {
+    // Not JSON — fall through to raw string handling
+  }
+
+  // Fall back to treating the entire string as a raw sessionId (visitor pass format)
+  return { sessionId: qrString.trim() };
 }
 
 /**
@@ -43,10 +47,14 @@ export function parseQRCode(qrString: string): QRCodePayload | null {
  * @returns True if valid, false otherwise
  */
 export function validateQRPayload(payload: QRCodePayload): boolean {
-  // Validate sessionId format (UUID)
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  if (!uuidRegex.test(payload.sessionId)) {
-    console.error('Invalid sessionId format');
+  // Validate sessionId — two formats:
+  //   "VMS-NNNNNN"  (kiosk walk-in via qrTokenService)
+  //   UUID          (admin panel / mobile-created visits via crypto.randomUUID())
+  const vmsRegex = /^VMS-\d+$/i;
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const sid = payload.sessionId?.trim();
+  if (!sid || (!vmsRegex.test(sid) && !uuidRegex.test(sid))) {
+    console.error('Invalid sessionId format:', payload.sessionId);
     return false;
   }
 

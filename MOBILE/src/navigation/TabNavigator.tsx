@@ -1,12 +1,15 @@
 /**
  * Tab Navigator
- * Bottom tab navigation with stack navigators for each tab
+ * Bottom tab navigation matching Stitch design specs
+ * Features: elevated center QR button, 5 tabs (Home, Visitors, QR, Alerts, Profile)
  */
 
 import React from 'react';
-import { Text, StyleSheet } from 'react-native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
+import { createBottomTabNavigator, BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useUIStore } from '../store/uiStore';
 import { colors } from '../theme';
 
@@ -24,7 +27,6 @@ import ChangePasswordScreen from '../screens/modals/ChangePasswordScreen';
 export type TabParamList = {
   DashboardTab: undefined;
   VisitorsTab: undefined;
-  PreRegisterTab: undefined;
   QRScanTab: undefined;
   ProfileTab: undefined;
 };
@@ -33,16 +35,13 @@ export type TabParamList = {
 export type DashboardStackParamList = {
   DashboardHome: undefined;
   VisitorDetail: { sessionId: string; visitor?: any };
+  PreRegisterList: undefined;
+  PreRegDetail: { preReg: any };
 };
 
 export type VisitorsStackParamList = {
   VisitorsList: undefined;
   VisitorDetail: { sessionId: string; visitor?: any };
-};
-
-export type PreRegisterStackParamList = {
-  PreRegisterList: undefined;
-  PreRegDetail: { preReg: any };
 };
 
 export type ProfileStackParamList = {
@@ -52,13 +51,15 @@ export type ProfileStackParamList = {
 
 const Tab = createBottomTabNavigator<TabParamList>();
 
-// Dashboard Stack
+// Dashboard Stack (includes Pre-Register as sub-screen)
 const DashboardStack = createNativeStackNavigator<DashboardStackParamList>();
 function DashboardStackScreen() {
   return (
     <DashboardStack.Navigator screenOptions={{ headerShown: false }}>
       <DashboardStack.Screen name="DashboardHome" component={DashboardScreen} />
       <DashboardStack.Screen name="VisitorDetail" component={VisitorDetailScreen} />
+      <DashboardStack.Screen name="PreRegisterList" component={PreRegisterScreen} />
+      <DashboardStack.Screen name="PreRegDetail" component={PreRegDetailScreen} />
     </DashboardStack.Navigator>
   );
 }
@@ -74,17 +75,6 @@ function VisitorsStackScreen() {
   );
 }
 
-// PreRegister Stack
-const PreRegStack = createNativeStackNavigator<PreRegisterStackParamList>();
-function PreRegStackScreen() {
-  return (
-    <PreRegStack.Navigator screenOptions={{ headerShown: false }}>
-      <PreRegStack.Screen name="PreRegisterList" component={PreRegisterScreen} />
-      <PreRegStack.Screen name="PreRegDetail" component={PreRegDetailScreen} />
-    </PreRegStack.Navigator>
-  );
-}
-
 // Profile Stack
 const ProfileStack = createNativeStackNavigator<ProfileStackParamList>();
 function ProfileStackScreen() {
@@ -96,77 +86,142 @@ function ProfileStackScreen() {
   );
 }
 
-// Tab icon helper
-const TabIcon = ({ name, focused, color }: { name: string; focused: boolean; color: string }) => {
-  const icons: Record<string, string> = {
-    DashboardTab: '▣',
-    VisitorsTab: '👤',
-    PreRegisterTab: '📋',
-    QRScanTab: '⊞',
-    ProfileTab: '⚙',
-  };
-  return <Text style={[styles.tabIcon, { color }]}>{icons[name] || '•'}</Text>;
+// Tab icon/label mapping per Stitch design
+const TAB_CONFIG: Record<string, { icon: keyof typeof MaterialIcons.glyphMap; label: string }> = {
+  DashboardTab: { icon: 'dashboard', label: 'Home' },
+  VisitorsTab: { icon: 'group', label: 'Visitors' },
+  QRScanTab: { icon: 'qr-code-scanner', label: 'QR' },
+  ProfileTab: { icon: 'person', label: 'Profile' },
 };
 
-export const TabNavigator: React.FC = () => {
-  const isDarkMode = useUIStore((state) => state.isDarkMode);
+/** Custom tab bar matching Stitch design — elevated center QR button */
+function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+  const isDarkMode = useUIStore((s) => s.isDarkMode);
+  const insets = useSafeAreaInsets();
 
   return (
-    <Tab.Navigator
-      screenOptions={({ route }) => ({
-        headerShown: false,
-        tabBarStyle: [
-          styles.tabBar,
-          { backgroundColor: isDarkMode ? colors.dark.card : colors.light.card },
-        ],
-        tabBarActiveTintColor: colors.brand[500],
-        tabBarInactiveTintColor: isDarkMode ? colors.dark.text.muted : colors.light.text.muted,
-        tabBarIcon: ({ focused, color }) => (
-          <TabIcon name={route.name} focused={focused} color={color} />
-        ),
-      })}
+    <View
+      style={[
+        styles.tabBarContainer,
+        {
+          backgroundColor: isDarkMode ? colors.dark.card : '#FFFFFF',
+          paddingBottom: insets.bottom > 0 ? insets.bottom : 12,
+          borderTopColor: isDarkMode ? '#374151' : '#F3F4F6',
+        },
+      ]}
     >
-      <Tab.Screen
-        name="DashboardTab"
-        component={DashboardStackScreen}
-        options={{ tabBarLabel: 'Dashboard' }}
-      />
-      <Tab.Screen
-        name="VisitorsTab"
-        component={VisitorsStackScreen}
-        options={{ tabBarLabel: 'Visitors' }}
-      />
-      <Tab.Screen
-        name="PreRegisterTab"
-        component={PreRegStackScreen}
-        options={{ tabBarLabel: 'Pre-Register' }}
-      />
-      <Tab.Screen
-        name="QRScanTab"
-        component={QRScannerScreen}
-        options={{ tabBarLabel: 'QR Scan' }}
-      />
-      <Tab.Screen
-        name="ProfileTab"
-        component={ProfileStackScreen}
-        options={{ tabBarLabel: 'Profile' }}
-      />
+      {state.routes.map((route, index) => {
+        const isFocused = state.index === index;
+        const isCenter = route.name === 'QRScanTab';
+        const config = TAB_CONFIG[route.name];
+
+        const onPress = () => {
+          const event = navigation.emit({
+            type: 'tabPress',
+            target: route.key,
+            canPreventDefault: true,
+          });
+          if (!isFocused && !event.defaultPrevented) {
+            navigation.navigate(route.name);
+          }
+        };
+
+        if (isCenter) {
+          // Elevated center QR button per Stitch design
+          return (
+            <TouchableOpacity
+              key={route.key}
+              onPress={onPress}
+              activeOpacity={0.85}
+              style={styles.centerButton}
+            >
+              <View style={styles.centerButtonInner}>
+                <MaterialIcons name="qr-code-scanner" size={28} color="#FFFFFF" />
+              </View>
+            </TouchableOpacity>
+          );
+        }
+
+        const tintColor = isFocused
+          ? colors.brand[500]
+          : isDarkMode
+          ? '#9CA3AF'
+          : '#9CA3AF';
+
+        return (
+          <TouchableOpacity
+            key={route.key}
+            onPress={onPress}
+            activeOpacity={0.7}
+            style={styles.tabItem}
+          >
+            <MaterialIcons name={config.icon} size={26} color={tintColor} />
+            <View style={{ height: 2 }} />
+            <View>
+              <Text style={[styles.tabLabel, { color: tintColor }]}>{config.label}</Text>
+            </View>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+}
+
+export const TabNavigator: React.FC = () => {
+  return (
+    <Tab.Navigator
+      tabBar={(props) => <CustomTabBar {...props} />}
+      screenOptions={{ headerShown: false }}
+    >
+      <Tab.Screen name="DashboardTab" component={DashboardStackScreen} />
+      <Tab.Screen name="VisitorsTab" component={VisitorsStackScreen} />
+      <Tab.Screen name="QRScanTab" component={QRScannerScreen} />
+      <Tab.Screen name="ProfileTab" component={ProfileStackScreen} />
     </Tab.Navigator>
   );
 };
 
 const styles = StyleSheet.create({
-  tabBar: {
-    borderTopWidth: 0,
-    elevation: 8,
+  tabBarContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    borderTopWidth: 1,
+    paddingTop: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    paddingBottom: 4,
-    height: 56,
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 10,
   },
-  tabIcon: {
-    fontSize: 22,
+  tabItem: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+    paddingVertical: 4,
+  },
+  tabLabel: {
+    fontSize: 10,
+    fontWeight: '500',
+    fontFamily: 'Outfit_500Medium',
+  },
+  centerButton: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: -28,
+  },
+  centerButtonInner: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#465FFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#465FFF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 12,
   },
 });

@@ -7,19 +7,17 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   TouchableOpacity,
   Image,
   ActivityIndicator,
   Modal,
 } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import { toast } from '../../components/common/Toast';
 import { useAuthStore } from '../../store/authStore';
 import { useUIStore } from '../../store/uiStore';
 import { API_BASE_URL } from '../../services/api';
 import { colors } from '../../theme/colors';
-import { spacing } from '../../theme/spacing';
-import { typography } from '../../theme/typography';
 
 interface QRGeneratorModalProps {
   visible: boolean;
@@ -39,7 +37,6 @@ export default function QRGeneratorModal({
   const [error, setError] = useState<string | null>(null);
   const token = useAuthStore((s) => s.accessToken);
   const isDarkMode = useUIStore((s) => s.isDarkMode);
-  const theme = isDarkMode ? colors.dark : colors.light;
 
   useEffect(() => {
     if (visible && visitId) {
@@ -55,7 +52,6 @@ export default function QRGeneratorModal({
     try {
       setIsLoading(true);
       setError(null);
-      // Build QR code image URL from backend
       const uri = `${API_BASE_URL}/admin/api/qr/${visitId}`;
       setQrImageUri(uri);
     } catch (err: any) {
@@ -73,155 +69,68 @@ export default function QRGeneratorModal({
       transparent
       onRequestClose={onClose}
     >
-      <View style={styles.overlay}>
-        <View style={[styles.container, { backgroundColor: theme.card }]}>
+      <View className="flex-1 bg-black/50 justify-center items-center">
+        <View className="bg-white dark:bg-dark-card rounded-2xl p-6 w-[90%] max-w-[400px]">
           {/* Header */}
-          <View style={styles.header}>
-            <Text style={[styles.title, { color: theme.text.primary }]}>
+          <View className="flex-row justify-between items-center mb-2">
+            <Text className="text-xl font-outfit-bold text-gray-900 dark:text-white">
               Visitor QR Code
             </Text>
-            <TouchableOpacity onPress={onClose}>
-              <Text style={[styles.closeButton, { color: theme.text.secondary }]}>
-                X
-              </Text>
+            <TouchableOpacity onPress={onClose} className="p-1">
+              <MaterialIcons name="close" size={24} color={isDarkMode ? '#9CA3AF' : '#6B7280'} />
             </TouchableOpacity>
           </View>
 
           {/* Visitor Name */}
           {visitorName && (
-            <Text style={[styles.visitorName, { color: theme.text.secondary }]}>
+            <Text className="text-base font-outfit text-gray-500 dark:text-gray-400 mb-4">
               {visitorName}
             </Text>
           )}
 
           {/* Content */}
           {isLoading ? (
-            <View style={styles.loadingContainer}>
+            <View className="items-center py-12">
               <ActivityIndicator size="large" color={colors.brand[500]} />
-              <Text style={[styles.loadingText, { color: theme.text.secondary }]}>
+              <Text className="mt-4 text-base font-outfit text-gray-500 dark:text-gray-400">
                 Loading QR code...
               </Text>
             </View>
           ) : error ? (
-            <View style={styles.errorContainer}>
-              <Text style={styles.errorText}>{error}</Text>
-              <TouchableOpacity style={styles.retryButton} onPress={loadQRCode}>
-                <Text style={styles.retryButtonText}>Retry</Text>
+            <View className="items-center py-8">
+              <Text className="text-base font-outfit text-error-500 mb-4 text-center">{error}</Text>
+              <TouchableOpacity
+                className="bg-brand-500 px-6 py-3 rounded-full"
+                onPress={loadQRCode}
+              >
+                <Text className="text-white font-outfit-bold text-base">Retry</Text>
               </TouchableOpacity>
             </View>
           ) : qrImageUri ? (
-            <View style={styles.qrContainer}>
+            <View className="items-center py-4">
               <Image
                 source={{
                   uri: qrImageUri,
                   headers: token ? { Authorization: `Bearer ${token}` } : undefined,
                 }}
-                style={styles.qrImage}
+                style={{ width: 250, height: 250, borderRadius: 8 }}
                 resizeMode="contain"
               />
-              <Text style={[styles.hint, { color: theme.text.muted }]}>
+              <Text className="mt-4 text-sm font-outfit text-gray-400 dark:text-gray-500 text-center">
                 Show this QR code to the visitor for check-in
               </Text>
             </View>
           ) : null}
 
-          {/* Close Button */}
+          {/* Done Button */}
           <TouchableOpacity
-            style={[styles.doneButton, { backgroundColor: colors.brand[500] }]}
+            className="mt-4 bg-brand-500 py-3.5 rounded-full items-center"
             onPress={onClose}
           >
-            <Text style={styles.doneButtonText}>Done</Text>
+            <Text className="text-white font-outfit-bold text-base">Done</Text>
           </TouchableOpacity>
         </View>
       </View>
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  container: {
-    borderRadius: 16,
-    padding: spacing.lg,
-    width: '90%',
-    maxWidth: 400,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  title: {
-    fontSize: typography.fontSize.xl,
-    fontWeight: typography.fontWeight.bold,
-  },
-  closeButton: {
-    fontSize: 20,
-    fontWeight: typography.fontWeight.bold,
-    padding: spacing.xs,
-  },
-  visitorName: {
-    fontSize: typography.fontSize.lg,
-    marginBottom: spacing.md,
-  },
-  loadingContainer: {
-    alignItems: 'center',
-    padding: spacing['3xl'],
-  },
-  loadingText: {
-    marginTop: spacing.md,
-    fontSize: typography.fontSize.lg,
-  },
-  qrContainer: {
-    alignItems: 'center',
-    padding: spacing.lg,
-  },
-  qrImage: {
-    width: 250,
-    height: 250,
-    borderRadius: 8,
-  },
-  hint: {
-    marginTop: spacing.md,
-    fontSize: typography.fontSize.sm,
-    textAlign: 'center',
-  },
-  errorContainer: {
-    alignItems: 'center',
-    padding: spacing.lg,
-  },
-  errorText: {
-    fontSize: typography.fontSize.lg,
-    color: colors.error[500],
-    marginBottom: spacing.md,
-    textAlign: 'center',
-  },
-  retryButton: {
-    backgroundColor: colors.brand[500],
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    borderRadius: 8,
-  },
-  retryButtonText: {
-    color: '#fff',
-    fontSize: typography.fontSize.lg,
-    fontWeight: typography.fontWeight.semibold,
-  },
-  doneButton: {
-    marginTop: spacing.md,
-    paddingVertical: spacing.md,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  doneButtonText: {
-    color: '#fff',
-    fontSize: typography.fontSize.lg,
-    fontWeight: typography.fontWeight.semibold,
-  },
-});

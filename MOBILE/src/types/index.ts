@@ -55,7 +55,9 @@ export interface Visit {
   visitorPhone?: string;
   visitorCompany?: string;
   hostId: string;
-  hostName: string;
+  // Admin list endpoint returns nested host relation; mapped endpoints return flat hostName
+  host?: { id?: string | number; name: string; company?: string; email?: string; phone?: string; };
+  hostName?: string;
   hostEmail?: string;
   hostPhone?: string;
   status: VisitStatus;
@@ -95,9 +97,13 @@ export interface PreRegistration {
   visitorPhone: string;
   visitorCompany: string;
   hostId: string;
-  hostName: string;
+  // Admin list endpoint returns nested host relation; mapped endpoints return flat hostName
+  host?: { id?: string | number; name: string; company?: string; email?: string; phone?: string; };
+  hostName?: string;
   hostEmail?: string;
-  expectedArrivalDate: string;
+  // Backend Prisma field is "expectedDate"; some API responses may use "expectedArrivalDate"
+  expectedDate?: string;
+  expectedArrivalDate?: string;
   purpose?: string;
   location?: string;
   notes?: string;
@@ -157,10 +163,9 @@ export interface PaginatedResponse<T> {
  * Dashboard KPIs
  */
 export interface DashboardKPIs {
-  todaysVisitors: number;
-  checkedIn: number;
-  expected: number;
-  pendingApprovals: number;
+  totalHosts: number;
+  visitsToday: number;
+  deliveriesToday: number;
 }
 
 /**

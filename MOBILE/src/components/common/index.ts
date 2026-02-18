@@ -9,3 +9,4 @@ export * from './EmptyState';
 export * from './LoadingButton';
 export * from './ErrorBoundary';
 export * from './FormInput';
+export * from './Icon';

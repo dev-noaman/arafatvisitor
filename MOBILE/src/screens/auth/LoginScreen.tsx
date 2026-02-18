@@ -1,6 +1,6 @@
 /**
  * Login Screen
- * Login page with email/password form, validation, loading state, error messages
+ * Matches Stitch design: centered form, MaterialIcons branding, bottom gradient bar
  */
 
 import React from 'react';
@@ -11,18 +11,16 @@ import {
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
-  Image,
 } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { LoginForm } from '../../components/auth';
 import { useAuth } from '../../hooks/useAuth';
-import { useUIStore } from '../../store/uiStore';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export const LoginScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const { login, isLoading, error } = useAuth();
-  const isDarkMode = useUIStore((state) => state.isDarkMode);
 
   const handleLogin = async (email: string, password: string) => {
     try {
@@ -33,26 +31,32 @@ export const LoginScreen: React.FC = () => {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50 dark:bg-dark-bg">
+    <View className="flex-1 bg-white dark:bg-dark-bg">
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         className="flex-1"
       >
         <ScrollView
-          contentContainerClassName="flex-grow justify-center px-8 py-10"
+          contentContainerClassName="flex-grow justify-center px-6 py-10"
           keyboardShouldPersistTaps="handled"
         >
-          <View className="w-full max-w-sm self-center">
-            {/* App Branding */}
-            <View className="items-center mb-12">
-              <View className="w-20 h-20 bg-brand-100 rounded-2xl items-center justify-center mb-6">
-                <Text className="text-4xl font-outfit-bold text-brand-600">A</Text>
+          <View className="w-full max-w-md self-center">
+            {/* App Branding — per Stitch: icon in primary bg + title */}
+            <View className="items-center mb-10">
+              <View className="w-16 h-16 bg-brand-500/10 rounded-2xl items-center justify-center mb-4">
+                <MaterialIcons name="admin-panel-settings" size={36} color="#465FFF" />
               </View>
-
-              <Text className="text-3xl font-outfit-bold text-gray-900 dark:text-white mb-3 text-center">
-                Welcome back
+              <Text className="text-2xl font-outfit-bold text-gray-900 dark:text-white tracking-tight">
+                Arafat Visitor
               </Text>
-              <Text className="text-base font-outfit text-gray-500 dark:text-gray-400 text-center">
+            </View>
+
+            {/* Login heading — per Stitch */}
+            <View className="mb-8 items-center">
+              <Text className="text-3xl font-outfit-bold text-gray-900 dark:text-white mb-2">
+                Login
+              </Text>
+              <Text className="text-base font-outfit text-gray-400 dark:text-gray-500">
                 Sign in to manage visitors
               </Text>
             </View>
@@ -62,30 +66,26 @@ export const LoginScreen: React.FC = () => {
 
             {/* Error Display */}
             {error && (
-              <View className="mt-6 p-4 bg-error-50 dark:bg-error-500/10 border-l-4 border-error-500 rounded-r-xl">
+              <View className="mt-4 p-4 bg-error-50 dark:bg-error-500/10 border-l-4 border-error-500 rounded-r-xl">
                 <Text className="text-error-500 text-sm font-outfit-medium">{error}</Text>
               </View>
             )}
 
-            {/* Forgot Password */}
+            {/* Forgot Password — per Stitch */}
             <TouchableOpacity
-              className="mt-8 items-center"
+              className="mt-6 items-end"
               onPress={() => navigation.navigate('ForgotPassword')}
             >
-              <Text className="text-brand-600 font-outfit-medium text-sm">
+              <Text className="text-brand-500 font-outfit-medium text-sm">
                 Forgot password?
               </Text>
             </TouchableOpacity>
-
-            {/* Footer */}
-            <View className="mt-12 items-center">
-              <Text className="text-xs font-outfit text-gray-400 dark:text-gray-600">
-                Powered by Arafat VMS
-              </Text>
-            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+
+      {/* Bottom gradient bar — per Stitch design */}
+      <View className="h-1 bg-brand-800" />
+    </View>
   );
 };

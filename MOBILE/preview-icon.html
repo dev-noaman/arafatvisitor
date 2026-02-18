@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>App Icon Preview</title>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            max-width: 600px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #eee;
+        }
+        h1 { font-size: 1.25rem; margin-bottom: 24px; }
+        .icon-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 24px;
+            align-items: flex-end;
+        }
+        .icon-box {
+            text-align: center;
+        }
+        .icon-box img {
+            display: block;
+            background: #333;
+            border-radius: 12px;
+            padding: 12px;
+        }
+        .icon-box span {
+            display: block;
+            margin-top: 8px;
+            font-size: 12px;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+    <h1>New app icon (logo only, inside circle)</h1>
+    <div class="icon-row">
+        <div class="icon-box">
+            <img src="assets/icon.png" width="128" height="128" alt="App icon 128">
+            <span>icon.png (128px)</span>
+        </div>
+        <div class="icon-box">
+            <img src="assets/icon.png" width="256" height="256" alt="App icon 256">
+            <span>icon.png (256px)</span>
+        </div>
+        <div class="icon-box">
+            <img src="assets/adaptive-icon.png" width="128" height="128" alt="Adaptive icon">
+            <span>adaptive-icon.png</span>
+        </div>
+        <div class="icon-box">
+            <img src="assets/favicon.png" width="48" height="48" alt="Favicon">
+            <span>favicon.png (48px)</span>
+        </div>
+    </div>
+</body>
+</html>
