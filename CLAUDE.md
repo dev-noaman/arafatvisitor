@@ -129,7 +129,7 @@ Gradle configured to output `app-visitor.apk` via `applicationVariants` in `MOBI
 
 ## My Team (Host Sub-Members)
 
-HOST users manage company contacts ("sub-members") via the "My Team" admin page. Sub-members are standard Host records scoped by company name — no separate table.
+HOST users manage company contacts ("sub-members") directly from the Hosts page via the "Manage Team" modal. Sub-members are standard Host records scoped by company name — no separate table.
 
 ### Endpoints (`backend/src/admin/admin.controller.ts`)
 | Method | Path | Purpose |
@@ -148,31 +148,32 @@ All endpoints use `@Roles(Role.ADMIN, Role.HOST, Role.RECEPTION)` + `getHostScop
 - **Creator tracking**: `Host.createdById` (Int?, FK → User.id) set on create
 
 ### Reception-to-Host Delegation
-RECEPTION and ADMIN users can manage sub-members on behalf of any host company by selecting a host from a searchable dropdown (`HostLookup` component). The `hostId` parameter determines company scope:
+RECEPTION and ADMIN users can manage sub-members on behalf of any host company. The `hostId` parameter determines company scope:
 - **POST**: `hostId` in request body (required for RECEPTION/ADMIN, ignored for HOST)
 - **GET**: `hostId` as query parameter (required for RECEPTION/ADMIN, ignored for HOST)
 - **PATCH/PATCH-status**: No `hostId` needed — target identified by `:id`
 
 `getHostScope(req)` returns `null` for RECEPTION (no `hostId` on JWT). Each endpoint has inline role-checking: HOST uses `getHostScope()`, RECEPTION/ADMIN resolves company from provided `hostId`.
 
-### Frontend Files
-- `admin/src/components/my-team/MyTeam.tsx` — Page component with host selector for RECEPTION/ADMIN, auto-scoped for HOST
+### Frontend Files (Integrated into Hosts Page)
+- `admin/src/components/hosts/TeamMembersModal.tsx` — Modal for managing team members of a specific host (opened from HostsList "Manage Team" button)
+- `admin/src/components/hosts/TeamMemberForm.tsx` — Form for creating/editing team members with react-hook-form + Zod validation
 - `admin/src/services/myTeam.ts` — API service (getMyTeam, createTeamMember, updateTeamMember, toggleTeamMemberStatus) — all accept optional `hostId`
-- `admin/src/config/navigation.ts` — "My Team" nav item, `roles: ['HOST', 'RECEPTION', 'ADMIN']`
-- `admin/src/components/common/HostLookup.tsx` — Searchable host dropdown (by company and host name), reused across My Team and other forms
+- `admin/src/components/hosts/HostsList.tsx` — Added `onManageTeam` and `showTeamAction` props for team management button (purple team icon)
 
-### HostsList Component Reuse (`admin/src/components/hosts/HostsList.tsx`)
-Shared by Hosts page and My Team page. Key props:
+### HostsList Component Props (`admin/src/components/hosts/HostsList.tsx`)
 - `entityLabel` — Display name ("hosts" vs "team member")
 - `hideCompany` — Hides company column (My Team: same company)
 - `showActions` — Force-show edit button for non-ADMIN (default: ADMIN-only)
 - `onToggleStatus` — Renders clickable Active/Inactive status badge column
 - `showAddedBy` — Renders "Added by" column with Host/Sync/Admin badge (uses `createdById` and `externalId` fields)
+- `onManageTeam` — Callback for "Manage Team" button click (receives Host object)
+- `showTeamAction` — Shows team management button (purple icon) when true
 
 ### Role Permissions for My Team
 - **HOST**: Add, edit, deactivate/reactivate (toggle status) — **no delete**, auto-scoped to own company
-- **RECEPTION**: Same as HOST but must select a host company first via dropdown — **no delete**
-- **ADMIN**: Full CRUD including soft delete (sets `deletedAt`), also uses host selector
+- **RECEPTION**: Same as HOST but manages team via modal from Hosts page — **no delete**
+- **ADMIN**: Full CRUD including soft delete (sets `deletedAt``)
 - Deactivated hosts (status=0) are excluded from all host dropdowns via `hosts.service.ts` `findAll()` filtering `status: 1`
 
 ## Critical Gotchas
