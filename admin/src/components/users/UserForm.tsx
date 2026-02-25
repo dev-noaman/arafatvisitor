@@ -97,6 +97,7 @@ export default function UserForm({ onSubmit, initialData, isLoading }: UserFormP
           disabled={isLoading}
         >
           <option value="STAFF">Staff (Internal)</option>
+          <option value="HOST">Host</option>
           <option value="RECEPTION">Reception</option>
           <option value="ADMIN">Administrator</option>
         </select>
