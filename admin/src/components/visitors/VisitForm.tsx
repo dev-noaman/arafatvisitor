@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import type { Visit, VisitFormData, Host } from '@/types'
 import { getPurposeLookups, type LookupItem } from '@/services/lookups'
-import HostLookup from '@/components/common/HostLookup'
+import SearchableSelect from '@/components/common/SearchableSelect'
 
 function getCurrentDateTimeLocal() {
   const now = new Date()
@@ -30,6 +30,12 @@ interface VisitFormProps {
   isLoadingHosts?: boolean
 }
 
+/** Unique companies from hosts, sorted */
+function getCompanies(hosts: Host[]): string[] {
+  const set = new Set(hosts.map((h) => h.company).filter(Boolean))
+  return Array.from(set).sort()
+}
+
 export default function VisitForm({
   onSubmit,
   initialData,
@@ -39,6 +45,26 @@ export default function VisitForm({
 }: VisitFormProps) {
   const [purposes, setPurposes] = useState<LookupItem[]>([])
   const [isLoadingPurposes, setIsLoadingPurposes] = useState(false)
+  const [selectedCompany, setSelectedCompany] = useState<string>('')
+
+  const companies = useMemo(() => {
+    const list = getCompanies(hosts)
+    // When editing, include initial host's company if not in fetched hosts
+    if (initialData?.host?.company && !list.includes(initialData.host.company)) {
+      return [...list, initialData.host.company].sort()
+    }
+    return list
+  }, [hosts, initialData?.host?.company])
+  const teamMembers = useMemo(() => {
+    if (!selectedCompany) return []
+    const members = hosts.filter((h) => h.company === selectedCompany)
+    // When editing, ensure initial host is in the list even if not in fetched hosts
+    if (initialData?.host && initialData.host.company === selectedCompany) {
+      const exists = members.some((h) => String(h.id) === String(initialData!.host!.id))
+      if (!exists) return [initialData.host, ...members]
+    }
+    return members
+  }, [hosts, selectedCompany, initialData?.host])
 
   useEffect(() => {
     setIsLoadingPurposes(true)
@@ -68,9 +94,29 @@ export default function VisitForm({
     },
   })
 
+  const hostId = watch('hostId')
+
+  // Sync selectedCompany when editing with initialData or when hostId changes
+  useEffect(() => {
+    if (hostId) {
+      const host = hosts.find((h) => String(h.id) === String(hostId)) ?? initialData?.host
+      if (host?.company) {
+        setSelectedCompany(host.company)
+      }
+    } else {
+      setSelectedCompany('')
+    }
+  }, [hostId, hosts, initialData?.host])
+
+  const handleCompanyChange = (company: string) => {
+    setSelectedCompany(company)
+    setValue('hostId', '', { shouldValidate: true })
+  }
+
   const handleFormSubmit = async (data: VisitFormData) => {
     await onSubmit(data)
     reset()
+    setSelectedCompany('')
   }
 
   return (
@@ -129,18 +175,44 @@ export default function VisitForm({
         )}
       </div>
 
-      {/* Host Selection */}
+      {/* Host Selection: Company then Team Member (searchable) */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Host *
+        <label htmlFor="hostCompany" className="block text-sm font-medium text-gray-700 mb-1">
+          Company *
         </label>
-        <HostLookup
-          hosts={hosts}
-          value={watch('hostId') || ''}
-          onChange={(id) => setValue('hostId', id, { shouldValidate: true })}
-          disabled={isLoading}
+        <SearchableSelect
+          options={companies.map((c) => ({ value: c, label: c }))}
+          value={selectedCompany}
+          onChange={handleCompanyChange}
+          placeholder={isLoadingHosts ? 'Loading companies...' : companies.length === 0 ? 'No companies' : 'Type to search company...'}
+          disabled={isLoading || isLoadingHosts || companies.length === 0}
           isLoading={isLoadingHosts}
+          error={!selectedCompany && errors.hostId?.message}
+          emptyMessage='No company found'
+        />
+      </div>
+
+      <div>
+        <label htmlFor="hostId" className="block text-sm font-medium text-gray-700 mb-1">
+          Host / Contact Person *
+        </label>
+        <SearchableSelect
+          options={teamMembers.map((h) => ({
+            value: String(h.id),
+            label: h.email ? `${h.name} (${h.email})` : h.name,
+          }))}
+          value={hostId || ''}
+          onChange={(id) => setValue('hostId', id, { shouldValidate: true })}
+          placeholder={
+            !selectedCompany
+              ? 'Select company first'
+              : teamMembers.length === 0
+                ? 'No team members'
+                : 'Type to search host / contact...'
+          }
+          disabled={isLoading || isLoadingHosts || !selectedCompany || teamMembers.length === 0}
           error={errors.hostId?.message}
+          emptyMessage='No host found'
         />
         {errors.hostId && <p className="text-sm text-red-600 mt-1">{errors.hostId.message}</p>}
       </div>
@@ -168,21 +240,14 @@ export default function VisitForm({
         <label htmlFor="purpose" className="block text-sm font-medium text-gray-700 mb-1">
           Purpose of Visit
         </label>
-        <select
-          {...register('purpose')}
-          id="purpose"
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        <SearchableSelect
+          options={[{ value: '', label: '— None —' }, ...purposes.map((p) => ({ value: p.label, label: p.label }))]}
+          value={watch('purpose') || ''}
+          onChange={(v) => setValue('purpose', v, { shouldValidate: true })}
+          placeholder={isLoadingPurposes ? 'Loading purposes...' : 'Type to search purpose...'}
           disabled={isLoading || isLoadingPurposes}
-        >
-          <option value="">
-            {isLoadingPurposes ? 'Loading purposes...' : 'Select purpose of visit'}
-          </option>
-          {purposes.map((purpose) => (
-            <option key={purpose.id} value={purpose.label}>
-              {purpose.label}
-            </option>
-          ))}
-        </select>
+          emptyMessage='No purpose found'
+        />
         {errors.purpose && <p className="text-sm text-red-600 mt-1">{errors.purpose.message}</p>}
       </div>
 

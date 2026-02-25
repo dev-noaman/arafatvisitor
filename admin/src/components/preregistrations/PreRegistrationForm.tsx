@@ -1,13 +1,19 @@
+import { useEffect, useState, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import type { PreRegistration, PreRegistrationFormData, Host } from '@/types'
-import HostLookup from '@/components/common/HostLookup'
+import SearchableSelect from '@/components/common/SearchableSelect'
 
 function getCurrentDateTimeLocal() {
   const now = new Date()
   now.setMinutes(now.getMinutes() - now.getTimezoneOffset())
   return now.toISOString().slice(0, 16)
+}
+
+function getCompanies(hosts: Host[]): string[] {
+  const set = new Set(hosts.map((h) => h.company).filter(Boolean))
+  return Array.from(set).sort()
 }
 
 const preRegistrationSchema = z.object({
@@ -35,6 +41,26 @@ export default function PreRegistrationForm({
   isLoading,
   isLoadingHosts,
 }: PreRegistrationFormProps) {
+  const [selectedCompany, setSelectedCompany] = useState<string>('')
+
+  const companies = useMemo(() => {
+    const list = getCompanies(hosts)
+    if (initialData?.host?.company && !list.includes(initialData.host.company)) {
+      return [...list, initialData.host.company].sort()
+    }
+    return list
+  }, [hosts, initialData?.host?.company])
+
+  const teamMembers = useMemo(() => {
+    if (!selectedCompany) return []
+    const members = hosts.filter((h) => h.company === selectedCompany)
+    if (initialData?.host && initialData.host.company === selectedCompany) {
+      const exists = members.some((h) => String(h.id) === String(initialData!.host!.id))
+      if (!exists) return [initialData.host, ...members]
+    }
+    return members
+  }, [hosts, selectedCompany, initialData?.host])
+
   const {
     register,
     handleSubmit,
@@ -55,9 +81,26 @@ export default function PreRegistrationForm({
     },
   })
 
+  const hostId = watch('hostId')
+
+  useEffect(() => {
+    if (hostId) {
+      const host = hosts.find((h) => String(h.id) === String(hostId)) ?? initialData?.host
+      if (host?.company) setSelectedCompany(host.company)
+    } else {
+      setSelectedCompany('')
+    }
+  }, [hostId, hosts, initialData?.host])
+
+  const handleCompanyChange = (company: string) => {
+    setSelectedCompany(company)
+    setValue('hostId', '', { shouldValidate: true })
+  }
+
   const handleFormSubmit = async (data: PreRegistrationFormData) => {
     await onSubmit(data)
     reset()
+    setSelectedCompany('')
   }
 
   return (
@@ -116,18 +159,35 @@ export default function PreRegistrationForm({
         )}
       </div>
 
-      {/* Host Selection */}
+      {/* Host Selection: Company then Team Member (searchable) */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Host *
-        </label>
-        <HostLookup
-          hosts={hosts}
-          value={watch('hostId') || ''}
-          onChange={(id) => setValue('hostId', id, { shouldValidate: true })}
-          disabled={isLoading}
+        <label className="block text-sm font-medium text-gray-700 mb-1">Company *</label>
+        <SearchableSelect
+          options={companies.map((c) => ({ value: c, label: c }))}
+          value={selectedCompany}
+          onChange={handleCompanyChange}
+          placeholder={isLoadingHosts ? 'Loading companies...' : companies.length === 0 ? 'No companies' : 'Type to search company...'}
+          disabled={isLoading || isLoadingHosts || companies.length === 0}
           isLoading={isLoadingHosts}
+          error={!selectedCompany && errors.hostId?.message}
+          emptyMessage="No company found"
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Host / Contact Person *</label>
+        <SearchableSelect
+          options={teamMembers.map((h) => ({
+            value: String(h.id),
+            label: h.email ? `${h.name} (${h.email})` : h.name,
+          }))}
+          value={hostId || ''}
+          onChange={(id) => setValue('hostId', id, { shouldValidate: true })}
+          placeholder={
+            !selectedCompany ? 'Select company first' : teamMembers.length === 0 ? 'No team members' : 'Type to search host...'
+          }
+          disabled={isLoading || isLoadingHosts || !selectedCompany || teamMembers.length === 0}
           error={errors.hostId?.message}
+          emptyMessage="No host found"
         />
         {errors.hostId && <p className="text-sm text-red-600 mt-1">{errors.hostId.message}</p>}
       </div>

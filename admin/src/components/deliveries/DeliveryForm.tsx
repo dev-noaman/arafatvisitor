@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -6,6 +6,7 @@ import type { Host } from '@/types'
 import { getDeliveryTypeLookups, getCourierLookups, type LookupItem } from '@/services/lookups'
 import { getHosts } from '@/services/hosts'
 import HostLookup from '@/components/common/HostLookup'
+import SearchableSelect from '@/components/common/SearchableSelect'
 
 const deliverySchema = z.object({
   deliveryType: z.string().min(1, 'Please select delivery type'),
@@ -63,12 +64,19 @@ export default function DeliveryForm({ onSubmit, isLoading }: DeliveryFormProps)
 
   const selectedDeliveryType = watch('deliveryType')
 
-  const filteredCouriers = couriers.filter((c) => {
-    if (selectedDeliveryType === 'Food' || selectedDeliveryType === 'Gift') {
-      return c.category === 'FOOD'
-    }
-    return c.category === 'PARCEL' || !c.category
-  })
+  const filteredCouriers = useMemo(
+    () =>
+      couriers.filter((c) => {
+        if (selectedDeliveryType === 'Food' || selectedDeliveryType === 'Gift') {
+          return c.category === 'FOOD'
+        }
+        return c.category === 'PARCEL' || !c.category
+      }),
+    [couriers, selectedDeliveryType]
+  )
+
+  const deliveryTypeOptions = deliveryTypes.map((t) => ({ value: t.label, label: t.label }))
+  const courierOptions = filteredCouriers.map((c) => ({ value: c.label, label: c.label }))
 
   // Reset courier when delivery type changes and current selection is invalid
   useEffect(() => {
@@ -91,21 +99,16 @@ export default function DeliveryForm({ onSubmit, isLoading }: DeliveryFormProps)
         <label htmlFor="deliveryType" className="block text-sm font-medium text-gray-700 mb-1">
           Type of Delivery *
         </label>
-        <select
-          {...register('deliveryType')}
-          id="deliveryType"
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        <SearchableSelect
+          options={deliveryTypeOptions}
+          value={watch('deliveryType') || ''}
+          onChange={(v) => setValue('deliveryType', v, { shouldValidate: true })}
+          placeholder={isLoadingLookups ? 'Loading...' : 'Type to search delivery type...'}
           disabled={isLoading || isLoadingLookups}
-        >
-          <option value="">
-            {isLoadingLookups ? 'Loading...' : 'Select type of delivery'}
-          </option>
-          {deliveryTypes.map((type) => (
-            <option key={type.id} value={type.label}>
-              {type.label}
-            </option>
-          ))}
-        </select>
+          isLoading={isLoadingLookups}
+          error={errors.deliveryType?.message}
+          emptyMessage="No delivery type found"
+        />
         {errors.deliveryType && (
           <p className="text-sm text-red-600 mt-1">{errors.deliveryType.message}</p>
         )}
@@ -134,21 +137,21 @@ export default function DeliveryForm({ onSubmit, isLoading }: DeliveryFormProps)
         <label htmlFor="courier" className="block text-sm font-medium text-gray-700 mb-1">
           Courier *
         </label>
-        <select
-          {...register('courier')}
-          id="courier"
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          disabled={isLoading || isLoadingLookups}
-        >
-          <option value="">
-            {isLoadingLookups ? 'Loading...' : 'Select a courier'}
-          </option>
-          {filteredCouriers.map((courier) => (
-            <option key={courier.id} value={courier.label}>
-              {courier.label}
-            </option>
-          ))}
-        </select>
+        <SearchableSelect
+          options={courierOptions}
+          value={watch('courier') || ''}
+          onChange={(v) => setValue('courier', v, { shouldValidate: true })}
+          placeholder={
+            isLoadingLookups
+              ? 'Loading...'
+              : !selectedDeliveryType
+                ? 'Select delivery type first'
+                : 'Type to search courier...'
+          }
+          disabled={isLoading || isLoadingLookups || !selectedDeliveryType}
+          error={errors.courier?.message}
+          emptyMessage="No courier found"
+        />
         {errors.courier && (
           <p className="text-sm text-red-600 mt-1">{errors.courier.message}</p>
         )}
