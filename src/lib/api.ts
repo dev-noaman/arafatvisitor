@@ -175,7 +175,16 @@ export async function getVisitPass(sessionId: string): Promise<any> {
   return response.json()
 }
 
-async function apiFetch<T>(endpoint: string, options: RequestInit = {}, retryCount = 0): Promise<T> {
+/** Retry config: default 3 retries; login uses 1 retry for faster fail/success */
+const DEFAULT_RETRY_DELAYS = [800, 2000, 4000]
+const LOGIN_RETRY_DELAYS = [500] // 1 retry, fail fast for better UX
+
+async function apiFetch<T>(
+  endpoint: string,
+  options: RequestInit = {},
+  retryCount = 0,
+  retryDelays = DEFAULT_RETRY_DELAYS
+): Promise<T> {
   const base = getApiBase()
   if (!base) throw new Error('API not configured')
 
@@ -186,8 +195,7 @@ async function apiFetch<T>(endpoint: string, options: RequestInit = {}, retryCou
     ...options.headers,
   }
 
-  const maxRetries = 3
-  const retryDelays = [800, 2000, 4000] // Backoff on network errors
+  const maxRetries = retryDelays.length
 
   try {
     // Check if browser is online
@@ -225,7 +233,7 @@ async function apiFetch<T>(endpoint: string, options: RequestInit = {}, retryCou
       }
 
       await new Promise(resolve => setTimeout(resolve, delay))
-      return apiFetch<T>(endpoint, options, retryCount + 1)
+      return apiFetch<T>(endpoint, options, retryCount + 1, retryDelays)
     }
 
     // Final error message
@@ -241,7 +249,7 @@ export async function login(email: string, password: string): Promise<{ token: s
   return apiFetch('/api/auth/login', {
     method: 'POST',
     body: JSON.stringify({ email, password }),
-  })
+  }, 0, LOGIN_RETRY_DELAYS)
 }
 
 export async function forgotPassword(email: string): Promise<void> {

@@ -69,8 +69,8 @@ export function LoginForm(props: { onLoginSuccess?: (role: "admin" | "reception"
         // Fallthrough to simulated logic
       }
     }
-    // Simulated when no API
-    await new Promise((resolve) => setTimeout(resolve, 1500))
+    // Simulated when no API (reduced from 1500ms for faster UX)
+    await new Promise((resolve) => setTimeout(resolve, 500))
     toast.success("Login successful", { description: "Welcome back to the VMS Dashboard." })
     props.onLoginSuccess?.("admin")
   }
@@ -93,7 +93,7 @@ export function LoginForm(props: { onLoginSuccess?: (role: "admin" | "reception"
       resetForgot()
       return
     }
-    await new Promise((resolve) => setTimeout(resolve, 1500))
+    await new Promise((resolve) => setTimeout(resolve, 500))
     toast.success("Reset link sent", {
       description: `If an account exists for ${data.email}, you will receive a password reset link shortly.`,
     })
