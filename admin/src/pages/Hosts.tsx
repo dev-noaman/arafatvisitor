@@ -190,7 +190,6 @@ export default function Hosts() {
           onEdit={handleEdit}
           onDelete={handleDeleteClick}
           onManageTeam={canManageTeam ? handleManageTeam : undefined}
-          showAddedBy
           showTeamAction={canManageTeam}
         />
       )}
