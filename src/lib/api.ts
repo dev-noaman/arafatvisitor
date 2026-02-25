@@ -55,7 +55,10 @@ function getConfig() {
 }
 
 export function getApiBase(): string | null {
-  // Use environment variable first, then sessionStorage config
+  // Prefer same-origin when on production domain to avoid CORS (www vs non-www)
+  if (typeof window !== 'undefined' && /arafatvisitor\.cloud$/i.test(window.location.hostname)) {
+    return window.location.origin
+  }
   const envBase = import.meta.env.VITE_API_BASE
   if (envBase) return envBase
   const config = getConfig()

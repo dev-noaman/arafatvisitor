@@ -50,7 +50,12 @@ export function WalkInForm() {
   const purposeValue = watch("purpose")
 
   useEffect(() => {
-    fetchHosts().then(setHosts).catch(() => setHosts([]))
+    fetchHosts()
+      .then(setHosts)
+      .catch((err) => {
+        setHosts([])
+        toast.error("Could not load hosts", { description: err?.message || "Please try again." })
+      })
   }, [])
 
   useEffect(() => {

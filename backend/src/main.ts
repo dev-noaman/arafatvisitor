@@ -85,6 +85,7 @@ async function bootstrap() {
       "http://localhost:5176",
       "http://127.0.0.1:5176",
       "https://arafatvisitor.cloud",
+      "https://www.arafatvisitor.cloud",
     ],
     credentials: true,
   });

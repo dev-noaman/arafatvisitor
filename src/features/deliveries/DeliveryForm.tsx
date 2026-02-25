@@ -31,7 +31,12 @@ export function DeliveryForm() {
   const useApi = !!(config.apiBase && getAuthToken())
 
   useEffect(() => {
-    fetchHosts().then(setHosts).catch(() => setHosts([]))
+    fetchHosts()
+      .then(setHosts)
+      .catch((err) => {
+        setHosts([])
+        toast.error("Could not load hosts", { description: err?.message || "Please try again." })
+      })
 
     // Fetch delivery types and couriers from API
     setIsLoadingTypes(true)

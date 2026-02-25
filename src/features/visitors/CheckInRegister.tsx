@@ -73,7 +73,12 @@ export function CheckInRegister() {
     (hostPersonValue?.length ?? 0) >= 1
 
   useEffect(() => {
-    fetchHosts().then(setHosts).catch(() => setHosts([]))
+    fetchHosts()
+      .then(setHosts)
+      .catch((err) => {
+        setHosts([])
+        toast.error("Could not load hosts", { description: err?.message || "Please try again." })
+      })
   }, [])
 
   useEffect(() => {
