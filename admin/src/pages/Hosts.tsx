@@ -1,5 +1,5 @@
 import { useCallback, useState, useEffect } from 'react'
-import { HostsList, HostModal, DeleteConfirmationDialog } from '@/components/hosts'
+import { HostsList, HostModal, DeleteConfirmationDialog, TeamMembersModal } from '@/components/hosts'
 import ErrorState from '@/components/common/ErrorState'
 import { getHosts, createHost, updateHost, deleteHost } from '@/services/hosts'
 import { useToast } from '@/hooks'
@@ -9,6 +9,9 @@ import type { Host, HostFormData } from '@/types'
 export default function Hosts() {
   const { user } = useAuth()
   const isAdmin = user?.role === 'ADMIN'
+  const isHost = user?.role === 'HOST'
+  const isReception = user?.role === 'RECEPTION'
+  const canManageTeam = isAdmin || isHost || isReception
   const { success, error } = useToast()
   const [hosts, setHosts] = useState<Host[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -19,6 +22,9 @@ export default function Hosts() {
   const [hostToDelete, setHostToDelete] = useState<Host | undefined>()
   const [isDeleting, setIsDeleting] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  // Team members modal state
+  const [isTeamModalOpen, setIsTeamModalOpen] = useState(false)
+  const [selectedHostForTeam, setSelectedHostForTeam] = useState<Host | undefined>()
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 10,
@@ -124,6 +130,18 @@ export default function Hosts() {
     setSelectedHost(undefined)
   }
 
+  // Handle manage team
+  const handleManageTeam = (host: Host) => {
+    setSelectedHostForTeam(host)
+    setIsTeamModalOpen(true)
+  }
+
+  // Close team modal
+  const handleCloseTeamModal = () => {
+    setIsTeamModalOpen(false)
+    setSelectedHostForTeam(undefined)
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -171,7 +189,9 @@ export default function Hosts() {
           onPageChange={handlePageChange}
           onEdit={handleEdit}
           onDelete={handleDeleteClick}
+          onManageTeam={canManageTeam ? handleManageTeam : undefined}
           showAddedBy
+          showTeamAction={canManageTeam}
         />
       )}
 
@@ -195,6 +215,18 @@ export default function Hosts() {
         }}
         isLoading={isDeleting}
       />
+
+      {/* Team Members Modal */}
+      {selectedHostForTeam && (
+        <TeamMembersModal
+          isOpen={isTeamModalOpen}
+          onClose={handleCloseTeamModal}
+          hostId={selectedHostForTeam.id}
+          hostName={selectedHostForTeam.name}
+          hostCompany={selectedHostForTeam.company}
+          hostLocation={selectedHostForTeam.location || null}
+        />
+      )}
 
     </div>
   )

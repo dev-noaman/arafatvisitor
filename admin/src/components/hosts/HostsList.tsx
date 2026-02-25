@@ -16,10 +16,12 @@ interface HostsListProps {
   onEdit: (host: Host) => void
   onDelete: (host: Host) => void
   onToggleStatus?: (host: Host) => void
+  onManageTeam?: (host: Host) => void  // NEW: Team management callback
   entityLabel?: string
   hideCompany?: boolean
   showActions?: boolean
   showAddedBy?: boolean
+  showTeamAction?: boolean  // NEW: Show team icon
 }
 
 export default function HostsList({
@@ -31,14 +33,19 @@ export default function HostsList({
   onEdit,
   onDelete,
   onToggleStatus,
+  onManageTeam,
   entityLabel = 'hosts',
   hideCompany,
   showActions,
   showAddedBy,
+  showTeamAction,
 }: HostsListProps) {
   const { user } = useAuth()
   const isAdmin = user?.role === 'ADMIN'
+  const isHost = user?.role === 'HOST'
+  const isReception = user?.role === 'RECEPTION'
   const actionsVisible = showActions ?? isAdmin
+  const canManageTeam = showTeamAction && onManageTeam && (isAdmin || isHost || isReception)
   const [searchQuery, setSearchQuery] = useState('')
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -152,6 +159,18 @@ export default function HostsList({
                   <td className="px-4 py-2.5 text-sm whitespace-nowrap">
                     {actionsVisible && (
                       <div className="flex items-center gap-1">
+                        {/* Team Management Icon - Only for ADMIN, HOST, RECEPTION */}
+                        {canManageTeam && (
+                          <button
+                            onClick={() => onManageTeam!(host)}
+                            className="inline-flex items-center p-1.5 rounded-md text-purple-600 hover:bg-purple-50 transition"
+                            title="Manage Team"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                            </svg>
+                          </button>
+                        )}
                         <button
                           onClick={() => onEdit(host)}
                           className="inline-flex items-center p-1.5 rounded-md text-blue-600 hover:bg-blue-50 transition"

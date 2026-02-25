@@ -30,7 +30,6 @@ const Users = lazy(() => import('@/pages/Users'))
 const Reports = lazy(() => import('@/pages/Reports'))
 const Settings = lazy(() => import('@/pages/Settings'))
 const Profile = lazy(() => import('@/pages/Profile'))
-const MyTeam = lazy(() => import('@/components/my-team/MyTeam'))
 
 // Loading skeleton for lazy-loaded components
 const PageLoader = () => (
@@ -73,16 +72,6 @@ export default function App() {
                 >
                   <Route index element={<Suspense fallback={<PageLoader />}><Dashboard /></Suspense>} />
                   <Route path="hosts" element={<Suspense fallback={<PageLoader />}><Hosts /></Suspense>} />
-                  <Route
-                    path="my-team"
-                    element={
-                      <Suspense fallback={<PageLoader />}>
-                        <RoleGuard allowedRoles={['HOST', 'RECEPTION', 'ADMIN']}>
-                          <MyTeam />
-                        </RoleGuard>
-                      </Suspense>
-                    }
-                  />
                   <Route
                     path="staff"
                     element={
