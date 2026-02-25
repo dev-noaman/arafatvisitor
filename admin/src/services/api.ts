@@ -7,6 +7,9 @@ import { ApiError } from '../types';
 // /admin/api/* -> http://localhost:3000
 const API_BASE_URL = '';
 
+// Endpoints that return 401 for auth failure (invalid creds/token) - do NOT treat as session expired
+const AUTH_ENDPOINTS = ['/admin/api/login', '/admin/api/token-login'];
+
 // Handle session expiry - redirect to login
 function handleSessionExpired(): void {
   localStorage.removeItem('auth_user');
@@ -35,8 +38,17 @@ async function apiRequest<T>(
     headers,
   });
 
-  // Handle 401 Unauthorized - session expired
+  // Handle 401 Unauthorized
   if (response.status === 401) {
+    const isAuthEndpoint = AUTH_ENDPOINTS.some((e) => endpoint.startsWith(e));
+    if (isAuthEndpoint) {
+      // Login/token-login 401 = invalid credentials or expired token, not session expiry
+      const errorData: ApiError = await response.json().catch(() => ({
+        message: 'Invalid credentials or expired token',
+        statusCode: 401,
+      }));
+      throw new Error(errorData.message);
+    }
     handleSessionExpired();
     throw new Error('Unauthorized - session expired');
   }
