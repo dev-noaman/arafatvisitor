@@ -1,10 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { getMyTeam, createTeamMember, updateTeamMember, toggleTeamMemberStatus } from '@/services/myTeam'
 import { useToast } from '@/hooks'
-import type { Host } from '@/types'
+import type { Host, HostLocationType } from '@/types'
 import TeamMemberForm from './TeamMemberForm'
-
-type LocationType = 'BARWA_TOWERS' | 'MARINA_50' | 'ELEMENT_MARIOTT' | string | null | undefined
 
 interface TeamMembersModalProps {
   isOpen: boolean
@@ -12,7 +10,7 @@ interface TeamMembersModalProps {
   hostId: string
   hostName: string
   hostCompany: string
-  hostLocation: LocationType
+  hostLocation: HostLocationType
 }
 
 export default function TeamMembersModal({

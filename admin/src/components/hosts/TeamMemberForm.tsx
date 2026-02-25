@@ -2,9 +2,7 @@ import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import type { Host } from '@/types'
-
-type LocationType = 'BARWA_TOWERS' | 'MARINA_50' | 'ELEMENT_MARIOTT' | null
+import type { Host, HostLocationType } from '@/types'
 
 const teamMemberSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -22,7 +20,7 @@ interface TeamMemberFormProps {
   onSubmit: (data: TeamMemberFormData) => Promise<void>
   initialData?: Host
   isLoading?: boolean
-  hostLocation: LocationType
+  hostLocation: HostLocationType
 }
 
 export default function TeamMemberForm({ 

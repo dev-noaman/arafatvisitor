@@ -21,6 +21,9 @@ export interface User {
   updatedAt: string;
 }
 
+// Host location (shared across components)
+export type HostLocationType = 'BARWA_TOWERS' | 'MARINA_50' | 'ELEMENT_MARIOTT' | null | undefined;
+
 // Host Entity (contact person at a company or internal staff member)
 export interface Host {
   id: string;
