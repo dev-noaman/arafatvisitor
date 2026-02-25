@@ -47,7 +47,6 @@ export default function DeliveryForm({ onSubmit, isLoading }: DeliveryFormProps)
   }, [])
 
   const {
-    register,
     handleSubmit,
     formState: { errors },
     reset,

@@ -169,7 +169,7 @@ export default function PreRegistrationForm({
           placeholder={isLoadingHosts ? 'Loading companies...' : companies.length === 0 ? 'No companies' : 'Type to search company...'}
           disabled={isLoading || isLoadingHosts || companies.length === 0}
           isLoading={isLoadingHosts}
-          error={!selectedCompany && errors.hostId?.message}
+          error={!selectedCompany ? errors.hostId?.message : undefined}
           emptyMessage="No company found"
         />
       </div>

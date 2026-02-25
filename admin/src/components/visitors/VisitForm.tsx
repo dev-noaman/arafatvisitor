@@ -187,7 +187,7 @@ export default function VisitForm({
           placeholder={isLoadingHosts ? 'Loading companies...' : companies.length === 0 ? 'No companies' : 'Type to search company...'}
           disabled={isLoading || isLoadingHosts || companies.length === 0}
           isLoading={isLoadingHosts}
-          error={!selectedCompany && errors.hostId?.message}
+          error={!selectedCompany && typeof errors.hostId?.message === 'string' ? errors.hostId.message : undefined}
           emptyMessage='No company found'
         />
       </div>
@@ -211,7 +211,7 @@ export default function VisitForm({
                 : 'Type to search host / contact...'
           }
           disabled={isLoading || isLoadingHosts || !selectedCompany || teamMembers.length === 0}
-          error={errors.hostId?.message}
+          error={typeof errors.hostId?.message === 'string' ? errors.hostId.message : undefined}
           emptyMessage='No host found'
         />
         {errors.hostId && <p className="text-sm text-red-600 mt-1">{errors.hostId.message}</p>}
