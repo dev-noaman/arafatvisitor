@@ -5,6 +5,7 @@ interface TeamMemberFormData {
   name: string
   email: string
   phone?: string
+  hostId?: string // Required for RECEPTION/ADMIN users to specify which company's team to add to
 }
 
 interface GetMyTeamParams {
@@ -12,6 +13,7 @@ interface GetMyTeamParams {
   limit?: number
   search?: string
   status?: number
+  hostId?: string // Required for RECEPTION/ADMIN users to specify which company's team to view
 }
 
 export const getMyTeam = async (params?: GetMyTeamParams) => {
@@ -20,6 +22,7 @@ export const getMyTeam = async (params?: GetMyTeamParams) => {
   if (params?.limit) queryString.append('limit', params.limit.toString())
   if (params?.search) queryString.append('search', params.search)
   if (params?.status !== undefined) queryString.append('status', params.status.toString())
+  if (params?.hostId) queryString.append('hostId', params.hostId)
 
   const query = queryString.toString()
   const url = `/admin/api/my-team${query ? `?${query}` : ''}`

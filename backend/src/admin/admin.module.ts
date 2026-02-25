@@ -5,12 +5,14 @@ import { AdminApiController } from "./admin.controller";
 import { PrismaModule } from "../prisma/prisma.module";
 import { NotificationsModule } from "../notifications/notifications.module";
 import { DashboardModule } from "../dashboard/dashboard.module";
+import { AuditModule } from "../audit/audit.module";
 
 @Module({
   imports: [
     PrismaModule,
     NotificationsModule,
     DashboardModule,
+    AuditModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (config: ConfigService) => ({

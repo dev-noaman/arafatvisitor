@@ -171,6 +171,7 @@ export default function Hosts() {
           onPageChange={handlePageChange}
           onEdit={handleEdit}
           onDelete={handleDeleteClick}
+          showAddedBy
         />
       )}
 

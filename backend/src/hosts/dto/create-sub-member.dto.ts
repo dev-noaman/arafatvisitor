@@ -20,4 +20,13 @@ export class CreateSubMemberDto {
   @IsString()
   @MaxLength(191)
   phone?: string;
+
+  /**
+   * Host ID for RECEPTION/ADMIN users to specify which company's team to add the member to.
+   * Required when the request comes from RECEPTION or ADMIN role.
+   * Ignored for HOST users (uses their own company automatically).
+   */
+  @IsOptional()
+  @IsString()
+  hostId?: string;
 }

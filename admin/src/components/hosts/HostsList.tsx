@@ -15,8 +15,11 @@ interface HostsListProps {
   onPageChange: (page: number) => void
   onEdit: (host: Host) => void
   onDelete: (host: Host) => void
+  onToggleStatus?: (host: Host) => void
   entityLabel?: string
   hideCompany?: boolean
+  showActions?: boolean
+  showAddedBy?: boolean
 }
 
 export default function HostsList({
@@ -27,11 +30,15 @@ export default function HostsList({
   onPageChange,
   onEdit,
   onDelete,
+  onToggleStatus,
   entityLabel = 'hosts',
   hideCompany,
+  showActions,
+  showAddedBy,
 }: HostsListProps) {
   const { user } = useAuth()
   const isAdmin = user?.role === 'ADMIN'
+  const actionsVisible = showActions ?? isAdmin
   const [searchQuery, setSearchQuery] = useState('')
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -52,6 +59,17 @@ export default function HostsList({
     }
   }
 
+  const getAddedByLabel = (host: Host) => {
+    if (host.createdById) return 'Host'
+    if (host.externalId) return 'Sync'
+    return 'Admin'
+  }
+
+  const colCount = 5
+    + (hideCompany ? 0 : 1)
+    + (showAddedBy ? 1 : 0)
+    + (onToggleStatus ? 1 : 0)
+
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200">
       {/* Search Bar */}
@@ -67,21 +85,23 @@ export default function HostsList({
 
       {/* Table */}
       <div className="overflow-x-auto">
-        <table className="w-full table-fixed">
+        <table className="w-full table-auto">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider w-[18%]">Name</th>
-              {!hideCompany && <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider w-[20%]">Company</th>}
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider w-[22%]">Email</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider w-[12%]">Phone</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider w-[14%]">Location</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider w-[14%]">Actions</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Name</th>
+              {!hideCompany && <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Company</th>}
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Email</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Phone</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Location</th>
+              {onToggleStatus && <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>}
+              {showAddedBy && <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Added by</th>}
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={hideCompany ? 5 : 6} className="px-4 py-8 text-center text-gray-500">
+                <td colSpan={colCount} className="px-4 py-8 text-center text-gray-500">
                   <div className="flex items-center justify-center">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
                   </div>
@@ -89,22 +109,48 @@ export default function HostsList({
               </tr>
             ) : hosts.length === 0 ? (
               <tr>
-                <td colSpan={hideCompany ? 5 : 6} className="px-4 py-8 text-center text-gray-500">
+                <td colSpan={colCount} className="px-4 py-8 text-center text-gray-500">
                   No {entityLabel} found. Create your first to get started.
                 </td>
               </tr>
             ) : (
               hosts.map((host) => (
                 <tr key={host.id} className="border-b border-gray-200 hover:bg-gray-50 transition">
-                  <td className="px-4 py-2.5 text-sm text-gray-900 font-medium truncate" title={host.name}>{host.name}</td>
-                  {!hideCompany && <td className="px-4 py-2.5 text-sm text-gray-600 truncate" title={host.company}>{host.company}</td>}
-                  <td className="px-4 py-2.5 text-sm text-gray-600 truncate" title={host.email}>{host.email}</td>
+                  <td className="px-4 py-2.5 text-sm text-gray-900 font-medium truncate max-w-[200px]" title={host.name}>{host.name}</td>
+                  {!hideCompany && <td className="px-4 py-2.5 text-sm text-gray-600 truncate max-w-[200px]" title={host.company}>{host.company}</td>}
+                  <td className="px-4 py-2.5 text-sm text-gray-600 truncate max-w-[220px]" title={host.email}>{host.email}</td>
                   <td className="px-4 py-2.5 text-sm text-gray-600 whitespace-nowrap">{host.phone || '—'}</td>
                   <td className="px-4 py-2.5 text-sm text-gray-600 whitespace-nowrap">
                     {host.location ? host.location.replace(/_/g, ' ') : '—'}
                   </td>
+                  {onToggleStatus && (
+                    <td className="px-4 py-2.5 text-sm whitespace-nowrap">
+                      <button
+                        onClick={() => onToggleStatus(host)}
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium transition ${
+                          host.status === 1
+                            ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                            : 'bg-red-100 text-red-800 hover:bg-red-200'
+                        }`}
+                        title={host.status === 1 ? 'Click to deactivate' : 'Click to reactivate'}
+                      >
+                        {host.status === 1 ? 'Active' : 'Inactive'}
+                      </button>
+                    </td>
+                  )}
+                  {showAddedBy && (
+                    <td className="px-4 py-2.5 text-sm text-gray-600 whitespace-nowrap">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                        host.createdById ? 'bg-purple-100 text-purple-800'
+                          : host.externalId ? 'bg-blue-100 text-blue-800'
+                          : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {getAddedByLabel(host)}
+                      </span>
+                    </td>
+                  )}
                   <td className="px-4 py-2.5 text-sm whitespace-nowrap">
-                    {isAdmin && (
+                    {actionsVisible && (
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => onEdit(host)}
@@ -113,13 +159,15 @@ export default function HostsList({
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                         </button>
-                        <button
-                          onClick={() => onDelete(host)}
-                          className="inline-flex items-center p-1.5 rounded-md text-red-600 hover:bg-red-50 transition"
-                          title="Delete"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                        </button>
+                        {isAdmin && (
+                          <button
+                            onClick={() => onDelete(host)}
+                            className="inline-flex items-center p-1.5 rounded-md text-red-600 hover:bg-red-50 transition"
+                            title="Delete"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                          </button>
+                        )}
                       </div>
                     )}
                   </td>

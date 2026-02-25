@@ -41,7 +41,10 @@ export default function HostLookup({ hosts, value, onChange, disabled, isLoading
   const isSelected = hosts.some((h) => h.company === query && String(h.id) === String(value))
 
   const filtered = query && !isSelected
-    ? hosts.filter((h) => h.company.toLowerCase().includes(query.toLowerCase()))
+    ? hosts.filter((h) =>
+        h.company.toLowerCase().includes(query.toLowerCase()) ||
+        h.name.toLowerCase().includes(query.toLowerCase())
+      )
     : hosts
 
   const handleSelect = (host: Host) => {
@@ -65,7 +68,7 @@ export default function HostLookup({ hosts, value, onChange, disabled, isLoading
         value={query}
         onChange={handleInputChange}
         onFocus={() => setIsOpen(true)}
-        placeholder={isLoading ? 'Loading hosts...' : 'Search by company name...'}
+        placeholder={isLoading ? 'Loading hosts...' : 'Search by company or host name...'}
         disabled={disabled || isLoading}
         className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
           error ? 'border-red-300' : 'border-gray-300'
@@ -88,7 +91,10 @@ export default function HostLookup({ hosts, value, onChange, disabled, isLoading
                 String(host.id) === String(value) ? 'bg-blue-50 font-medium' : ''
               }`}
             >
-              {host.company}
+              <span>{host.company}</span>
+              {host.name !== host.company && (
+                <span className="text-gray-400 ml-1">— {host.name}</span>
+              )}
             </li>
           ))}
           {filtered.length > 50 && (

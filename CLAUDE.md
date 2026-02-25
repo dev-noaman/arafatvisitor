@@ -1,4 +1,4 @@
-﻿> ⚠️ BEFORE writing any code, read `read/INSTRUCTIONS.md` and follow its rules.
+﻿> ⚠️ BEFORE writing any code, read the relevant files in `read/` directory. See `read/workflow.md` for guidance.
 
 
 # CLAUDE.md
@@ -70,8 +70,8 @@ docker-compose up                        # Start PostgreSQL 16 on :5432
 
 ### Role Permissions
 - **ADMIN**: Full access to everything
-- **RECEPTION**: Create visitors/deliveries, cannot approve/reject
-- **HOST**: Company-scoped CRUD (auto-filtered by hostId)
+- **RECEPTION**: Create visitors/deliveries, cannot approve/reject, manages sub-members on behalf of hosts via "My Team"
+- **HOST**: Company-scoped CRUD (auto-filtered by hostId), manages sub-members via "My Team"
 - **STAFF**: Limited access, company-scoped, auto-linked to "Arafat Group"
 
 ### Key Modules
@@ -127,6 +127,54 @@ Do NOT validate with only one regex — admin-created visit QR codes will be sil
 ### APK Output
 Gradle configured to output `app-visitor.apk` via `applicationVariants` in `MOBILE/android/app/build.gradle`.
 
+## My Team (Host Sub-Members)
+
+HOST users manage company contacts ("sub-members") via the "My Team" admin page. Sub-members are standard Host records scoped by company name — no separate table.
+
+### Endpoints (`backend/src/admin/admin.controller.ts`)
+| Method | Path | Purpose |
+|--------|------|---------|
+| POST | `/admin/api/my-team` | Create sub-member (uses `CreateSubMemberDto`, auto-inherits company/location) |
+| GET | `/admin/api/my-team` | List company's hosts (paginated, searchable) |
+| PATCH | `/admin/api/my-team/:id` | Edit name/email/phone |
+| PATCH | `/admin/api/my-team/:id/status` | Toggle active/inactive (self-deactivation blocked) |
+
+All endpoints use `@Roles(Role.ADMIN, Role.HOST, Role.RECEPTION)` + `getHostScope(req)` for company isolation and `@UseInterceptors(AuditInterceptor)` for audit logging.
+
+### Validation Rules
+- **Email**: Required, unique case-insensitively across all hosts (`prisma.host.findFirst`)
+- **Company cap**: Max 50 active hosts per company (`prisma.host.count`)
+- **Type**: Hardcoded `EXTERNAL` — HOST cannot create STAFF records
+- **Creator tracking**: `Host.createdById` (Int?, FK → User.id) set on create
+
+### Reception-to-Host Delegation
+RECEPTION and ADMIN users can manage sub-members on behalf of any host company by selecting a host from a searchable dropdown (`HostLookup` component). The `hostId` parameter determines company scope:
+- **POST**: `hostId` in request body (required for RECEPTION/ADMIN, ignored for HOST)
+- **GET**: `hostId` as query parameter (required for RECEPTION/ADMIN, ignored for HOST)
+- **PATCH/PATCH-status**: No `hostId` needed — target identified by `:id`
+
+`getHostScope(req)` returns `null` for RECEPTION (no `hostId` on JWT). Each endpoint has inline role-checking: HOST uses `getHostScope()`, RECEPTION/ADMIN resolves company from provided `hostId`.
+
+### Frontend Files
+- `admin/src/components/my-team/MyTeam.tsx` — Page component with host selector for RECEPTION/ADMIN, auto-scoped for HOST
+- `admin/src/services/myTeam.ts` — API service (getMyTeam, createTeamMember, updateTeamMember, toggleTeamMemberStatus) — all accept optional `hostId`
+- `admin/src/config/navigation.ts` — "My Team" nav item, `roles: ['HOST', 'RECEPTION', 'ADMIN']`
+- `admin/src/components/common/HostLookup.tsx` — Searchable host dropdown (by company and host name), reused across My Team and other forms
+
+### HostsList Component Reuse (`admin/src/components/hosts/HostsList.tsx`)
+Shared by Hosts page and My Team page. Key props:
+- `entityLabel` — Display name ("hosts" vs "team member")
+- `hideCompany` — Hides company column (My Team: same company)
+- `showActions` — Force-show edit button for non-ADMIN (default: ADMIN-only)
+- `onToggleStatus` — Renders clickable Active/Inactive status badge column
+- `showAddedBy` — Renders "Added by" column with Host/Sync/Admin badge (uses `createdById` and `externalId` fields)
+
+### Role Permissions for My Team
+- **HOST**: Add, edit, deactivate/reactivate (toggle status) — **no delete**, auto-scoped to own company
+- **RECEPTION**: Same as HOST but must select a host company first via dropdown — **no delete**
+- **ADMIN**: Full CRUD including soft delete (sets `deletedAt`), also uses host selector
+- Deactivated hosts (status=0) are excluded from all host dropdowns via `hosts.service.ts` `findAll()` filtering `status: 1`
+
 ## Critical Gotchas
 
 ### Rate Limiting
@@ -153,6 +201,12 @@ Frontend forms use different field names than Prisma schema:
 
 ### Prisma Regeneration
 After modifying `schema.prisma`, always run `npx prisma generate` before building. Works without a DB connection.
+
+### Host `createdById` Field
+`Host.createdById` (nullable FK → User.id) tracks who created a host record. Set automatically by `POST /admin/api/my-team` via `createdById: req.user?.sub`. Used by admin Hosts page "Added by" column: `createdById` present → "Host", `externalId` present → "Sync", neither → "Admin".
+
+### Audit Interceptor Entity ID Extraction
+`AuditInterceptor` extracts `entityId` from URL path segments (e.g., `/my-team/123` → `"123"`, `/my-team/123/status` → `"123"`). Entity mapping: `/visits` → Visit, `/my-team` → Host (before `/hosts`), `/hosts` → Host, `/deliveries` → Delivery, `/users` → User. Applied per-endpoint via `@UseInterceptors(AuditInterceptor)`, NOT globally.
 
 ### Kiosk Timer Types
 Use `ReturnType<typeof setTimeout>` instead of `NodeJS.Timeout` (Vite browser context, not Node).

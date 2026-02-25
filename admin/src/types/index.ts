@@ -31,6 +31,8 @@ export interface Host {
   location?: 'BARWA_TOWERS' | 'MARINA_50' | 'ELEMENT_MARIOTT';
   status?: number;
   type?: 'EXTERNAL' | 'STAFF';
+  createdById?: number;
+  externalId?: string;
   createdAt: string;
   updatedAt: string;
 }

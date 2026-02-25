@@ -77,7 +77,7 @@ export default function App() {
                     path="my-team"
                     element={
                       <Suspense fallback={<PageLoader />}>
-                        <RoleGuard allowedRoles={['HOST']}>
+                        <RoleGuard allowedRoles={['HOST', 'RECEPTION', 'ADMIN']}>
                           <MyTeam />
                         </RoleGuard>
                       </Suspense>

@@ -31,9 +31,11 @@ import * as crypto from "crypto";
 import * as XLSX from "xlsx";
 import * as fs from "fs";
 import * as path from "path";
-import { Prisma, Role } from "@prisma/client";
+import { Prisma, Role, Location } from "@prisma/client";
 import { Roles } from "../common/decorators/roles.decorator";
 import { DashboardGateway } from "../dashboard/dashboard.gateway";
+import { AuditInterceptor } from "../audit/audit.interceptor";
+import { CreateSubMemberDto } from "../hosts/dto/create-sub-member.dto";
 // csv-parse import moved to dynamic import inside method for ESM compatibility
 
 // Type for visit with host relation
@@ -4716,48 +4718,63 @@ export class AdminApiController {
 
   // ============ MY TEAM (Host Sub-Members) ============
 
-  @Roles(Role.ADMIN, Role.HOST)
+  @Roles(Role.ADMIN, Role.HOST, Role.RECEPTION)
+  @UseInterceptors(AuditInterceptor)
   @Post("my-team")
   async createTeamMember(
     @Req() req: any,
-    @Body()
-    body: {
-      name: string;
-      email: string;
-      phone?: string;
-    },
+    @Body() body: CreateSubMemberDto,
   ) {
-    // Get host scope - HOST users must have an active host record
-    const hostScope = await this.getHostScope(req);
-    if (!hostScope) {
-      throw new ForbiddenException(
-        "Only HOST users with an active host record can create team members",
-      );
-    }
+    let targetCompany: string;
+    let targetLocation: Location | null | undefined = undefined;
 
-    // Verify the host's own record is active
-    const hostRecord = await this.prisma.host.findUnique({
-      where: { id: hostScope.hostId },
-      select: { status: true },
-    });
-    if (!hostRecord || hostRecord.status !== 1) {
-      throw new ForbiddenException(
-        "Your host record is not active. Cannot create team members.",
-      );
-    }
+    // For HOST users: use their own company via getHostScope
+    if (req.user?.role === "HOST") {
+      const hostScope = await this.getHostScope(req);
+      if (!hostScope) {
+        throw new ForbiddenException(
+          "Only HOST users with an active host record can create team members",
+        );
+      }
 
-    // Validate required fields
-    if (!body.name || body.name.trim().length < 2) {
-      throw new HttpException(
-        "Name must be at least 2 characters",
-        HttpStatus.BAD_REQUEST,
-      );
+      // Verify the host's own record is active
+      const hostRecord = await this.prisma.host.findUnique({
+        where: { id: hostScope.hostId },
+        select: { status: true, location: true },
+      });
+      if (!hostRecord || hostRecord.status !== 1) {
+        throw new ForbiddenException(
+          "Your host record is not active. Cannot create team members.",
+        );
+      }
+
+      targetCompany = hostScope.company;
+      targetLocation = hostRecord.location;
     }
-    if (!body.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)) {
-      throw new HttpException(
-        "Please provide a valid email address",
-        HttpStatus.BAD_REQUEST,
-      );
+    // For RECEPTION/ADMIN: require hostId to determine company
+    else if (req.user?.role === "RECEPTION" || req.user?.role === "ADMIN") {
+      if (!body.hostId) {
+        throw new HttpException(
+          "hostId is required for RECEPTION/ADMIN users",
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const targetHost = await this.prisma.host.findUnique({
+        where: { id: BigInt(body.hostId) },
+        select: { company: true, location: true, status: true },
+      });
+      if (!targetHost || targetHost.status !== 1) {
+        throw new HttpException(
+          "Host not found or inactive",
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      targetCompany = targetHost.company;
+      targetLocation = targetHost.location;
+    } else {
+      throw new ForbiddenException("Insufficient permissions");
     }
 
     // Check for duplicate email (case-insensitive)
@@ -4777,7 +4794,7 @@ export class AdminApiController {
     // Check company member count (50 max)
     const memberCount = await this.prisma.host.count({
       where: {
-        company: hostScope.company,
+        company: targetCompany,
         status: 1,
         deletedAt: null,
       },
@@ -4789,30 +4806,24 @@ export class AdminApiController {
       );
     }
 
-    // Get the host's location to auto-populate
-    const hostWithLocation = await this.prisma.host.findUnique({
-      where: { id: hostScope.hostId },
-      select: { location: true },
-    });
-
     // Create the sub-member host record
     const subMember = await this.prisma.host.create({
       data: {
         name: body.name.trim(),
         email: body.email.toLowerCase().trim(),
         phone: body.phone?.trim() || null,
-        company: hostScope.company,
-        location: hostWithLocation?.location || null,
+        company: targetCompany,
+        location: targetLocation,
         type: "EXTERNAL",
         status: 1,
-        createdById: req.user.sub,
+        createdById: req.user?.sub ?? undefined,
       },
     });
 
     return subMember;
   }
 
-  @Roles(Role.ADMIN, Role.HOST)
+  @Roles(Role.ADMIN, Role.HOST, Role.RECEPTION)
   @Get("my-team")
   async getMyTeam(
     @Req() req: any,
@@ -4820,12 +4831,44 @@ export class AdminApiController {
     @Query("limit") limit = "10",
     @Query("search") search?: string,
     @Query("status") status?: string,
+    @Query("hostId") hostId?: string,
   ) {
-    const hostScope = await this.getHostScope(req);
-    if (!hostScope) {
-      throw new ForbiddenException(
-        "Only HOST users can view their team members",
-      );
+    let targetCompany: string;
+
+    // For HOST users: use their own company via getHostScope
+    if (req.user?.role === "HOST") {
+      const hostScope = await this.getHostScope(req);
+      if (!hostScope) {
+        throw new ForbiddenException(
+          "Only HOST users with an active host record can view team members",
+        );
+      }
+      targetCompany = hostScope.company;
+    }
+    // For RECEPTION/ADMIN: require hostId to determine company
+    else if (req.user?.role === "RECEPTION" || req.user?.role === "ADMIN") {
+      if (!hostId) {
+        throw new HttpException(
+          "hostId query parameter is required",
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      const targetHost = await this.prisma.host.findUnique({
+        where: { id: BigInt(hostId) },
+        select: { company: true, status: true, deletedAt: true },
+      });
+      if (!targetHost || targetHost.deletedAt) {
+        throw new HttpException("Host not found", HttpStatus.NOT_FOUND);
+      }
+      if (targetHost.status !== 1) {
+        throw new HttpException(
+          "Host not found or inactive",
+          HttpStatus.NOT_FOUND,
+        );
+      }
+      targetCompany = targetHost.company;
+    } else {
+      throw new ForbiddenException("Insufficient permissions");
     }
 
     const pageNum = parseInt(page, 10);
@@ -4833,7 +4876,7 @@ export class AdminApiController {
     const skip = (pageNum - 1) * limitNum;
 
     const where: Prisma.HostWhereInput = {
-      company: hostScope.company,
+      company: targetCompany,
       deletedAt: null,
     };
 
@@ -4864,7 +4907,6 @@ export class AdminApiController {
           location: true,
           status: true,
           type: true,
-          createdById: true,
           createdAt: true,
           updatedAt: true,
         },
@@ -4881,7 +4923,8 @@ export class AdminApiController {
     };
   }
 
-  @Roles(Role.ADMIN, Role.HOST)
+  @Roles(Role.ADMIN, Role.HOST, Role.RECEPTION)
+  @UseInterceptors(AuditInterceptor)
   @Patch("my-team/:id")
   async updateTeamMember(
     @Param("id") id: string,
@@ -4893,25 +4936,29 @@ export class AdminApiController {
       phone?: string;
     },
   ) {
-    const hostScope = await this.getHostScope(req);
-    if (!hostScope) {
-      throw new ForbiddenException(
-        "Only HOST users can update team members",
-      );
-    }
-
-    // Verify target host exists and belongs to same company
+    // Verify target host exists and is not soft-deleted
     const targetHost = await this.prisma.host.findUnique({
       where: { id: BigInt(id) },
     });
     if (!targetHost || targetHost.deletedAt) {
       throw new HttpException("Team member not found", HttpStatus.NOT_FOUND);
     }
-    if (targetHost.company !== hostScope.company) {
-      throw new ForbiddenException(
-        "You can only update team members in your company",
-      );
+
+    // For HOST users: verify same company restriction
+    if (req.user?.role === "HOST") {
+      const hostScope = await this.getHostScope(req);
+      if (!hostScope) {
+        throw new ForbiddenException(
+          "Only HOST users with an active host record can update team members",
+        );
+      }
+      if (targetHost.company !== hostScope.company) {
+        throw new ForbiddenException(
+          "You can only update team members in your company",
+        );
+      }
     }
+    // For RECEPTION/ADMIN: no company restriction (already have target host)
 
     // If email is being changed, check uniqueness
     if (body.email && body.email.toLowerCase() !== targetHost.email?.toLowerCase()) {
@@ -4943,40 +4990,44 @@ export class AdminApiController {
     return updated;
   }
 
-  @Roles(Role.ADMIN, Role.HOST)
+  @Roles(Role.ADMIN, Role.HOST, Role.RECEPTION)
+  @UseInterceptors(AuditInterceptor)
   @Patch("my-team/:id/status")
   async toggleTeamMemberStatus(
     @Param("id") id: string,
     @Req() req: any,
     @Body() body: { status: 0 | 1 },
   ) {
-    const hostScope = await this.getHostScope(req);
-    if (!hostScope) {
-      throw new ForbiddenException(
-        "Only HOST users can toggle team member status",
-      );
-    }
-
-    // Verify target host exists and belongs to same company
+    // Verify target host exists
     const targetHost = await this.prisma.host.findUnique({
       where: { id: BigInt(id) },
     });
     if (!targetHost) {
       throw new HttpException("Team member not found", HttpStatus.NOT_FOUND);
     }
-    if (targetHost.company !== hostScope.company) {
-      throw new ForbiddenException(
-        "You can only update team members in your company",
-      );
-    }
 
-    // Prevent self-deactivation
-    if (BigInt(id) === hostScope.hostId) {
-      throw new HttpException(
-        "Cannot deactivate your own host record",
-        HttpStatus.BAD_REQUEST,
-      );
+    // For HOST users: verify same company restriction and prevent self-deactivation
+    if (req.user?.role === "HOST") {
+      const hostScope = await this.getHostScope(req);
+      if (!hostScope) {
+        throw new ForbiddenException(
+          "Only HOST users with an active host record can toggle team member status",
+        );
+      }
+      if (targetHost.company !== hostScope.company) {
+        throw new ForbiddenException(
+          "You can only update team members in your company",
+        );
+      }
+      // Prevent self-deactivation for HOST users
+      if (BigInt(id) === hostScope.hostId) {
+        throw new HttpException(
+          "Cannot deactivate your own host record",
+          HttpStatus.BAD_REQUEST,
+        );
+      }
     }
+    // For RECEPTION/ADMIN: no company restriction or self-deactivation check (no host record)
 
     const newStatus = body.status;
     await this.prisma.host.update({
