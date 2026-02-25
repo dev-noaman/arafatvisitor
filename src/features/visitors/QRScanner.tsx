@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "sonner"
 import { CheckCircle2, Scan, ArrowRight, ArrowLeft } from "lucide-react"
-import { getVisit, checkinVisit, checkoutVisit, getAuthToken } from "@/lib/api"
+import { getVisit, checkinVisit, checkoutVisit, getAuthToken, getApiBase } from "@/lib/api"
 
 type QRScannerMode = "checkin" | "checkout"
 
@@ -29,21 +29,31 @@ export function QRScanner(props: { mode?: QRScannerMode; onBack?: () => void; on
 
   const onScanSuccess = async () => {
     if (!result) return
-    const configRaw = sessionStorage.getItem("vms_config")
-    const config = configRaw ? JSON.parse(configRaw) : {}
     if (mode === "checkout") {
-      if (config.apiBase && getAuthToken()) {
+      if (getApiBase() && getAuthToken()) {
         try {
           await checkoutVisit(result)
           toast.success("Visitor checked out successfully")
+          props.onCheckedOut?.(result)
+          return
         } catch (e) {
           toast.error("Check-out failed", { description: (e as Error).message })
           return
         }
-      } else {
-        toast.success("Visitor checked out")
       }
+      toast.success("Visitor checked out")
     } else {
+      // Check-in: attempt API call and navigate to badge when possible
+      if (getApiBase() && getAuthToken() && props.onCheckedIn) {
+        try {
+          await checkinVisit(result)
+          props.onCheckedIn(result)
+          return
+        } catch (e) {
+          toast.error("Check-in failed", { description: (e as Error).message })
+          return
+        }
+      }
       toast.success("Visitor verified", { description: "Check-in confirmed." })
     }
     setResult(null)
@@ -65,8 +75,8 @@ export function QRScanner(props: { mode?: QRScannerMode; onBack?: () => void; on
         sessionId = raw
       }
 
-      // Auto check-in flow for checkin mode
-      if (mode === "checkin" && props.onCheckedIn && getAuthToken()) {
+      // Auto check-in flow for checkin mode (requires API config + auth)
+      if (mode === "checkin" && props.onCheckedIn && getApiBase() && getAuthToken()) {
         setAutoProcessing(true)
         try {
           await checkinVisit(sessionId)
@@ -79,8 +89,8 @@ export function QRScanner(props: { mode?: QRScannerMode; onBack?: () => void; on
         return
       }
 
-      // Auto check-out flow for checkout mode
-      if (mode === "checkout" && props.onCheckedOut && getAuthToken()) {
+      // Auto check-out flow for checkout mode (requires API config + auth)
+      if (mode === "checkout" && props.onCheckedOut && getApiBase() && getAuthToken()) {
         setAutoProcessing(true)
         try {
           await checkoutVisit(sessionId)

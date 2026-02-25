@@ -54,7 +54,7 @@ function getConfig() {
   return raw ? JSON.parse(raw) : null
 }
 
-function getApiBase(): string | null {
+export function getApiBase(): string | null {
   // Use environment variable first, then sessionStorage config
   const envBase = import.meta.env.VITE_API_BASE
   if (envBase) return envBase
@@ -90,6 +90,24 @@ export function setAuthToken(token: string | null) {
   }
 }
 
+const FETCH_TIMEOUT_MS = 10000
+
+/** Fetch with timeout to avoid hanging on slow/unreachable servers */
+async function fetchWithTimeout(
+  url: string,
+  options: RequestInit & { timeout?: number } = {}
+): Promise<Response> {
+  const { timeout = FETCH_TIMEOUT_MS, ...fetchOptions } = options
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), timeout)
+  try {
+    const res = await fetch(url, { ...fetchOptions, signal: controller.signal })
+    return res
+  } finally {
+    clearTimeout(timeoutId)
+  }
+}
+
 /** Validate stored token by fetching the user profile. Returns role if valid, null otherwise. */
 export async function validateSession(): Promise<{ role: string } | null> {
   const token = getAuthToken()
@@ -99,8 +117,9 @@ export async function validateSession(): Promise<{ role: string } | null> {
   if (!base) return null
 
   try {
-    const res = await fetch(`${base}/admin/api/profile`, {
+    const res = await fetchWithTimeout(`${base}/admin/api/profile`, {
       headers: { Authorization: `Bearer ${token}` },
+      timeout: 6000,
     })
     if (!res.ok) {
       setAuthToken(null)
@@ -168,7 +187,7 @@ async function apiFetch<T>(endpoint: string, options: RequestInit = {}, retryCou
   }
 
   const maxRetries = 3
-  const retryDelays = [1000, 3000, 5000] // Exponential backoff: 1s, 3s, 5s
+  const retryDelays = [800, 2000, 4000] // Backoff on network errors
 
   try {
     // Check if browser is online
@@ -176,7 +195,11 @@ async function apiFetch<T>(endpoint: string, options: RequestInit = {}, retryCou
       throw new Error('Network is offline. Please check your connection.')
     }
 
-    const res = await fetch(`${base}${endpoint}`, { ...options, headers })
+    const res = await fetchWithTimeout(`${base}${endpoint}`, {
+      ...options,
+      headers,
+      timeout: FETCH_TIMEOUT_MS,
+    })
     if (!res.ok) {
       const error = await res.json().catch(() => ({ message: res.statusText }))
       throw new Error(error.message || 'Request failed')

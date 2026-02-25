@@ -20,7 +20,7 @@ interface UsersListProps {
   onToggleStatus?: (user: User) => void
 }
 
-const ROLES: UserRole[] = ['ADMIN', 'RECEPTION', 'HOST']
+const ROLES: UserRole[] = ['ADMIN', 'RECEPTION', 'HOST', 'STAFF']
 const STATUSES: UserStatus[] = ['ACTIVE', 'INACTIVE']
 
 export default function UsersList({

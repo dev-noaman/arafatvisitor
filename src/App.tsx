@@ -71,17 +71,29 @@ function App() {
     onWarning: handleIdleWarning,
   })
 
-  // Restore session from stored token on mount
+  // Restore session from stored token on mount (with timeout to avoid endless loading)
   useEffect(() => {
-    if (!getAuthToken()) return
-    validateSession().then((result) => {
-      if (result) {
-        const r = (result.role === "admin" || result.role === "reception" ? result.role : "admin") as Role
-        setIsLoggedIn(true)
-        setRole(r)
-      }
+    if (!getAuthToken()) {
       setRestoring(false)
-    })
+      return
+    }
+    const timeout = 8000
+    const timeoutPromise = new Promise<null>((_, reject) =>
+      setTimeout(() => reject(new Error("Session validation timed out")), timeout)
+    )
+    Promise.race([validateSession(), timeoutPromise])
+      .then((result) => {
+        if (result) {
+          const r = (result.role === "admin" || result.role === "reception" ? result.role : "admin") as Role
+          setIsLoggedIn(true)
+          setRole(r)
+        }
+      })
+      .catch(() => {
+        setAuthToken(null)
+        localStorage.removeItem("vms_token")
+      })
+      .finally(() => setRestoring(false))
   }, [])
 
   useEffect(() => {
