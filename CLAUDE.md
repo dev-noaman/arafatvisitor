@@ -1,3 +1,6 @@
+﻿> ⚠️ BEFORE writing any code, read `read/INSTRUCTIONS.md` and follow its rules.
+
+
 # CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
@@ -154,18 +157,35 @@ After modifying `schema.prisma`, always run `npx prisma generate` before buildin
 ### Kiosk Timer Types
 Use `ReturnType<typeof setTimeout>` instead of `NodeJS.Timeout` (Vite browser context, not Node).
 
+### Admin Users List — STAFF in Role Filter
+`admin/src/components/users/UsersList.tsx` ROLES array must include `'STAFF'` — otherwise staff users are hidden when filtering by role. Current: `['ADMIN', 'RECEPTION', 'HOST', 'STAFF']`.
+
+### Kiosk CORS & API Base (www vs non-www)
+When users visit `https://www.arafatvisitor.cloud` but the build's `VITE_API_BASE` points to `https://arafatvisitor.cloud`, fetches are cross-origin → CORS blocks them (login, hosts, lookups fail). Fix:
+1. **Backend** (`main.ts`): CORS `origin` MUST include both `https://arafatvisitor.cloud` and `https://www.arafatvisitor.cloud`.
+2. **Kiosk** (`src/lib/api.ts`): `getApiBase()` prefers `VITE_API_BASE` (build-time), then `sessionStorage.vms_config.apiBase`. Use `window.location.origin` when not localhost so production stays same-origin.
+3. **main.tsx** default vms_config: Uses `window.location.origin` for apiBase when hostname is NOT localhost (production). On localhost, uses `http://localhost:3000`.
+4. **Hosts/Lookups**: CheckInRegister, WalkInForm, DeliveryForm fetch hosts and lookups on mount. Show toast on failure (`toast.error("Could not load hosts", ...)`) so users get feedback instead of empty dropdowns.
+
+### Kiosk Login & Session Restore (avoid endless loading)
+- **Session restore** (`App.tsx`): 8s timeout; always calls `setRestoring(false)` via `.finally()`. On timeout/reject, clears token so login form appears.
+- **apiFetch** (`src/lib/api.ts`): `fetchWithTimeout` with 10s default; validateSession uses 6s timeout. Network retries: 800ms, 2s, 4s (not 1s/3s/5s).
+- **Restoring state bug**: If `validateSession()` hangs or rejects, `setRestoring(false)` must still run — use `.catch().finally()`.
+
 ## Deployment
 
 - **CI/CD**: GitHub Actions (`.github/workflows/deploy.yml` for VPS, `build.yml` for mobile APK/IPA)
 - **Production**: PM2 process on VPS, Nginx reverse proxy with Let's Encrypt SSL
-- **Domain**: arafatvisitor.cloud
-- **Nginx routes**: `/api/*`, `/admin`, `/socket.io` → backend:3000; `/` → kiosk static files
+- **Domain**: arafatvisitor.cloud (and www.arafatvisitor.cloud — both must work; CORS allows both)
+- **Nginx routes**: `/api/*`, `/admin`, `/hosts`, `/visits`, `/deliveries`, `/lookups`, `/health`, `/socket.io` → backend:3000; `/` → kiosk static files
 
 ## QR Check-In/Out Flow (Kiosk)
-1. Scan QR → GET `/visits/:sessionId` (public, no auth) to fetch visit data
-2. POST `/visits/:sessionId/checkin` or `/checkout` (requires ADMIN/RECEPTION auth)
-3. Full-screen badge component with 5-second countdown → auto-navigate home
-4. Badge `onComplete` callback must use `useRef` pattern to avoid re-render loop from App.tsx clock
+1. Scan QR → fetches visit; auto check-in/out requires `getApiBase()` AND `getAuthToken()` (both truthy)
+2. If no token/API: shows manual "Confirm Check-in" / "Clock Out Visitor" — clicking performs API call and navigates to badge
+3. POST `/visits/:sessionId/checkin` or `/checkout` (requires ADMIN/RECEPTION auth)
+4. Full-screen CheckInBadge/CheckOutBadge with 5-second countdown → auto-navigate home
+5. Badge `onComplete` callback must use `useRef` pattern to avoid re-render loop from App.tsx clock
+6. **QRScanner** (`src/features/visitors/QRScanner.tsx`): `decodePayload` checks `getApiBase() && getAuthToken()` for auto flow; `onScanSuccess` also attempts API + `onCheckedIn`/`onCheckedOut` when user clicks Confirm
 
 ## OfficeRND Integration
 Hourly cron in `backend/src/tasks/officernd-sync.service.ts` syncs external hosts. Only inserts NEW companies, never updates existing. Phone cleaning: strips formatting, adds country prefixes (974 for Qatar 8-digit, 2 for Egypt 11-digit).

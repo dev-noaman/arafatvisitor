@@ -26,6 +26,7 @@ model User {
   auditLogs      AuditLog[]
   checkEvents    CheckEvent[]
   refreshTokens  RefreshToken[]
+  createdHosts   Host[]              @relation("CreatedHosts")
 }
 
 enum Role {
@@ -56,19 +57,22 @@ model RefreshToken {
 
 // ============ HOSTS ============
 model Host {
-  id         BigInt     @id @default(autoincrement())
-  externalId String?    @unique
-  name       String     @db.VarChar(100)
-  company    String     @db.VarChar(100)
-  email      String?    @db.VarChar(100)
-  location   Location?
-  phone      String?    @db.VarChar(191)
-  status     Int        @default(1) @db.SmallInt
-  deletedAt  DateTime?
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
+  id           BigInt     @id @default(autoincrement())
+  externalId   String?    @unique
+  name         String     @db.VarChar(100)
+  company      String     @db.VarChar(100)
+  email        String?    @db.VarChar(100)
+  location     Location?
+  phone        String?    @db.VarChar(191)
+  status       Int        @default(1) @db.SmallInt
+  deletedAt    DateTime?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 
-  type       HostType  @default(EXTERNAL)
+  type         HostType  @default(EXTERNAL)
+
+  createdById  Int?                                  // User who created this host (for sub-members)
+  createdBy    User?     @relation("CreatedHosts", fields: [createdById], references: [id])
 
   visits     Visit[]
   deliveries Delivery[]
@@ -79,6 +83,7 @@ model Host {
   @@index([status, location])
   @@index([type])
   @@index([type, status])
+  @@index([createdById])
 }
 
 enum Location {

@@ -79,6 +79,14 @@ export async function del<T>(endpoint: string): Promise<T> {
   return apiRequest<T>(endpoint, { method: 'DELETE' });
 }
 
+// PATCH request
+export async function patch<T>(endpoint: string, data?: unknown): Promise<T> {
+  return apiRequest<T>(endpoint, {
+    method: 'PATCH',
+    body: data ? JSON.stringify(data) : undefined,
+  });
+}
+
 // Upload file (multipart/form-data)
 export async function upload<T>(endpoint: string, formData: FormData): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
@@ -121,6 +129,7 @@ export const api = {
   get,
   post,
   put,
+  patch,
   del,
   delete: del,
   upload,

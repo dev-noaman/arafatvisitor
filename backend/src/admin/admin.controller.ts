@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Put,
+  Patch,
   Delete,
   Body,
   Param,
@@ -4711,6 +4712,284 @@ export class AdminApiController {
       orderBy: { sortOrder: "asc" },
     });
     return locations;
+  }
+
+  // ============ MY TEAM (Host Sub-Members) ============
+
+  @Roles(Role.ADMIN, Role.HOST)
+  @Post("my-team")
+  async createTeamMember(
+    @Req() req: any,
+    @Body()
+    body: {
+      name: string;
+      email: string;
+      phone?: string;
+    },
+  ) {
+    // Get host scope - HOST users must have an active host record
+    const hostScope = await this.getHostScope(req);
+    if (!hostScope) {
+      throw new ForbiddenException(
+        "Only HOST users with an active host record can create team members",
+      );
+    }
+
+    // Verify the host's own record is active
+    const hostRecord = await this.prisma.host.findUnique({
+      where: { id: hostScope.hostId },
+      select: { status: true },
+    });
+    if (!hostRecord || hostRecord.status !== 1) {
+      throw new ForbiddenException(
+        "Your host record is not active. Cannot create team members.",
+      );
+    }
+
+    // Validate required fields
+    if (!body.name || body.name.trim().length < 2) {
+      throw new HttpException(
+        "Name must be at least 2 characters",
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    if (!body.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)) {
+      throw new HttpException(
+        "Please provide a valid email address",
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    // Check for duplicate email (case-insensitive)
+    const existingHost = await this.prisma.host.findFirst({
+      where: {
+        email: { equals: body.email.toLowerCase(), mode: "insensitive" },
+        deletedAt: null,
+      },
+    });
+    if (existingHost) {
+      throw new HttpException(
+        "Email already exists as a host contact",
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    // Check company member count (50 max)
+    const memberCount = await this.prisma.host.count({
+      where: {
+        company: hostScope.company,
+        status: 1,
+        deletedAt: null,
+      },
+    });
+    if (memberCount >= 50) {
+      throw new HttpException(
+        "Company member limit reached (50 maximum)",
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    // Get the host's location to auto-populate
+    const hostWithLocation = await this.prisma.host.findUnique({
+      where: { id: hostScope.hostId },
+      select: { location: true },
+    });
+
+    // Create the sub-member host record
+    const subMember = await this.prisma.host.create({
+      data: {
+        name: body.name.trim(),
+        email: body.email.toLowerCase().trim(),
+        phone: body.phone?.trim() || null,
+        company: hostScope.company,
+        location: hostWithLocation?.location || null,
+        type: "EXTERNAL",
+        status: 1,
+        createdById: req.user.sub,
+      },
+    });
+
+    return subMember;
+  }
+
+  @Roles(Role.ADMIN, Role.HOST)
+  @Get("my-team")
+  async getMyTeam(
+    @Req() req: any,
+    @Query("page") page = "1",
+    @Query("limit") limit = "10",
+    @Query("search") search?: string,
+    @Query("status") status?: string,
+  ) {
+    const hostScope = await this.getHostScope(req);
+    if (!hostScope) {
+      throw new ForbiddenException(
+        "Only HOST users can view their team members",
+      );
+    }
+
+    const pageNum = parseInt(page, 10);
+    const limitNum = parseInt(limit, 10);
+    const skip = (pageNum - 1) * limitNum;
+
+    const where: Prisma.HostWhereInput = {
+      company: hostScope.company,
+      deletedAt: null,
+    };
+
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: "insensitive" } },
+        { email: { contains: search, mode: "insensitive" } },
+        { phone: { contains: search, mode: "insensitive" } },
+      ];
+    }
+
+    if (status !== undefined) {
+      where.status = parseInt(status, 10);
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.host.findMany({
+        where,
+        skip,
+        take: limitNum,
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          company: true,
+          location: true,
+          status: true,
+          type: true,
+          createdById: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      }),
+      this.prisma.host.count({ where }),
+    ]);
+
+    return {
+      data,
+      total,
+      page: pageNum,
+      limit: limitNum,
+      totalPages: Math.ceil(total / limitNum),
+    };
+  }
+
+  @Roles(Role.ADMIN, Role.HOST)
+  @Patch("my-team/:id")
+  async updateTeamMember(
+    @Param("id") id: string,
+    @Req() req: any,
+    @Body()
+    body: {
+      name?: string;
+      email?: string;
+      phone?: string;
+    },
+  ) {
+    const hostScope = await this.getHostScope(req);
+    if (!hostScope) {
+      throw new ForbiddenException(
+        "Only HOST users can update team members",
+      );
+    }
+
+    // Verify target host exists and belongs to same company
+    const targetHost = await this.prisma.host.findUnique({
+      where: { id: BigInt(id) },
+    });
+    if (!targetHost || targetHost.deletedAt) {
+      throw new HttpException("Team member not found", HttpStatus.NOT_FOUND);
+    }
+    if (targetHost.company !== hostScope.company) {
+      throw new ForbiddenException(
+        "You can only update team members in your company",
+      );
+    }
+
+    // If email is being changed, check uniqueness
+    if (body.email && body.email.toLowerCase() !== targetHost.email?.toLowerCase()) {
+      const existingHost = await this.prisma.host.findFirst({
+        where: {
+          email: { equals: body.email.toLowerCase(), mode: "insensitive" },
+          deletedAt: null,
+          id: { not: BigInt(id) },
+        },
+      });
+      if (existingHost) {
+        throw new HttpException(
+          "Email already exists as a host contact",
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+    }
+
+    const updateData: Prisma.HostUpdateInput = {};
+    if (body.name !== undefined) updateData.name = body.name.trim();
+    if (body.email !== undefined) updateData.email = body.email.toLowerCase().trim();
+    if (body.phone !== undefined) updateData.phone = body.phone?.trim() || null;
+
+    const updated = await this.prisma.host.update({
+      where: { id: BigInt(id) },
+      data: updateData,
+    });
+
+    return updated;
+  }
+
+  @Roles(Role.ADMIN, Role.HOST)
+  @Patch("my-team/:id/status")
+  async toggleTeamMemberStatus(
+    @Param("id") id: string,
+    @Req() req: any,
+    @Body() body: { status: 0 | 1 },
+  ) {
+    const hostScope = await this.getHostScope(req);
+    if (!hostScope) {
+      throw new ForbiddenException(
+        "Only HOST users can toggle team member status",
+      );
+    }
+
+    // Verify target host exists and belongs to same company
+    const targetHost = await this.prisma.host.findUnique({
+      where: { id: BigInt(id) },
+    });
+    if (!targetHost) {
+      throw new HttpException("Team member not found", HttpStatus.NOT_FOUND);
+    }
+    if (targetHost.company !== hostScope.company) {
+      throw new ForbiddenException(
+        "You can only update team members in your company",
+      );
+    }
+
+    // Prevent self-deactivation
+    if (BigInt(id) === hostScope.hostId) {
+      throw new HttpException(
+        "Cannot deactivate your own host record",
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const newStatus = body.status;
+    await this.prisma.host.update({
+      where: { id: BigInt(id) },
+      data: { status: newStatus },
+    });
+
+    return {
+      id,
+      name: targetHost.name,
+      status: newStatus,
+      message: newStatus === 0 ? "Team member deactivated" : "Team member reactivated",
+    };
   }
 
   // ============ HELPER METHODS ============
