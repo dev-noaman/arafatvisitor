@@ -1,11 +1,7 @@
 name: Build APK & IPA (Mobile)
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
-  workflow_dispatch:
+  workflow_dispatch:  # manual only; push to main does not trigger this
 
 jobs:
   lint-and-test:
