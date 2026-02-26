@@ -19,6 +19,7 @@ import { LookupsModule } from "./lookups/lookups.module";
 import { DashboardModule } from "./dashboard/dashboard.module";
 import { HealthModule } from "./health/health.module";
 import { TasksModule } from "./tasks/tasks.module";
+import { TicketsModule } from "./tickets/tickets.module";
 import { JwtAuthGuard } from "./common/guards/jwt-auth.guard";
 import { RolesGuard } from "./common/guards/roles.guard";
 
@@ -59,6 +60,7 @@ import { RolesGuard } from "./common/guards/roles.guard";
     DashboardModule,
     HealthModule,
     TasksModule,
+    TicketsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

@@ -289,3 +289,93 @@ export interface DateRange {
   startDate: Date;
   endDate: Date;
 }
+
+// ============ TICKET TYPES ============
+
+export type TicketType = 'SUGGESTION' | 'COMPLAINT';
+
+export type TicketStatus =
+  | 'SUBMITTED'
+  | 'REVIEWED'
+  | 'DISMISSED'
+  | 'OPEN'
+  | 'IN_PROGRESS'
+  | 'RESOLVED'
+  | 'CLOSED'
+  | 'REJECTED';
+
+export type TicketPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+
+export type TicketCategory =
+  | 'IT_ISSUE'
+  | 'FACILITY_ISSUE'
+  | 'VISITOR_SYSTEM_BUG'
+  | 'SERVICE_QUALITY'
+  | 'OTHER';
+
+export interface TicketUser {
+  id: number;
+  name: string;
+  role?: string;
+}
+
+export interface Ticket {
+  id: number;
+  ticketNumber: string;
+  type: TicketType;
+  subject: string;
+  description?: string;
+  status: TicketStatus;
+  priority: TicketPriority | null;
+  category: TicketCategory | null;
+  resolution: string | null;
+  rejectionReason: string | null;
+  createdBy: TicketUser;
+  assignedTo: TicketUser | null;
+  relatedVisit: { id: string; sessionId: string } | null;
+  relatedDelivery: { id: string } | null;
+  comments?: TicketComment[];
+  attachments?: TicketAttachment[];
+  _count?: { comments: number; attachments: number };
+  createdAt: string;
+  updatedAt: string;
+  resolvedAt: string | null;
+  closedAt: string | null;
+}
+
+export interface TicketComment {
+  id: number;
+  message: string;
+  isInternal: boolean;
+  user: TicketUser;
+  createdAt: string;
+}
+
+export interface TicketAttachment {
+  id: number;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+  uploadedBy: { id: number; name: string };
+  createdAt: string;
+}
+
+export interface TicketFormData {
+  type: TicketType;
+  subject: string;
+  description: string;
+  category?: TicketCategory;
+  priority?: TicketPriority;
+  relatedVisitId?: string;
+  relatedDeliveryId?: string;
+}
+
+export interface TicketStats {
+  openComplaints: number;
+  inProgressComplaints: number;
+  urgentComplaints: number;
+  unassignedComplaints: number;
+  pendingSuggestions: number;
+  resolvedThisWeek: number;
+  averageResolutionHours: number;
+}

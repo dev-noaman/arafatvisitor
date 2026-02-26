@@ -21,9 +21,12 @@ import {
   ReceivedDelivery,
   CurrentVisitor,
 } from '@/services/dashboard'
+import { getTicketStats } from '@/services/tickets'
+import type { TicketStats } from '@/types'
 
 export default function Dashboard() {
   const { user } = useAuth()
+  const isAdmin = user?.role === 'ADMIN'
   const { error: showError } = useToast()
 
   // State for KPIs
@@ -43,6 +46,10 @@ export default function Dashboard() {
   const [visitors, setVisitors] = useState<CurrentVisitor[]>([])
   const [visitorsLoading, setVisitorsLoading] = useState(true)
 
+  // State for ticket stats (ADMIN only)
+  const [ticketStats, setTicketStats] = useState<TicketStats | null>(null)
+  const [ticketStatsLoading, setTicketStatsLoading] = useState(false)
+
   // Fetch all dashboard data
   const fetchDashboardData = useCallback(async () => {
     setLoadError(null)
@@ -50,18 +57,25 @@ export default function Dashboard() {
     setApprovalsLoading(true)
     setDeliveriesLoading(true)
     setVisitorsLoading(true)
+    if (isAdmin) setTicketStatsLoading(true)
     try {
-      const [kpisData, approvalsData, deliveriesData, visitorsData] = await Promise.all([
+      const promises: Promise<any>[] = [
         getKpis(),
         getPendingApprovals(),
         getReceivedDeliveries(),
         getCurrentVisitors(),
-      ])
+      ]
+      if (isAdmin) {
+        promises.push(getTicketStats().catch(() => null))
+      }
+
+      const [kpisData, approvalsData, deliveriesData, visitorsData, ticketStatsData] = await Promise.all(promises)
 
       setKpis(kpisData)
       setApprovals(approvalsData)
       setDeliveries(deliveriesData)
       setVisitors(visitorsData)
+      if (isAdmin && ticketStatsData) setTicketStats(ticketStatsData)
     } catch (error: unknown) {
       setLoadError('Failed to load dashboard data. Please check your connection and try again.')
       showError(error instanceof Error ? error.message : 'Failed to load dashboard data')
@@ -70,8 +84,9 @@ export default function Dashboard() {
       setApprovalsLoading(false)
       setDeliveriesLoading(false)
       setVisitorsLoading(false)
+      if (isAdmin) setTicketStatsLoading(false)
     }
-  }, [showError])
+  }, [showError, isAdmin])
 
   // Set up WebSocket connection and event listeners
   const handleDashboardEvent = useCallback(
@@ -165,6 +180,101 @@ export default function Dashboard() {
           }
         />
       </div>
+
+      {/* Ticket Overview (ADMIN only) */}
+      {isAdmin && (
+        <div className="space-y-3">
+          <h2 className="text-lg font-semibold text-gray-900">Ticket Overview</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <KpiCard
+              label="Open Complaints"
+              value={ticketStats?.openComplaints ?? 0}
+              isLoading={ticketStatsLoading}
+              bgColor="bg-white"
+              iconBgColor="bg-yellow-100"
+              icon={
+                <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              }
+            />
+            <KpiCard
+              label="In Progress"
+              value={ticketStats?.inProgressComplaints ?? 0}
+              isLoading={ticketStatsLoading}
+              bgColor="bg-white"
+              iconBgColor="bg-indigo-100"
+              icon={
+                <svg className="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              }
+            />
+            <KpiCard
+              label="Urgent"
+              value={ticketStats?.urgentComplaints ?? 0}
+              isLoading={ticketStatsLoading}
+              bgColor="bg-white"
+              iconBgColor="bg-red-100"
+              icon={
+                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
+                </svg>
+              }
+            />
+            <KpiCard
+              label="Unassigned"
+              value={ticketStats?.unassignedComplaints ?? 0}
+              isLoading={ticketStatsLoading}
+              bgColor="bg-white"
+              iconBgColor="bg-gray-100"
+              icon={
+                <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              }
+            />
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <KpiCard
+              label="Pending Suggestions"
+              value={ticketStats?.pendingSuggestions ?? 0}
+              isLoading={ticketStatsLoading}
+              bgColor="bg-white"
+              iconBgColor="bg-purple-100"
+              icon={
+                <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                </svg>
+              }
+            />
+            <KpiCard
+              label="Resolved This Week"
+              value={ticketStats?.resolvedThisWeek ?? 0}
+              isLoading={ticketStatsLoading}
+              bgColor="bg-white"
+              iconBgColor="bg-green-100"
+              icon={
+                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              }
+            />
+            <KpiCard
+              label="Avg Resolution Time"
+              value={ticketStats ? `${ticketStats.averageResolutionHours}h` : '—'}
+              isLoading={ticketStatsLoading}
+              bgColor="bg-white"
+              iconBgColor="bg-blue-100"
+              icon={
+                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              }
+            />
+          </div>
+        </div>
+      )}
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

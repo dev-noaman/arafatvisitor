@@ -1,0 +1,121 @@
+# ================================================================
+# Claude Dual Profile — Speckit Workflow
+#   claude       : Opus via Claude.ai login  (all phases)
+#   s-claude     : GLM via Z.ai              (implement only)
+#   init-claude  : NEW project — creates CLAUDE.md + read/
+#   adopt-claude : EXISTING project — adds read/ only
+# ================================================================
+
+$_claudeBin      = "CLAUDE_BIN_PLACEHOLDER"
+$_claudeTemplates = "$HOME\.claude-templates"
+
+function claude {
+    param([Parameter(ValueFromRemainingArguments)][string[]]$Rest)
+    $env:CLAUDE_CONFIG_DIR = "$HOME\.claude"
+    & $_claudeBin @Rest
+}
+
+function s-claude {
+    param([Parameter(ValueFromRemainingArguments)][string[]]$Rest)
+    $env:CLAUDE_CONFIG_DIR = "$HOME\.claude-glm"
+    & $_claudeBin @Rest
+}
+
+function init-claude {
+    # Copy CLAUDE.md + read/ + project-context.md into current project (NEW projects only)
+    if (-not (Test-Path $_claudeTemplates)) {
+        Write-Host "  [!!] Templates not found at $_claudeTemplates" -ForegroundColor Red
+        Write-Host "  [..] Re-run Setup-ClaudeGLM.ps1 to restore them." -ForegroundColor Yellow
+        return
+    }
+
+    if (Test-Path ".\CLAUDE.md") {
+        Write-Host ""
+        Write-Host "  [!!] CLAUDE.md already exists in this project." -ForegroundColor Red
+        Write-Host "  [..] Use adopt-claude instead to add read/ files without overwriting CLAUDE.md" -ForegroundColor Yellow
+        Write-Host ""
+        return
+    }
+
+    Copy-Item "$_claudeTemplates\CLAUDE.md" -Destination ".\CLAUDE.md" -Force
+    New-Item -ItemType Directory -Force -Path ".\read" | Out-Null
+    Copy-Item "$_claudeTemplates\project-context.md" -Destination ".\read\project-context.md" -Force
+    Copy-Item "$_claudeTemplates\rules\*" -Destination ".\read\" -Force
+
+    Write-Host ""
+    Write-Host "  Claude memory initialized in current project:" -ForegroundColor Green
+    Write-Host "  CLAUDE.md                <- entry point"              -ForegroundColor Yellow
+    Write-Host "  read/project-context.md  <- fill in your stack + conventions" -ForegroundColor Cyan
+    Write-Host "  read/workflow.md"        -ForegroundColor Yellow
+    Write-Host "  read/speckit.md"         -ForegroundColor Yellow
+    Write-Host "  read/code-quality.md"    -ForegroundColor Yellow
+    Write-Host "  read/verification.md"    -ForegroundColor Yellow
+    Write-Host "  read/lessons.md          <- grows over time" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "  Next: fill in read/project-context.md then run new-speckit" -ForegroundColor Cyan
+    Write-Host ""
+}
+
+function adopt-claude {
+    # Add read/ workflow files to an EXISTING project that already has CLAUDE.md
+    # Does NOT touch CLAUDE.md — only adds read/ directory with workflow rules
+    if (-not (Test-Path $_claudeTemplates)) {
+        Write-Host "  [!!] Templates not found at $_claudeTemplates" -ForegroundColor Red
+        Write-Host "  [..] Re-run Setup-ClaudeGLM.ps1 to restore them." -ForegroundColor Yellow
+        return
+    }
+
+    New-Item -ItemType Directory -Force -Path ".\read" | Out-Null
+
+    # Copy workflow files to read/
+    Copy-Item "$_claudeTemplates\rules\workflow.md"     -Destination ".\read\workflow.md"     -Force
+    Copy-Item "$_claudeTemplates\rules\speckit.md"      -Destination ".\read\speckit.md"      -Force
+    Copy-Item "$_claudeTemplates\rules\code-quality.md" -Destination ".\read\code-quality.md" -Force
+    Copy-Item "$_claudeTemplates\rules\verification.md" -Destination ".\read\verification.md" -Force
+
+    # Only create lessons.md if it doesn't exist (preserve existing)
+    if (-not (Test-Path ".\read\lessons.md")) {
+        Copy-Item "$_claudeTemplates\rules\lessons.md" -Destination ".\read\lessons.md" -Force
+    }
+
+    # Only create project-context.md if it doesn't exist
+    if (-not (Test-Path ".\read\project-context.md")) {
+        Copy-Item "$_claudeTemplates\project-context.md" -Destination ".\read\project-context.md" -Force
+        $contextMsg = "  read/project-context.md  <- CREATED — fill in your stack + conventions"
+        $contextColor = "Cyan"
+    } else {
+        $contextMsg = "  read/project-context.md  <- already exists, skipped"
+        $contextColor = "DarkGray"
+    }
+
+    # Inject reference line into existing CLAUDE.md if not already there
+    if (Test-Path ".\CLAUDE.md") {
+        $claudeContent = Get-Content ".\CLAUDE.md" -Raw
+        $refLine = '> :clipboard: BEFORE writing any code, read the relevant files in read/ directory. See reference table below or in read/workflow.md.'
+        if (-not $claudeContent.Contains("read/")) {
+            $newContent = "$refLine`n`n$claudeContent"
+            Set-Content ".\CLAUDE.md" $newContent -Encoding UTF8
+            $claudeMsg = "  CLAUDE.md                <- reference line INJECTED at top"
+            $claudeColor = "Green"
+        } else {
+            $claudeMsg = "  CLAUDE.md                <- already references read/, skipped"
+            $claudeColor = "DarkGray"
+        }
+    } else {
+        $claudeMsg = "  CLAUDE.md                <- NOT FOUND (create manually or run init-claude)"
+        $claudeColor = "Red"
+    }
+
+    Write-Host ""
+    Write-Host "  Workflow adopted into existing project:" -ForegroundColor Green
+    Write-Host $claudeMsg   -ForegroundColor $claudeColor
+    Write-Host $contextMsg  -ForegroundColor $contextColor
+    Write-Host "  read/workflow.md         <- Direct vs Speckit modes"    -ForegroundColor Yellow
+    Write-Host "  read/speckit.md          <- phase instructions"         -ForegroundColor Yellow
+    Write-Host "  read/code-quality.md     <- review checklist"           -ForegroundColor Yellow
+    Write-Host "  read/verification.md     <- done criteria"              -ForegroundColor Yellow
+    Write-Host "  read/lessons.md          <- grows over time"            -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "  Your existing CLAUDE.md is preserved. Run new-speckit to start a feature." -ForegroundColor Cyan
+    Write-Host ""
+}

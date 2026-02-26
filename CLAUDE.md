@@ -166,14 +166,14 @@ RECEPTION and ADMIN users can manage sub-members on behalf of any host company. 
 - `hideCompany` — Hides company column (My Team: same company)
 - `showActions` — Force-show edit button for non-ADMIN (default: ADMIN-only)
 - `onToggleStatus` — Renders clickable Active/Inactive status badge column
-- `showAddedBy` — Renders "Added by" column with Host/Sync/Admin badge (uses `createdById` and `externalId` fields)
+- `showAddedBy` — Renders "Added by" column with Host/Sync/Admin badge (optional; Hosts page omits it)
 - `onManageTeam` — Callback for "Manage Team" button click (receives Host object)
 - `showTeamAction` — Shows team management button (purple icon) when true
 
 ### Role Permissions for My Team
 - **HOST**: Add, edit, deactivate/reactivate (toggle status) — **no delete**, auto-scoped to own company
 - **RECEPTION**: Same as HOST but manages team via modal from Hosts page — **no delete**
-- **ADMIN**: Full CRUD including soft delete (sets `deletedAt``)
+- **ADMIN**: Full CRUD including soft delete (sets `deletedAt`)
 - Deactivated hosts (status=0) are excluded from all host dropdowns via `hosts.service.ts` `findAll()` filtering `status: 1`
 
 ## Critical Gotchas
@@ -187,6 +187,16 @@ Without this, the login-account limit (5 req/15min) blocks ALL endpoints after 5
 
 ### Visit Response Format
 All visit endpoints MUST return nested `visitor: { name, company, phone, email }` — NOT flat fields like `visitorName`. Frontend `VisitSession` type and `matchesQuery()` depend on the nested structure.
+
+### Admin Login 401 Handling
+`admin/src/services/api.ts`: AUTH_ENDPOINTS (`/admin/api/login`, `/admin/api/token-login`) return 401 for invalid credentials or expired token — do NOT trigger `handleSessionExpired()`. Only non-auth 401s redirect to login with "session expired" message.
+
+### Admin Forms: Searchable Dropdowns
+- **SearchableSelect** (`admin/src/components/common/SearchableSelect.tsx`) — Type-to-search autocomplete for dropdowns
+- **Visitors** (`VisitForm`): Company → Host/Contact Person (two-step), Purpose — all searchable
+- **Pre Register** (`PreRegistrationForm`): Company → Host/Contact Person (two-step) — searchable
+- **Deliveries** (`DeliveryForm`): Type of Delivery, Courier — searchable; Host uses HostLookup (already searchable)
+- **HostLocationType** in `admin/src/types/index.ts` — shared type for host location (BARWA_TOWERS, MARINA_50, ELEMENT_MARIOTT)
 
 ### Field Aliasing (Common 500 Error Source)
 Frontend forms use different field names than Prisma schema:

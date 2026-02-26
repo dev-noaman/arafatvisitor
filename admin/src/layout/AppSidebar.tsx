@@ -1,7 +1,9 @@
+import { useState, useEffect, useCallback } from 'react'
 import { Link, useLocation } from 'react-router'
 import { useAuth } from '@/hooks/useAuth'
 import { useSidebar } from '@/context/SidebarContext'
 import { getVisibleNavItems } from '@/config/navigation'
+import { api } from '@/services/api'
 import {
   GridIcon,
   GroupIcon,
@@ -12,6 +14,13 @@ import {
   BoltIcon,
   UserIcon,
 } from '@/icons'
+
+// Inline Ticket icon for Tickets nav item
+const TicketIcon: React.FunctionComponent<React.SVGProps<SVGSVGElement>> = (props) => (
+  <svg {...props} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-5.25h5.25M7.5 15h3M3.375 5.25c-.621 0-1.125.504-1.125 1.125v3.026a2.999 2.999 0 0 1 0 5.198v3.026c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125v-3.026a2.999 2.999 0 0 1 0-5.198V6.375c0-.621-.504-1.125-1.125-1.125H3.375Z" />
+  </svg>
+)
 
 // Inline Briefcase icon for Staff nav item
 const BriefcaseIcon: React.FunctionComponent<React.SVGProps<SVGSVGElement>> = (props) => (
@@ -30,6 +39,7 @@ const ICON_MAP: Record<string, React.FunctionComponent<React.SVGProps<SVGSVGElem
   'Settings': BoltIcon,
   'UserCog': UserIcon,
   'Briefcase': BriefcaseIcon,
+  'Ticket': TicketIcon,
 }
 
 export default function AppSidebar() {
@@ -37,6 +47,22 @@ export default function AppSidebar() {
   const { isOpen, toggle } = useSidebar()
   const location = useLocation()
   const visibleItems = getVisibleNavItems(user?.role)
+  const [ticketBadge, setTicketBadge] = useState(0)
+
+  const fetchBadgeCount = useCallback(async () => {
+    try {
+      const res = await api.get<{ count: number }>('/admin/api/tickets/badge-count')
+      setTicketBadge(res.count)
+    } catch {
+      // silently ignore
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchBadgeCount()
+    const interval = setInterval(fetchBadgeCount, 60_000)
+    return () => clearInterval(interval)
+  }, [fetchBadgeCount])
 
   const isActive = (path: string) => {
     return location.pathname === path
@@ -65,6 +91,11 @@ export default function AppSidebar() {
               >
                 {Icon && <Icon className="w-5 h-5 mr-3" />}
                 {item.label}
+                {item.label === 'Tickets' && ticketBadge > 0 && (
+                  <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+                    {ticketBadge > 99 ? '99+' : ticketBadge}
+                  </span>
+                )}
               </Link>
             )
           })}
@@ -116,6 +147,11 @@ export default function AppSidebar() {
               >
                 {Icon && <Icon className="w-5 h-5 mr-3" />}
                 {item.label}
+                {item.label === 'Tickets' && ticketBadge > 0 && (
+                  <span className="ml-auto bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+                    {ticketBadge > 99 ? '99+' : ticketBadge}
+                  </span>
+                )}
               </Link>
             )
           })}

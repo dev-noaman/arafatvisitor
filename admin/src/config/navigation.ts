@@ -40,6 +40,12 @@ export const NAV_ITEMS: NavItem[] = [
     roles: ['ADMIN', 'HOST', 'RECEPTION', 'STAFF'],
   },
   {
+    path: '/admin/tickets',
+    label: 'Tickets',
+    icon: 'Ticket',
+    roles: ['ADMIN', 'RECEPTION', 'HOST', 'STAFF'],
+  },
+  {
     path: '/admin/reports',
     label: 'Reports',
     icon: 'BarChart',

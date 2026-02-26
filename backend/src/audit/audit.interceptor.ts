@@ -28,7 +28,8 @@ export class AuditInterceptor implements NestInterceptor {
             const url = request.url;
             let entity = "Unknown";
             const action = `${method.toLowerCase()}`;
-            if (url.includes("/visits")) entity = "Visit";
+            if (url.includes("/tickets")) entity = "Ticket";
+            else if (url.includes("/visits")) entity = "Visit";
             else if (url.includes("/my-team")) entity = "Host";
             else if (url.includes("/hosts")) entity = "Host";
             else if (url.includes("/deliveries")) entity = "Delivery";

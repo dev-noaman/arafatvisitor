@@ -1,0 +1,13 @@
+Compare spec.md to source code.
+
+1. Extract atomic requirements as REQ-#.
+2. For each REQ:
+   - Status: Implemented / Partial / Not Implemented
+   - Files responsible
+   - If implementation exists but does not fully satisfy requirement conditions, mark as Partial and explain mismatch briefly (1 sentence max).
+
+3. List code not justified by spec.
+
+Output as table only:
+REQ | Status | Files | Note (only if Partial)
+Unmapped Code | Files

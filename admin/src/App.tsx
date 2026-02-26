@@ -27,6 +27,7 @@ const Visitors = lazy(() => import('@/pages/Visitors'))
 const PreRegister = lazy(() => import('@/pages/PreRegister'))
 const Deliveries = lazy(() => import('@/pages/Deliveries'))
 const Users = lazy(() => import('@/pages/Users'))
+const Tickets = lazy(() => import('@/pages/Tickets'))
 const Reports = lazy(() => import('@/pages/Reports'))
 const Settings = lazy(() => import('@/pages/Settings'))
 const Profile = lazy(() => import('@/pages/Profile'))
@@ -85,6 +86,7 @@ export default function App() {
                   <Route path="visitors" element={<Suspense fallback={<PageLoader />}><Visitors /></Suspense>} />
                   <Route path="pre-register" element={<Suspense fallback={<PageLoader />}><PreRegister /></Suspense>} />
                   <Route path="deliveries" element={<Suspense fallback={<PageLoader />}><Deliveries /></Suspense>} />
+                  <Route path="tickets" element={<Suspense fallback={<PageLoader />}><Tickets /></Suspense>} />
                   <Route path="reports" element={<Suspense fallback={<PageLoader />}><Reports /></Suspense>} />
                   <Route path="profile" element={<Suspense fallback={<PageLoader />}><Profile /></Suspense>} />
 

@@ -27,6 +27,12 @@ model User {
   checkEvents    CheckEvent[]
   refreshTokens  RefreshToken[]
   createdHosts   Host[]              @relation("CreatedHosts")
+
+  // Ticket relations
+  createdTickets     Ticket[]           @relation("TicketCreator")
+  assignedTickets    Ticket[]           @relation("TicketAssignee")
+  ticketComments     TicketComment[]
+  ticketAttachments  TicketAttachment[]
 }
 
 enum Role {
@@ -120,6 +126,7 @@ model Visit {
 
   qrToken    QrToken?
   checkEvents CheckEvent[]
+  relatedTickets Ticket[]
 
   @@index([status])
   @@index([checkInAt])
@@ -188,6 +195,8 @@ model Delivery {
   receivedAt   DateTime       @default(now())
   receivedById String?
   pickedUpAt   DateTime?
+
+  relatedTickets Ticket[]
 
   @@index([status])
   @@index([receivedAt])
@@ -268,4 +277,102 @@ model LookupLocation {
   updatedAt DateTime @updatedAt
 
   @@index([active])
+}
+
+// ============ TICKETS ============
+enum TicketType {
+  SUGGESTION
+  COMPLAINT
+}
+
+enum TicketStatus {
+  SUBMITTED
+  REVIEWED
+  DISMISSED
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+  REJECTED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TicketCategory {
+  IT_ISSUE
+  FACILITY_ISSUE
+  VISITOR_SYSTEM_BUG
+  SERVICE_QUALITY
+  OTHER
+}
+
+model Ticket {
+  id                Int              @id @default(autoincrement())
+  ticketNumber      String           @unique
+  type              TicketType
+  subject           String           @db.VarChar(200)
+  description       String
+  status            TicketStatus
+  priority          TicketPriority?
+  category          TicketCategory?
+  resolution        String?
+  rejectionReason   String?
+
+  createdById       Int
+  createdBy         User             @relation("TicketCreator", fields: [createdById], references: [id])
+  assignedToId      Int?
+  assignedTo        User?            @relation("TicketAssignee", fields: [assignedToId], references: [id])
+
+  relatedVisitId    String?
+  relatedVisit      Visit?           @relation(fields: [relatedVisitId], references: [id])
+  relatedDeliveryId String?
+  relatedDelivery   Delivery?        @relation(fields: [relatedDeliveryId], references: [id])
+
+  comments          TicketComment[]
+  attachments       TicketAttachment[]
+
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  resolvedAt        DateTime?
+  closedAt          DateTime?
+
+  @@index([status])
+  @@index([type])
+  @@index([createdById])
+  @@index([assignedToId])
+  @@index([type, status])
+}
+
+model TicketComment {
+  id         Int      @id @default(autoincrement())
+  ticketId   Int
+  ticket     Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id])
+  message    String
+  isInternal Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@index([ticketId])
+  @@index([ticketId, createdAt])
+}
+
+model TicketAttachment {
+  id           Int      @id @default(autoincrement())
+  ticketId     Int
+  ticket       Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  fileName     String
+  filePath     String
+  fileSize     Int
+  mimeType     String
+  uploadedById Int
+  uploadedBy   User     @relation(fields: [uploadedById], references: [id])
+  createdAt    DateTime @default(now())
+
+  @@index([ticketId])
 }

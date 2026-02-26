@@ -70,3 +70,6 @@ tmp_*.json
 latest_run.json
 # docs-agents-md
 .agents-docs/
+
+# Ticket attachments
+backend/uploads/tickets/
