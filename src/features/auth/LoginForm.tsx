@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "sonner"
 import { Lock, User, ArrowLeft, Mail } from "lucide-react"
-import { login as apiLogin, forgotPassword as apiForgotPassword, setAuthToken, getAdminUrl } from "@/lib/api"
+import { login as apiLogin, forgotPassword as apiForgotPassword, setAuthToken, getAdminUrl, getApiBase } from "@/lib/api"
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Invalid email address" }),
@@ -44,42 +44,34 @@ export function LoginForm(props: { onLoginSuccess?: (role: "admin" | "reception"
   })
 
   const onSubmit = async (data: LoginFormValues) => {
-      const configRaw = sessionStorage.getItem("vms_config")
-      let config: any = {}
-      try {
-        config = configRaw ? JSON.parse(configRaw) : {}
-      } catch (e) {
-        console.warn("Invalid VMS config", e)
-      }
-
-      if (config.apiBase) {
-      try {
-        const { token: newToken, user } = await apiLogin(data.email, data.password)
-        setAuthToken(newToken)
-        if (user.role === "HOST") {
-          toast.error("Host accounts use Admin only", { description: `Log in at ${getAdminUrl()}/login for limited access.` })
+      const apiBase = getApiBase()
+      if (apiBase) {
+        try {
+          const { token: newToken, user } = await apiLogin(data.email, data.password)
+          setAuthToken(newToken)
+          if (user.role === "HOST") {
+            toast.error("Host accounts use Admin only", { description: `Log in at ${getAdminUrl()}/login for limited access.` })
+            return
+          }
+          const role = (user.role === "ADMIN" || user.role === "RECEPTION" ? user.role.toLowerCase() : "admin") as "admin" | "reception"
+          toast.success("Login successful", { description: "Welcome back to the VMS Dashboard." })
+          props.onLoginSuccess?.(role)
+          return
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : "Login failed. Please try again."
+          toast.error("Login failed", { description: msg })
           return
         }
-        const role = user.role.toLowerCase() as "admin" | "reception"
-        toast.success("Login successful", { description: "Welcome back to the VMS Dashboard." })
-        props.onLoginSuccess?.(role)
-        return
-      } catch (e) {
-        console.warn("API Login failed, falling back to simulation:", e)
-        // Fallthrough to simulated logic
       }
-    }
-    // Simulated when no API (reduced from 1500ms for faster UX)
-    await new Promise((resolve) => setTimeout(resolve, 500))
-    toast.success("Login successful", { description: "Welcome back to the VMS Dashboard." })
-    props.onLoginSuccess?.("admin")
+      // Simulated when no API configured (demo mode)
+      await new Promise((resolve) => setTimeout(resolve, 500))
+      toast.success("Login successful", { description: "Demo mode — no API configured." })
+      props.onLoginSuccess?.("admin")
   }
 
   const onForgotSubmit = async (data: ForgotFormValues) => {
     setIsResetting(true)
-    const configRaw = sessionStorage.getItem("vms_config")
-    const config = configRaw ? JSON.parse(configRaw) : {}
-    if (config.apiBase) {
+    if (getApiBase()) {
       try {
         await apiForgotPassword(data.email)
         toast.success("Reset link sent", {
@@ -88,15 +80,12 @@ export function LoginForm(props: { onLoginSuccess?: (role: "admin" | "reception"
       } catch (e) {
         toast.error("Request failed", { description: (e as Error).message })
       }
-      setIsResetting(false)
-      setIsForgotPassword(false)
-      resetForgot()
-      return
+    } else {
+      await new Promise((resolve) => setTimeout(resolve, 500))
+      toast.success("Reset link sent", {
+        description: `If an account exists for ${data.email}, you will receive a password reset link shortly.`,
+      })
     }
-    await new Promise((resolve) => setTimeout(resolve, 500))
-    toast.success("Reset link sent", {
-      description: `If an account exists for ${data.email}, you will receive a password reset link shortly.`,
-    })
     setIsResetting(false)
     setIsForgotPassword(false)
     resetForgot()
