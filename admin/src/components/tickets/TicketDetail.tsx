@@ -1,11 +1,8 @@
 import { useState } from 'react'
-import type { Ticket, TicketStatus, TicketPriority } from '@/types'
+import type { Ticket, TicketStatus } from '@/types'
 import {
   getStatusBadgeColor,
   getStatusLabel,
-  getPriorityBadgeColor,
-  getPriorityLabel,
-  getCategoryLabel,
   downloadAttachment,
 } from '@/services/tickets'
 import CommentTimeline from './CommentTimeline'
@@ -98,15 +95,6 @@ export default function TicketDetail({
     }
   }
 
-  const handlePriorityChange = async (priority: TicketPriority) => {
-    setIsUpdating(true)
-    try {
-      await onUpdate({ priority, updatedAt: ticket.updatedAt })
-    } finally {
-      setIsUpdating(false)
-    }
-  }
-
   const handleReopen = async () => {
     if (!reopenComment.trim()) return
     setIsUpdating(true)
@@ -151,9 +139,9 @@ export default function TicketDetail({
             <span className={`text-xs font-medium px-2 py-0.5 rounded ${getStatusBadgeColor(ticket.status)}`}>
               {getStatusLabel(ticket.status)}
             </span>
-            {isComplaint && ticket.priority && (
-              <span className={`text-xs font-medium px-2 py-0.5 rounded ${getPriorityBadgeColor(ticket.priority)}`}>
-                {getPriorityLabel(ticket.priority)}
+            {isComplaint && ticket.host && (
+              <span className="text-xs text-gray-600">
+                {ticket.host.name} ({ticket.host.company})
               </span>
             )}
           </div>
@@ -277,27 +265,17 @@ export default function TicketDetail({
             </div>
             {isComplaint && (
               <>
-                <div>
-                  <p className="text-xs text-gray-500 uppercase font-medium">Category</p>
-                  <p className="text-sm text-gray-900">{getCategoryLabel(ticket.category)}</p>
-                </div>
+                {ticket.host && (
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase font-medium">Host / Company</p>
+                    <p className="text-sm text-gray-900">{ticket.host.name} ({ticket.host.company})</p>
+                  </div>
+                )}
                 <div>
                   <p className="text-xs text-gray-500 uppercase font-medium">Assigned To</p>
                   <p className="text-sm text-gray-900">{ticket.assignedTo?.name || 'Unassigned'}</p>
                 </div>
               </>
-            )}
-            {ticket.relatedVisit && (
-              <div>
-                <p className="text-xs text-gray-500 uppercase font-medium">Related Visit</p>
-                <p className="text-sm text-gray-900">{ticket.relatedVisit.sessionId}</p>
-              </div>
-            )}
-            {ticket.relatedDelivery && (
-              <div>
-                <p className="text-xs text-gray-500 uppercase font-medium">Related Delivery</p>
-                <p className="text-sm text-gray-900">#{ticket.relatedDelivery.id}</p>
-              </div>
             )}
             {ticket.closedAt && (
               <div>
@@ -326,24 +304,6 @@ export default function TicketDetail({
                     {adminUsers.map((u) => (
                       <option key={u.id} value={u.id}>{u.name}</option>
                     ))}
-                  </select>
-                </div>
-              )}
-
-              {/* Priority */}
-              {isComplaint && (
-                <div>
-                  <label className="block text-xs text-gray-500 uppercase font-medium mb-1">Priority</label>
-                  <select
-                    value={ticket.priority || ''}
-                    onChange={(e) => handlePriorityChange(e.target.value as TicketPriority)}
-                    disabled={isUpdating}
-                    className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
-                  >
-                    <option value="LOW">Low</option>
-                    <option value="MEDIUM">Medium</option>
-                    <option value="HIGH">High</option>
-                    <option value="URGENT">Urgent</option>
                   </select>
                 </div>
               )}

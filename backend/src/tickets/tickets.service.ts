@@ -10,7 +10,6 @@ import { Cron, CronExpression } from "@nestjs/schedule";
 import {
   TicketType,
   TicketStatus,
-  TicketPriority,
   Role,
 } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
@@ -53,14 +52,6 @@ const SUGGESTION_TRANSITIONS: Record<TicketStatus, TicketStatus[]> = {
   REJECTED: [],
 };
 
-// Custom priority sort order (URGENT first)
-const PRIORITY_ORDER: Record<TicketPriority, number> = {
-  URGENT: 1,
-  HIGH: 2,
-  MEDIUM: 3,
-  LOW: 4,
-};
-
 @Injectable()
 export class TicketsService {
   private readonly logger = new Logger(TicketsService.name);
@@ -73,39 +64,12 @@ export class TicketsService {
 
   // ========== CREATE ==========
   async create(dto: CreateTicketDto, userId: number) {
-    // Validate complaint-specific required fields
-    if (dto.type === TicketType.COMPLAINT) {
-      if (!dto.category) {
-        throw new BadRequestException(
-          "Category is required for complaints",
-        );
-      }
-      if (!dto.priority) {
-        throw new BadRequestException(
-          "Priority is required for complaints",
-        );
-      }
-    }
-
-    // Validate related visit exists
-    if (dto.relatedVisitId) {
-      const visit = await this.prisma.visit.findUnique({
-        where: { id: dto.relatedVisitId },
-      });
-      if (!visit) {
-        throw new BadRequestException("Related visit not found");
-      }
-    }
-
-    // Validate related delivery exists
-    if (dto.relatedDeliveryId) {
-      const delivery = await this.prisma.delivery.findUnique({
-        where: { id: dto.relatedDeliveryId },
-      });
-      if (!delivery) {
-        throw new BadRequestException("Related delivery not found");
-      }
-    }
+    // Auto-fetch hostId from creator's User for visitor-system context (HOST/STAFF users)
+    const creator = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { hostId: true },
+    });
+    const hostId = creator?.hostId ? BigInt(creator.hostId.toString()) : null;
 
     // Generate ticket number in a transaction
     const ticket = await this.prisma.$transaction(async (tx) => {
@@ -126,21 +90,15 @@ export class TicketsService {
           subject: dto.subject,
           description: dto.description,
           status: initialStatus,
-          priority:
-            dto.type === TicketType.COMPLAINT ? dto.priority : null,
-          category:
-            dto.type === TicketType.COMPLAINT ? dto.category : null,
           createdById: userId,
-          relatedVisitId: dto.relatedVisitId || null,
-          relatedDeliveryId: dto.relatedDeliveryId || null,
+          hostId,
         },
         include: {
           createdBy: { select: userSelect },
           assignedTo: { select: userSelectNoRole },
-          relatedVisit: {
-            select: { id: true, sessionId: true },
+          host: {
+            select: { id: true, name: true, company: true },
           },
-          relatedDelivery: { select: { id: true } },
           attachments: {
             include: { uploadedBy: { select: userSelectNoRole } },
           },
@@ -162,8 +120,6 @@ export class TicketsService {
       search?: string;
       type?: TicketType;
       status?: TicketStatus;
-      priority?: TicketPriority;
-      category?: string;
       assignedToId?: number;
       dateFrom?: string;
       dateTo?: string;
@@ -186,8 +142,6 @@ export class TicketsService {
 
     if (params.type) where.type = params.type;
     if (params.status) where.status = params.status;
-    if (params.priority) where.priority = params.priority;
-    if (params.category) where.category = params.category;
     if (params.assignedToId)
       where.assignedToId = params.assignedToId;
 
@@ -215,13 +169,7 @@ export class TicketsService {
     let orderBy: any;
     const sortOrder = params.sortOrder || "desc";
 
-    if (params.sortBy === "priority") {
-      // Custom priority sort: use raw query for correct ordering
-      // Fallback: sort by createdAt and we'll sort in-memory
-      orderBy = { createdAt: sortOrder };
-    } else {
-      orderBy = { [params.sortBy || "createdAt"]: sortOrder };
-    }
+    orderBy = { [params.sortBy || "createdAt"]: sortOrder };
 
     const [data, total] = await Promise.all([
       this.prisma.ticket.findMany({
@@ -232,28 +180,15 @@ export class TicketsService {
         include: {
           createdBy: { select: userSelect },
           assignedTo: { select: userSelectNoRole },
+          host: { select: { id: true, name: true, company: true } },
           _count: { select: { comments: true, attachments: true } },
         },
       }),
       this.prisma.ticket.count({ where }),
     ]);
 
-    // If sorting by priority, sort in-memory with custom order
-    let sortedData = data;
-    if (params.sortBy === "priority") {
-      sortedData = [...data].sort((a, b) => {
-        const aPri = a.priority
-          ? PRIORITY_ORDER[a.priority]
-          : 999;
-        const bPri = b.priority
-          ? PRIORITY_ORDER[b.priority]
-          : 999;
-        return sortOrder === "asc" ? aPri - bPri : bPri - aPri;
-      });
-    }
-
     return {
-      data: sortedData,
+      data,
       total,
       page,
       limit,
@@ -268,10 +203,7 @@ export class TicketsService {
       include: {
         createdBy: { select: userSelect },
         assignedTo: { select: userSelect },
-        relatedVisit: {
-          select: { id: true, sessionId: true },
-        },
-        relatedDelivery: { select: { id: true } },
+        host: { select: { id: true, name: true, company: true } },
         comments: {
           include: { user: { select: userSelect } },
           orderBy: { createdAt: "asc" },
@@ -395,7 +327,6 @@ export class TicketsService {
       }
     }
 
-    if (dto.priority !== undefined) updateData.priority = dto.priority;
     if (dto.resolution !== undefined)
       updateData.resolution = dto.resolution;
     if (dto.rejectionReason !== undefined)
@@ -407,10 +338,7 @@ export class TicketsService {
       include: {
         createdBy: { select: userSelect },
         assignedTo: { select: userSelect },
-        relatedVisit: {
-          select: { id: true, sessionId: true },
-        },
-        relatedDelivery: { select: { id: true } },
+        host: { select: { id: true, name: true, company: true } },
         comments: {
           include: { user: { select: userSelect } },
           orderBy: { createdAt: "asc" },
@@ -656,10 +584,7 @@ export class TicketsService {
         include: {
           createdBy: { select: userSelect },
           assignedTo: { select: userSelect },
-          relatedVisit: {
-            select: { id: true, sessionId: true },
-          },
-          relatedDelivery: { select: { id: true } },
+          host: { select: { id: true, name: true, company: true } },
           comments: {
             include: { user: { select: userSelect } },
             orderBy: { createdAt: "asc" },
@@ -729,7 +654,6 @@ export class TicketsService {
     const [
       openComplaints,
       inProgressComplaints,
-      urgentComplaints,
       unassignedComplaints,
       pendingSuggestions,
       resolvedThisWeek,
@@ -745,15 +669,6 @@ export class TicketsService {
         where: {
           type: TicketType.COMPLAINT,
           status: TicketStatus.IN_PROGRESS,
-        },
-      }),
-      this.prisma.ticket.count({
-        where: {
-          type: TicketType.COMPLAINT,
-          priority: TicketPriority.URGENT,
-          status: {
-            notIn: [TicketStatus.CLOSED, TicketStatus.REJECTED],
-          },
         },
       }),
       this.prisma.ticket.count({
@@ -808,7 +723,6 @@ export class TicketsService {
     return {
       openComplaints,
       inProgressComplaints,
-      urgentComplaints,
       unassignedComplaints,
       pendingSuggestions,
       resolvedThisWeek,

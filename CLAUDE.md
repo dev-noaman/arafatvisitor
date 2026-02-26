@@ -75,7 +75,7 @@ docker-compose up                        # Start PostgreSQL 16 on :5432
 - **STAFF**: Limited access, company-scoped, auto-linked to "Arafat Group"
 
 ### Key Modules
-`auth/` `users/` `hosts/` `visits/` `deliveries/` `dashboard/` `lookups/` `notifications/` (email + WhatsApp) `reports/` `tasks/` (OfficeRND hourly cron sync) `audit/`
+`auth/` `users/` `hosts/` `visits/` `deliveries/` `dashboard/` `lookups/` `notifications/` (email + WhatsApp) `reports/` `tasks/` (OfficeRND hourly cron sync) `audit/` `tickets/`
 
 ### Database Schema (`backend/prisma/schema.prisma`)
 Core models: User, Host, Visit, Delivery, QrToken, CheckEvent, RefreshToken, AuditLog, Lookup tables.
@@ -176,6 +176,26 @@ RECEPTION and ADMIN users can manage sub-members on behalf of any host company. 
 - **ADMIN**: Full CRUD including soft delete (sets `deletedAt`)
 - Deactivated hosts (status=0) are excluded from all host dropdowns via `hosts.service.ts` `findAll()` filtering `status: 1`
 
+## Ticket System
+
+Staff/hosts submit complaints and suggestions via the Tickets page (`admin/src/pages/Tickets.tsx`).
+
+### Backend (`backend/src/tickets/`)
+- `tickets.controller.ts` — `GET /admin/api/tickets/stats` and `GET /admin/api/tickets/badge-count` MUST appear before `GET /admin/api/tickets/:id` to avoid NestJS route conflict.
+- `tickets.service.ts` — `notifyStatusChange()` sends email via SMTP for ALL status transitions (not WhatsApp — user preference). Do NOT add WhatsApp back.
+- `getBadgeCount(userId, role)` — ADMIN sees all non-terminal tickets; others see own only. Terminal statuses: CLOSED, REJECTED, REVIEWED, DISMISSED.
+
+### Frontend
+- `admin/src/components/tickets/` — `TicketForm`, `TicketsList`, `TicketDetail`, `CommentTimeline`, `TicketModal`
+- `admin/src/services/tickets.ts` — `getTickets`, `getTicket`, `createTicket`, `updateTicket`, `addComment`, `uploadAttachment`, `reopenTicket`, `getTicketStats`, `downloadAttachment`
+- **TicketForm** — visit/delivery linking dropdowns (complaint only) use `SearchableSelect` with lazy fetch triggered when `selectedType === 'COMPLAINT'`
+- **AppSidebar** — polls `GET /admin/api/tickets/badge-count` every 60s, renders red pill when count > 0
+- **Dashboard** — ADMIN-only "Ticket Overview" section using `getTicketStats()` (7 KPI cards)
+
+### Ticket Status Flows
+- **Complaint**: OPEN → IN_PROGRESS → RESOLVED → CLOSED (or REJECTED at OPEN/IN_PROGRESS; creator can reopen RESOLVED → OPEN)
+- **Suggestion**: SUBMITTED → REVIEWED or DISMISSED
+
 ## Critical Gotchas
 
 ### Rate Limiting
@@ -236,6 +256,9 @@ When users visit `https://www.arafatvisitor.cloud` but the build's `VITE_API_BAS
 - **Session restore** (`App.tsx`): 8s timeout; always calls `setRestoring(false)` via `.finally()`. On timeout/reject, clears token so login form appears.
 - **apiFetch** (`src/lib/api.ts`): `fetchWithTimeout` with 10s default; validateSession uses 6s timeout. Network retries: 800ms, 2s, 4s (not 1s/3s/5s).
 - **Restoring state bug**: If `validateSession()` hangs or rejects, `setRestoring(false)` must still run — use `.catch().finally()`.
+
+### NestJS Named Sub-Routes Before `:id`
+Sub-routes like `/stats` and `/badge-count` MUST be declared **before** `@Get(':id')` in the controller class. NestJS matches routes top-to-bottom; if `/:id` comes first, `/stats` is treated as an ID lookup and throws a 400/404.
 
 ## Deployment
 

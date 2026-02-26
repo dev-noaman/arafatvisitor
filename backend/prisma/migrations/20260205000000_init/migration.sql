@@ -20,10 +20,6 @@ CREATE TYPE "TicketType" AS ENUM ('SUGGESTION', 'COMPLAINT');
 
 CREATE TYPE "TicketStatus" AS ENUM ('SUBMITTED', 'REVIEWED', 'DISMISSED', 'OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED', 'REJECTED');
 
-CREATE TYPE "TicketPriority" AS ENUM ('LOW', 'MEDIUM', 'HIGH', 'URGENT');
-
-CREATE TYPE "TicketCategory" AS ENUM ('IT_ISSUE', 'FACILITY_ISSUE', 'VISITOR_SYSTEM_BUG', 'SERVICE_QUALITY', 'OTHER');
-
 -- ============ TABLES ============
 
 -- Hosts (companies and contact persons)
@@ -194,7 +190,7 @@ CREATE TABLE "LookupLocation" (
     CONSTRAINT "LookupLocation_pkey" PRIMARY KEY ("id")
 );
 
--- Tickets
+-- Tickets (hostId auto-set from creator's host for visitor-system context)
 CREATE TABLE "Ticket" (
     "id" SERIAL NOT NULL,
     "ticketNumber" TEXT NOT NULL,
@@ -202,14 +198,11 @@ CREATE TABLE "Ticket" (
     "subject" VARCHAR(200) NOT NULL,
     "description" TEXT NOT NULL,
     "status" "TicketStatus" NOT NULL,
-    "priority" "TicketPriority",
-    "category" "TicketCategory",
     "resolution" TEXT,
     "rejectionReason" TEXT,
     "createdById" INTEGER NOT NULL,
     "assignedToId" INTEGER,
-    "relatedVisitId" TEXT,
-    "relatedDeliveryId" TEXT,
+    "hostId" BIGINT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "resolvedAt" TIMESTAMP(3),
@@ -263,6 +256,7 @@ CREATE INDEX "Ticket_status_idx" ON "Ticket"("status");
 CREATE INDEX "Ticket_type_idx" ON "Ticket"("type");
 CREATE INDEX "Ticket_createdById_idx" ON "Ticket"("createdById");
 CREATE INDEX "Ticket_assignedToId_idx" ON "Ticket"("assignedToId");
+CREATE INDEX "Ticket_hostId_idx" ON "Ticket"("hostId");
 CREATE INDEX "Ticket_type_status_idx" ON "Ticket"("type", "status");
 CREATE INDEX "TicketComment_ticketId_idx" ON "TicketComment"("ticketId");
 CREATE INDEX "TicketComment_ticketId_createdAt_idx" ON "TicketComment"("ticketId", "createdAt");
@@ -300,11 +294,8 @@ ALTER TABLE "Ticket" ADD CONSTRAINT "Ticket_createdById_fkey"
 ALTER TABLE "Ticket" ADD CONSTRAINT "Ticket_assignedToId_fkey"
     FOREIGN KEY ("assignedToId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
-ALTER TABLE "Ticket" ADD CONSTRAINT "Ticket_relatedVisitId_fkey"
-    FOREIGN KEY ("relatedVisitId") REFERENCES "Visit"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
-ALTER TABLE "Ticket" ADD CONSTRAINT "Ticket_relatedDeliveryId_fkey"
-    FOREIGN KEY ("relatedDeliveryId") REFERENCES "Delivery"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "Ticket" ADD CONSTRAINT "Ticket_hostId_fkey"
+    FOREIGN KEY ("hostId") REFERENCES "Host"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 ALTER TABLE "TicketComment" ADD CONSTRAINT "TicketComment_ticketId_fkey"
     FOREIGN KEY ("ticketId") REFERENCES "Ticket"("id") ON DELETE CASCADE ON UPDATE CASCADE;

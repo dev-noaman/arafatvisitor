@@ -16,8 +16,6 @@ import type {
   Ticket,
   TicketType,
   TicketStatus,
-  TicketPriority,
-  TicketCategory,
   TicketFormData,
   User,
 } from '@/types'
@@ -45,8 +43,6 @@ export default function Tickets() {
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, totalPages: 1 })
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<TicketStatus | ''>('')
-  const [priorityFilter, setPriorityFilter] = useState<TicketPriority | ''>('')
-  const [categoryFilter, setCategoryFilter] = useState<TicketCategory | ''>('')
   const [assigneeFilter, setAssigneeFilter] = useState<number | ''>('')
   const [dateFromFilter, setDateFromFilter] = useState('')
   const [dateToFilter, setDateToFilter] = useState('')
@@ -57,8 +53,6 @@ export default function Tickets() {
     search = '',
     type: TicketType = activeTab,
     status: TicketStatus | '' = '',
-    priority: TicketPriority | '' = '',
-    category: TicketCategory | '' = '',
     assignedToId: number | '' = '',
     dateFrom = '',
     dateTo = '',
@@ -69,13 +63,11 @@ export default function Tickets() {
         page,
         limit: pagination.limit,
         type,
-        sortBy: type === 'COMPLAINT' ? 'priority' : 'createdAt',
+        sortBy: 'createdAt',
         sortOrder: 'desc',
       }
       if (search) params.search = search
       if (status) params.status = status
-      if (priority) params.priority = priority
-      if (category) params.category = category
       if (assignedToId) params.assignedToId = assignedToId
       if (dateFrom) params.dateFrom = dateFrom
       if (dateTo) params.dateTo = dateTo
@@ -88,8 +80,8 @@ export default function Tickets() {
         total: response.total || 0,
         totalPages: response.totalPages || 1,
       })
-    } catch {
-      error('Failed to load tickets')
+    } catch (err: any) {
+      error(err?.message || 'Failed to load tickets')
     } finally {
       setIsLoading(false)
     }
@@ -121,46 +113,36 @@ export default function Tickets() {
     setActiveTab(tab)
     setSearchQuery('')
     setStatusFilter('')
-    setPriorityFilter('')
-    setCategoryFilter('')
     setAssigneeFilter('')
     setDateFromFilter('')
     setDateToFilter('')
-    fetchTickets(1, '', tab, '', '', '', '', '', '')
+    fetchTickets(1, '', tab, '', '', '', '')
   }
 
   // Search
   const handleSearch = (search: string) => {
     setSearchQuery(search)
-    fetchTickets(1, search, activeTab, statusFilter, priorityFilter, categoryFilter, assigneeFilter, dateFromFilter, dateToFilter)
+    fetchTickets(1, search, activeTab, statusFilter, assigneeFilter, dateFromFilter, dateToFilter)
   }
 
   // Filters
   const handleStatusFilter = (status: TicketStatus | '') => {
     setStatusFilter(status)
-    fetchTickets(1, searchQuery, activeTab, status, priorityFilter, categoryFilter, assigneeFilter, dateFromFilter, dateToFilter)
-  }
-  const handlePriorityFilter = (priority: TicketPriority | '') => {
-    setPriorityFilter(priority)
-    fetchTickets(1, searchQuery, activeTab, statusFilter, priority, categoryFilter, assigneeFilter, dateFromFilter, dateToFilter)
-  }
-  const handleCategoryFilter = (category: TicketCategory | '') => {
-    setCategoryFilter(category)
-    fetchTickets(1, searchQuery, activeTab, statusFilter, priorityFilter, category, assigneeFilter, dateFromFilter, dateToFilter)
+    fetchTickets(1, searchQuery, activeTab, status, assigneeFilter, dateFromFilter, dateToFilter)
   }
   const handleAssigneeFilter = (assigneeId: number | '') => {
     setAssigneeFilter(assigneeId)
-    fetchTickets(1, searchQuery, activeTab, statusFilter, priorityFilter, categoryFilter, assigneeId, dateFromFilter, dateToFilter)
+    fetchTickets(1, searchQuery, activeTab, statusFilter, assigneeId, dateFromFilter, dateToFilter)
   }
   const handleDateRangeFilter = (dateFrom: string, dateTo: string) => {
     setDateFromFilter(dateFrom)
     setDateToFilter(dateTo)
-    fetchTickets(1, searchQuery, activeTab, statusFilter, priorityFilter, categoryFilter, assigneeFilter, dateFrom, dateTo)
+    fetchTickets(1, searchQuery, activeTab, statusFilter, assigneeFilter, dateFrom, dateTo)
   }
 
   // Pagination
   const handlePageChange = (page: number) => {
-    fetchTickets(page, searchQuery, activeTab, statusFilter, priorityFilter, categoryFilter, assigneeFilter, dateFromFilter, dateToFilter)
+    fetchTickets(page, searchQuery, activeTab, statusFilter, assigneeFilter, dateFromFilter, dateToFilter)
   }
 
   // View ticket detail
@@ -189,7 +171,7 @@ export default function Tickets() {
       }
       success(`Ticket ${created.ticketNumber} created successfully`)
       setIsModalOpen(false)
-      fetchTickets(1, searchQuery, activeTab, statusFilter, priorityFilter, categoryFilter, assigneeFilter, dateFromFilter, dateToFilter)
+      fetchTickets(1, searchQuery, activeTab, statusFilter, assigneeFilter, dateFromFilter, dateToFilter)
     } catch (err: any) {
       error(err?.message || 'Failed to create ticket')
     } finally {
@@ -245,7 +227,7 @@ export default function Tickets() {
   const handleBackToList = () => {
     setView('list')
     setSelectedTicket(null)
-    fetchTickets(pagination.page, searchQuery, activeTab, statusFilter, priorityFilter, categoryFilter, assigneeFilter, dateFromFilter, dateToFilter)
+    fetchTickets(pagination.page, searchQuery, activeTab, statusFilter, assigneeFilter, dateFromFilter, dateToFilter)
   }
 
   return (
@@ -273,8 +255,6 @@ export default function Tickets() {
           onTabChange={handleTabChange}
           onSearch={handleSearch}
           onStatusFilter={handleStatusFilter}
-          onPriorityFilter={handlePriorityFilter}
-          onCategoryFilter={handleCategoryFilter}
           onPageChange={handlePageChange}
           onTicketClick={handleTicketClick}
           adminUsers={adminUsers}

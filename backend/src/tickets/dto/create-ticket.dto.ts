@@ -1,12 +1,10 @@
 import {
   IsString,
   IsEnum,
-  IsOptional,
-  IsInt,
   MinLength,
   MaxLength,
 } from "class-validator";
-import { TicketType, TicketPriority, TicketCategory } from "@prisma/client";
+import { TicketType } from "@prisma/client";
 
 export class CreateTicketDto {
   @IsEnum(TicketType)
@@ -20,20 +18,4 @@ export class CreateTicketDto {
   @IsString()
   @MinLength(10)
   description: string;
-
-  @IsOptional()
-  @IsEnum(TicketCategory)
-  category?: TicketCategory;
-
-  @IsOptional()
-  @IsEnum(TicketPriority)
-  priority?: TicketPriority;
-
-  @IsOptional()
-  @IsString()
-  relatedVisitId?: string;
-
-  @IsOptional()
-  @IsString()
-  relatedDeliveryId?: string;
 }

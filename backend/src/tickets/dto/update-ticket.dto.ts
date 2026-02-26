@@ -5,7 +5,7 @@ import {
   IsInt,
   IsDateString,
 } from "class-validator";
-import { TicketStatus, TicketPriority } from "@prisma/client";
+import { TicketStatus } from "@prisma/client";
 
 export class UpdateTicketDto {
   @IsOptional()
@@ -15,10 +15,6 @@ export class UpdateTicketDto {
   @IsOptional()
   @IsInt()
   assignedToId?: number;
-
-  @IsOptional()
-  @IsEnum(TicketPriority)
-  priority?: TicketPriority;
 
   @IsOptional()
   @IsString()

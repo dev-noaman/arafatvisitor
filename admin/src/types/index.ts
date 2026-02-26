@@ -304,15 +304,6 @@ export type TicketStatus =
   | 'CLOSED'
   | 'REJECTED';
 
-export type TicketPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
-
-export type TicketCategory =
-  | 'IT_ISSUE'
-  | 'FACILITY_ISSUE'
-  | 'VISITOR_SYSTEM_BUG'
-  | 'SERVICE_QUALITY'
-  | 'OTHER';
-
 export interface TicketUser {
   id: number;
   name: string;
@@ -326,14 +317,11 @@ export interface Ticket {
   subject: string;
   description?: string;
   status: TicketStatus;
-  priority: TicketPriority | null;
-  category: TicketCategory | null;
   resolution: string | null;
   rejectionReason: string | null;
   createdBy: TicketUser;
   assignedTo: TicketUser | null;
-  relatedVisit: { id: string; sessionId: string } | null;
-  relatedDelivery: { id: string } | null;
+  host: { id: number; name: string; company: string } | null;
   comments?: TicketComment[];
   attachments?: TicketAttachment[];
   _count?: { comments: number; attachments: number };
@@ -364,16 +352,11 @@ export interface TicketFormData {
   type: TicketType;
   subject: string;
   description: string;
-  category?: TicketCategory;
-  priority?: TicketPriority;
-  relatedVisitId?: string;
-  relatedDeliveryId?: string;
 }
 
 export interface TicketStats {
   openComplaints: number;
   inProgressComplaints: number;
-  urgentComplaints: number;
   unassignedComplaints: number;
   pendingSuggestions: number;
   resolvedThisWeek: number;

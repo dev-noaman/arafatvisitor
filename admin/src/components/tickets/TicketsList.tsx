@@ -1,11 +1,8 @@
 import { useState } from 'react'
-import type { Ticket, TicketType, TicketStatus, TicketPriority, TicketCategory } from '@/types'
+import type { Ticket, TicketType, TicketStatus } from '@/types'
 import {
   getStatusBadgeColor,
   getStatusLabel,
-  getPriorityBadgeColor,
-  getPriorityLabel,
-  getCategoryLabel,
 } from '@/services/tickets'
 
 interface TicketsListProps {
@@ -16,8 +13,6 @@ interface TicketsListProps {
   onTabChange: (tab: TicketType) => void
   onSearch: (search: string) => void
   onStatusFilter: (status: TicketStatus | '') => void
-  onPriorityFilter: (priority: TicketPriority | '') => void
-  onCategoryFilter: (category: TicketCategory | '') => void
   onPageChange: (page: number) => void
   onTicketClick: (ticket: Ticket) => void
   // New filter props
@@ -36,8 +31,6 @@ export default function TicketsList({
   onTabChange,
   onSearch,
   onStatusFilter,
-  onPriorityFilter,
-  onCategoryFilter,
   onPageChange,
   onTicketClick,
   adminUsers,
@@ -111,42 +104,17 @@ export default function TicketsList({
           ))}
         </select>
 
-        {activeTab === 'COMPLAINT' && (
+        {activeTab === 'COMPLAINT' && adminUsers && adminUsers.length > 0 && onAssigneeFilter && (
           <>
             <select
-              onChange={(e) => onPriorityFilter(e.target.value as TicketPriority | '')}
+              onChange={(e) => onAssigneeFilter(e.target.value ? Number(e.target.value) as number : '')}
               className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="">All Priorities</option>
-              <option value="URGENT">Urgent</option>
-              <option value="HIGH">High</option>
-              <option value="MEDIUM">Medium</option>
-              <option value="LOW">Low</option>
+              <option value="">All Assignees</option>
+              {adminUsers.map((u) => (
+                <option key={u.id} value={u.id}>{u.name}</option>
+              ))}
             </select>
-
-            <select
-              onChange={(e) => onCategoryFilter(e.target.value as TicketCategory | '')}
-              className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">All Categories</option>
-              <option value="IT_ISSUE">IT Issue</option>
-              <option value="FACILITY_ISSUE">Facility Issue</option>
-              <option value="VISITOR_SYSTEM_BUG">Visitor System Bug</option>
-              <option value="SERVICE_QUALITY">Service Quality</option>
-              <option value="OTHER">Other</option>
-            </select>
-
-            {adminUsers && adminUsers.length > 0 && onAssigneeFilter && (
-              <select
-                onChange={(e) => onAssigneeFilter(e.target.value ? Number(e.target.value) as number : '')}
-                className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">All Assignees</option>
-                {adminUsers.map((u) => (
-                  <option key={u.id} value={u.id}>{u.name}</option>
-                ))}
-              </select>
-            )}
           </>
         )}
 
@@ -180,8 +148,7 @@ export default function TicketsList({
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Subject</th>
               {activeTab === 'COMPLAINT' && (
                 <>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Priority</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Host</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Assigned To</th>
                 </>
               )}
@@ -193,13 +160,13 @@ export default function TicketsList({
           <tbody className="divide-y divide-gray-200">
             {isLoading ? (
               <tr>
-                <td colSpan={activeTab === 'COMPLAINT' ? 8 : 5} className="px-4 py-8 text-center text-sm text-gray-500">
+                <td colSpan={activeTab === 'COMPLAINT' ? 7 : 5} className="px-4 py-8 text-center text-sm text-gray-500">
                   Loading...
                 </td>
               </tr>
             ) : tickets.length === 0 ? (
               <tr>
-                <td colSpan={activeTab === 'COMPLAINT' ? 8 : 5} className="px-4 py-8 text-center text-sm text-gray-500">
+                <td colSpan={activeTab === 'COMPLAINT' ? 7 : 5} className="px-4 py-8 text-center text-sm text-gray-500">
                   No tickets found.
                 </td>
               </tr>
@@ -214,13 +181,8 @@ export default function TicketsList({
                   <td className="px-4 py-3 text-sm text-gray-900 max-w-[200px] truncate">{ticket.subject}</td>
                   {activeTab === 'COMPLAINT' && (
                     <>
-                      <td className="px-4 py-3 text-sm text-gray-600">{getCategoryLabel(ticket.category)}</td>
-                      <td className="px-4 py-3">
-                        {ticket.priority && (
-                          <span className={`text-xs font-medium px-2 py-0.5 rounded ${getPriorityBadgeColor(ticket.priority)}`}>
-                            {getPriorityLabel(ticket.priority)}
-                          </span>
-                        )}
+                      <td className="px-4 py-3 text-sm text-gray-600">
+                        {ticket.host ? `${ticket.host.name} (${ticket.host.company})` : <span className="text-gray-400">—</span>}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600">
                         {ticket.assignedTo?.name || <span className="text-gray-400">Unassigned</span>}

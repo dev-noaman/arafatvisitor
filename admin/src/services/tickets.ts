@@ -6,8 +6,6 @@ import type {
   TicketFormData,
   TicketStats,
   TicketStatus,
-  TicketPriority,
-  TicketCategory,
   TicketType,
   PaginatedResponse,
 } from '@/types'
@@ -22,8 +20,6 @@ interface GetTicketsParams {
   search?: string
   type?: TicketType
   status?: TicketStatus
-  priority?: TicketPriority
-  category?: TicketCategory
   assignedToId?: number
   dateFrom?: string
   dateTo?: string
@@ -38,8 +34,6 @@ export const getTickets = async (params?: GetTicketsParams) => {
   if (params?.search) qs.append('search', params.search)
   if (params?.type) qs.append('type', params.type)
   if (params?.status) qs.append('status', params.status)
-  if (params?.priority) qs.append('priority', params.priority)
-  if (params?.category) qs.append('category', params.category)
   if (params?.assignedToId) qs.append('assignedToId', params.assignedToId.toString())
   if (params?.dateFrom) qs.append('dateFrom', params.dateFrom)
   if (params?.dateTo) qs.append('dateTo', params.dateTo)
@@ -121,40 +115,6 @@ export const getStatusLabel = (status: TicketStatus): string => {
     REJECTED: 'Rejected',
   }
   return labels[status] || status
-}
-
-export const getPriorityBadgeColor = (priority: TicketPriority | null): string => {
-  if (!priority) return ''
-  const colors: Record<TicketPriority, string> = {
-    LOW: 'bg-slate-100 text-slate-700',
-    MEDIUM: 'bg-blue-100 text-blue-700',
-    HIGH: 'bg-orange-100 text-orange-700',
-    URGENT: 'bg-red-100 text-red-700',
-  }
-  return colors[priority] || 'bg-gray-100 text-gray-800'
-}
-
-export const getPriorityLabel = (priority: TicketPriority | null): string => {
-  if (!priority) return '—'
-  const labels: Record<TicketPriority, string> = {
-    LOW: 'Low',
-    MEDIUM: 'Medium',
-    HIGH: 'High',
-    URGENT: 'Urgent',
-  }
-  return labels[priority] || priority
-}
-
-export const getCategoryLabel = (category: TicketCategory | null): string => {
-  if (!category) return '—'
-  const labels: Record<TicketCategory, string> = {
-    IT_ISSUE: 'IT Issue',
-    FACILITY_ISSUE: 'Facility Issue',
-    VISITOR_SYSTEM_BUG: 'Visitor System Bug',
-    SERVICE_QUALITY: 'Service Quality',
-    OTHER: 'Other',
-  }
-  return labels[category] || category
 }
 
 export const getTypeBadgeColor = (type: TicketType): string => {

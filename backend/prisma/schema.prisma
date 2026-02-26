@@ -83,6 +83,7 @@ model Host {
   visits     Visit[]
   deliveries Delivery[]
   users      User[]
+  tickets    Ticket[]
 
   @@index([status])
   @@index([location])
@@ -126,7 +127,6 @@ model Visit {
 
   qrToken    QrToken?
   checkEvents CheckEvent[]
-  relatedTickets Ticket[]
 
   @@index([status])
   @@index([checkInAt])
@@ -195,8 +195,6 @@ model Delivery {
   receivedAt   DateTime       @default(now())
   receivedById String?
   pickedUpAt   DateTime?
-
-  relatedTickets Ticket[]
 
   @@index([status])
   @@index([receivedAt])
@@ -296,21 +294,6 @@ enum TicketStatus {
   REJECTED
 }
 
-enum TicketPriority {
-  LOW
-  MEDIUM
-  HIGH
-  URGENT
-}
-
-enum TicketCategory {
-  IT_ISSUE
-  FACILITY_ISSUE
-  VISITOR_SYSTEM_BUG
-  SERVICE_QUALITY
-  OTHER
-}
-
 model Ticket {
   id                Int              @id @default(autoincrement())
   ticketNumber      String           @unique
@@ -318,8 +301,6 @@ model Ticket {
   subject           String           @db.VarChar(200)
   description       String
   status            TicketStatus
-  priority          TicketPriority?
-  category          TicketCategory?
   resolution        String?
   rejectionReason   String?
 
@@ -327,11 +308,8 @@ model Ticket {
   createdBy         User             @relation("TicketCreator", fields: [createdById], references: [id])
   assignedToId      Int?
   assignedTo        User?            @relation("TicketAssignee", fields: [assignedToId], references: [id])
-
-  relatedVisitId    String?
-  relatedVisit      Visit?           @relation(fields: [relatedVisitId], references: [id])
-  relatedDeliveryId String?
-  relatedDelivery   Delivery?        @relation(fields: [relatedDeliveryId], references: [id])
+  hostId            BigInt?
+  host              Host?            @relation(fields: [hostId], references: [id])
 
   comments          TicketComment[]
   attachments       TicketAttachment[]
@@ -345,6 +323,7 @@ model Ticket {
   @@index([type])
   @@index([createdById])
   @@index([assignedToId])
+  @@index([hostId])
   @@index([type, status])
 }
 

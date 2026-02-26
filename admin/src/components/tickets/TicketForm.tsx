@@ -1,30 +1,14 @@
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import type { TicketFormData, TicketType } from '@/types'
-import SearchableSelect from '@/components/common/SearchableSelect'
-import type { SearchableSelectOption } from '@/components/common/SearchableSelect'
-import { getVisitors } from '@/services/visitors'
-import { getDeliveries } from '@/services/deliveries'
+import { useAuth } from '@/hooks/useAuth'
 
 const ticketSchema = z.object({
   type: z.enum(['SUGGESTION', 'COMPLAINT']),
   subject: z.string().min(3, 'Subject must be at least 3 characters').max(200, 'Subject cannot exceed 200 characters'),
   description: z.string().min(10, 'Description must be at least 10 characters'),
-  category: z.enum(['IT_ISSUE', 'FACILITY_ISSUE', 'VISITOR_SYSTEM_BUG', 'SERVICE_QUALITY', 'OTHER']).optional(),
-  priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(),
-  relatedVisitId: z.string().optional(),
-  relatedDeliveryId: z.string().optional(),
-}).superRefine((data, ctx) => {
-  if (data.type === 'COMPLAINT') {
-    if (!data.category) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Category is required for complaints', path: ['category'] })
-    }
-    if (!data.priority) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Priority is required for complaints', path: ['priority'] })
-    }
-  }
 })
 
 interface TicketFormProps {
@@ -33,11 +17,9 @@ interface TicketFormProps {
 }
 
 export default function TicketForm({ onSubmit, isLoading }: TicketFormProps) {
+  const { user } = useAuth()
   const [step, setStep] = useState<'type' | 'form'>('type')
   const [files, setFiles] = useState<File[]>([])
-  const [visitOptions, setVisitOptions] = useState<SearchableSelectOption[]>([])
-  const [deliveryOptions, setDeliveryOptions] = useState<SearchableSelectOption[]>([])
-  const [isLoadingLookups, setIsLoadingLookups] = useState(false)
 
   const {
     register,
@@ -56,34 +38,6 @@ export default function TicketForm({ onSubmit, isLoading }: TicketFormProps) {
   })
 
   const selectedType = watch('type')
-
-  // Fetch visits and deliveries for complaint linking
-  useEffect(() => {
-    if (selectedType !== 'COMPLAINT') return
-    let cancelled = false
-    setIsLoadingLookups(true)
-    Promise.all([
-      getVisitors({ limit: 200, sortBy: 'createdAt', sortOrder: 'desc' }).catch(() => null),
-      getDeliveries({ limit: 200, sortBy: 'createdAt', sortOrder: 'desc' }).catch(() => null),
-    ]).then(([visitsRes, deliveriesRes]) => {
-      if (cancelled) return
-      if (visitsRes?.data) {
-        setVisitOptions(visitsRes.data.map((v: any) => ({
-          value: String(v.id),
-          label: `${v.sessionId || v.id} — ${v.visitor?.name || v.visitorName || 'Unknown'} (${v.host?.name || 'N/A'})`,
-        })))
-      }
-      if (deliveriesRes?.data) {
-        setDeliveryOptions(deliveriesRes.data.map((d: any) => ({
-          value: String(d.id),
-          label: `#${d.id} — ${d.recipient || d.recipientName || 'Unknown'} (${d.host?.name || 'N/A'})`,
-        })))
-      }
-    }).finally(() => {
-      if (!cancelled) setIsLoadingLookups(false)
-    })
-    return () => { cancelled = true }
-  }, [selectedType])
 
   const handleTypeSelect = (type: TicketType) => {
     setValue('type', type)
@@ -166,6 +120,14 @@ export default function TicketForm({ onSubmit, isLoading }: TicketFormProps) {
         </span>
       </div>
 
+      {/* Auto-fetched host context - tickets are visitor system related */}
+      {(user?.role === 'HOST' || user?.role === 'STAFF') && (
+        <div className="px-3 py-2 bg-blue-50 border border-blue-100 rounded-md text-sm">
+          <p className="font-medium text-gray-900">Visitor system complaint</p>
+          <p className="text-xs text-gray-500 mt-0.5">Your ticket will be automatically linked to your host/company</p>
+        </div>
+      )}
+
       {/* Subject */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Subject *</label>
@@ -190,97 +152,33 @@ export default function TicketForm({ onSubmit, isLoading }: TicketFormProps) {
         {errors.description && <p className="text-xs text-red-600 mt-1">{errors.description.message}</p>}
       </div>
 
-      {/* Complaint-specific fields */}
-      {selectedType === 'COMPLAINT' && (
-        <>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Category *</label>
-              <select
-                {...register('category')}
-                className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.category ? 'border-red-300' : 'border-gray-300'}`}
-              >
-                <option value="">Select category</option>
-                <option value="IT_ISSUE">IT Issue</option>
-                <option value="FACILITY_ISSUE">Facility Issue</option>
-                <option value="VISITOR_SYSTEM_BUG">Visitor System Bug</option>
-                <option value="SERVICE_QUALITY">Service Quality</option>
-                <option value="OTHER">Other</option>
-              </select>
-              {errors.category && <p className="text-xs text-red-600 mt-1">{errors.category.message}</p>}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Priority *</label>
-              <select
-                {...register('priority')}
-                className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.priority ? 'border-red-300' : 'border-gray-300'}`}
-              >
-                <option value="">Select priority</option>
-                <option value="LOW">Low</option>
-                <option value="MEDIUM">Medium</option>
-                <option value="HIGH">High</option>
-                <option value="URGENT">Urgent</option>
-              </select>
-              {errors.priority && <p className="text-xs text-red-600 mt-1">{errors.priority.message}</p>}
-            </div>
-          </div>
-
-          {/* Related Visit / Delivery */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Related Visit</label>
-              <SearchableSelect
-                options={visitOptions}
-                value={watch('relatedVisitId') || ''}
-                onChange={(val) => setValue('relatedVisitId', val || undefined)}
-                placeholder="Search visits..."
-                isLoading={isLoadingLookups}
-                emptyMessage="No visits found"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Related Delivery</label>
-              <SearchableSelect
-                options={deliveryOptions}
-                value={watch('relatedDeliveryId') || ''}
-                onChange={(val) => setValue('relatedDeliveryId', val || undefined)}
-                placeholder="Search deliveries..."
-                isLoading={isLoadingLookups}
-                emptyMessage="No deliveries found"
-              />
-            </div>
-          </div>
-
-          {/* File Upload */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Attachments ({files.length}/3)
-            </label>
-            {files.length < 3 && (
-              <input
-                type="file"
-                onChange={handleFileChange}
-                accept="image/jpeg,image/png,application/pdf"
-                className="block w-full text-sm text-gray-500 file:mr-4 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-              />
-            )}
-            {files.length > 0 && (
-              <div className="mt-2 space-y-1">
-                {files.map((file, i) => (
-                  <div key={i} className="flex items-center justify-between bg-gray-50 px-3 py-1.5 rounded text-sm">
-                    <span className="truncate">{file.name} ({(file.size / 1024).toFixed(0)} KB)</span>
-                    <button type="button" onClick={() => removeFile(i)} className="text-red-500 hover:text-red-700 ml-2">
-                      &times;
-                    </button>
-                  </div>
-                ))}
+      {/* Attachments - available for both types */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Attachments ({files.length}/3)
+        </label>
+        {files.length < 3 && (
+          <input
+            type="file"
+            onChange={handleFileChange}
+            accept="image/jpeg,image/png,application/pdf"
+            className="block w-full text-sm text-gray-500 file:mr-4 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+          />
+        )}
+        {files.length > 0 && (
+          <div className="mt-2 space-y-1">
+            {files.map((file, i) => (
+              <div key={i} className="flex items-center justify-between bg-gray-50 px-3 py-1.5 rounded text-sm">
+                <span className="truncate">{file.name} ({(file.size / 1024).toFixed(0)} KB)</span>
+                <button type="button" onClick={() => removeFile(i)} className="text-red-500 hover:text-red-700 ml-2">
+                  &times;
+                </button>
               </div>
-            )}
-            <p className="text-xs text-gray-500 mt-1">Max 3 files, 5MB each. JPEG, PNG, or PDF.</p>
+            ))}
           </div>
-        </>
-      )}
+        )}
+        <p className="text-xs text-gray-500 mt-1">Max 3 files, 5MB each. JPEG, PNG, or PDF.</p>
+      </div>
 
       <div className="flex justify-end gap-3 pt-2">
         <button

@@ -15,7 +15,7 @@ import {
 import { FileInterceptor } from "@nestjs/platform-express";
 import { SkipThrottle } from "@nestjs/throttler";
 import { Roles } from "../common/decorators/roles.decorator";
-import { Role, TicketType, TicketStatus, TicketPriority } from "@prisma/client";
+import { Role, TicketType, TicketStatus } from "@prisma/client";
 import { AuditInterceptor } from "../audit/audit.interceptor";
 import { TicketsService } from "./tickets.service";
 import { CreateTicketDto } from "./dto/create-ticket.dto";
@@ -65,8 +65,6 @@ export class TicketsController {
     @Query("search") search?: string,
     @Query("type") type?: TicketType,
     @Query("status") status?: TicketStatus,
-    @Query("priority") priority?: TicketPriority,
-    @Query("category") category?: string,
     @Query("assignedToId") assignedToId?: string,
     @Query("dateFrom") dateFrom?: string,
     @Query("dateTo") dateTo?: string,
@@ -81,8 +79,6 @@ export class TicketsController {
         search,
         type,
         status,
-        priority,
-        category,
         assignedToId: assignedToId
           ? parseInt(assignedToId)
           : undefined,
