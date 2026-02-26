@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import type { User, UserFormData } from '@/types'
@@ -31,7 +31,7 @@ export default function UserForm({ onSubmit, initialData, isLoading }: UserFormP
     formState: { errors },
     reset,
   } = useForm<UserFormData>({
-    resolver: zodResolver(userSchema),
+    resolver: zodResolver(userSchema) as Resolver<UserFormData>,
     defaultValues: initialData || {
       email: '',
       name: '',

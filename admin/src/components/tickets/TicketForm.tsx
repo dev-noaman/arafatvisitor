@@ -30,6 +30,7 @@ export default function TicketForm({ onSubmit, isLoading }: TicketFormProps) {
     reset,
   } = useForm<TicketFormData>({
     resolver: zodResolver(ticketSchema),
+    mode: 'onSubmit',
     defaultValues: {
       type: undefined as unknown as TicketType,
       subject: '',
@@ -106,7 +107,15 @@ export default function TicketForm({ onSubmit, isLoading }: TicketFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
+    <form
+      onSubmit={handleSubmit(
+        handleFormSubmit,
+        () => {
+          /* validation failed – RHF sets errors; avoid uncaught resolver rejections */
+        }
+      )}
+      className="space-y-4"
+    >
       <div className="flex items-center gap-2 mb-2">
         <button
           type="button"
@@ -147,7 +156,7 @@ export default function TicketForm({ onSubmit, isLoading }: TicketFormProps) {
           {...register('description')}
           rows={4}
           className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.description ? 'border-red-300' : 'border-gray-300'}`}
-          placeholder="Provide detailed information..."
+          placeholder="Provide detailed information (at least 10 characters)..."
         />
         {errors.description && <p className="text-xs text-red-600 mt-1">{errors.description.message}</p>}
       </div>

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import type { Settings } from '@/types'
@@ -36,7 +36,7 @@ export default function SmtpSettingsForm({
     handleSubmit,
     formState: { errors },
   } = useForm<SmtpSettingsFormData>({
-    resolver: zodResolver(smtpSchema),
+    resolver: zodResolver(smtpSchema) as Resolver<SmtpSettingsFormData>,
     defaultValues: {
       smtpHost: initialData?.smtpHost || '',
       smtpPort: initialData?.smtpPort || 587,

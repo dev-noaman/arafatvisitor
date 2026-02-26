@@ -1,4 +1,4 @@
-import { useForm } from 'react-hook-form'
+import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import type { Host, HostFormData } from '@/types'
@@ -30,7 +30,7 @@ export default function HostForm({ onSubmit, initialData, isLoading, entityLabel
     formState: { errors },
     reset,
   } = useForm<HostFormData>({
-    resolver: zodResolver(hideCompany ? hostSchema : hostWithCompanySchema),
+    resolver: zodResolver(hideCompany ? hostSchema : hostWithCompanySchema) as Resolver<HostFormData>,
     defaultValues: initialData || {
       name: '',
       email: '',
