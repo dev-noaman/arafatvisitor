@@ -16,6 +16,14 @@ CREATE TYPE "CheckType" AS ENUM ('CHECK_IN', 'CHECK_OUT');
 
 CREATE TYPE "DeliveryStatus" AS ENUM ('RECEIVED', 'PICKED_UP');
 
+CREATE TYPE "TicketType" AS ENUM ('SUGGESTION', 'COMPLAINT');
+
+CREATE TYPE "TicketStatus" AS ENUM ('SUBMITTED', 'REVIEWED', 'DISMISSED', 'OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED', 'REJECTED');
+
+CREATE TYPE "TicketPriority" AS ENUM ('LOW', 'MEDIUM', 'HIGH', 'URGENT');
+
+CREATE TYPE "TicketCategory" AS ENUM ('IT_ISSUE', 'FACILITY_ISSUE', 'VISITOR_SYSTEM_BUG', 'SERVICE_QUALITY', 'OTHER');
+
 -- ============ TABLES ============
 
 -- Hosts (companies and contact persons)
@@ -30,6 +38,7 @@ CREATE TABLE "Host" (
     "status" SMALLINT NOT NULL DEFAULT 1,
     "type" "HostType" NOT NULL DEFAULT 'EXTERNAL',
     "deletedAt" TIMESTAMP(3),
+    "createdById" INTEGER,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -185,10 +194,59 @@ CREATE TABLE "LookupLocation" (
     CONSTRAINT "LookupLocation_pkey" PRIMARY KEY ("id")
 );
 
+-- Tickets
+CREATE TABLE "Ticket" (
+    "id" SERIAL NOT NULL,
+    "ticketNumber" TEXT NOT NULL,
+    "type" "TicketType" NOT NULL,
+    "subject" VARCHAR(200) NOT NULL,
+    "description" TEXT NOT NULL,
+    "status" "TicketStatus" NOT NULL,
+    "priority" "TicketPriority",
+    "category" "TicketCategory",
+    "resolution" TEXT,
+    "rejectionReason" TEXT,
+    "createdById" INTEGER NOT NULL,
+    "assignedToId" INTEGER,
+    "relatedVisitId" TEXT,
+    "relatedDeliveryId" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "resolvedAt" TIMESTAMP(3),
+    "closedAt" TIMESTAMP(3),
+
+    CONSTRAINT "Ticket_pkey" PRIMARY KEY ("id")
+);
+
+CREATE TABLE "TicketComment" (
+    "id" SERIAL NOT NULL,
+    "ticketId" INTEGER NOT NULL,
+    "userId" INTEGER NOT NULL,
+    "message" TEXT NOT NULL,
+    "isInternal" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "TicketComment_pkey" PRIMARY KEY ("id")
+);
+
+CREATE TABLE "TicketAttachment" (
+    "id" SERIAL NOT NULL,
+    "ticketId" INTEGER NOT NULL,
+    "fileName" TEXT NOT NULL,
+    "filePath" TEXT NOT NULL,
+    "fileSize" INTEGER NOT NULL,
+    "mimeType" TEXT NOT NULL,
+    "uploadedById" INTEGER NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "TicketAttachment_pkey" PRIMARY KEY ("id")
+);
+
 -- ============ INDEXES ============
 
 CREATE INDEX "Host_type_idx" ON "Host"("type");
 CREATE INDEX "Host_type_status_idx" ON "Host"("type", "status");
+CREATE INDEX "Host_createdById_idx" ON "Host"("createdById");
 
 CREATE UNIQUE INDEX "Host_externalId_key" ON "Host"("externalId");
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
@@ -199,6 +257,16 @@ CREATE UNIQUE INDEX "LookupPurpose_code_key" ON "LookupPurpose"("code");
 CREATE UNIQUE INDEX "LookupDeliveryType_code_key" ON "LookupDeliveryType"("code");
 CREATE UNIQUE INDEX "LookupCourier_code_key" ON "LookupCourier"("code");
 CREATE UNIQUE INDEX "LookupLocation_code_key" ON "LookupLocation"("code");
+
+CREATE UNIQUE INDEX "Ticket_ticketNumber_key" ON "Ticket"("ticketNumber");
+CREATE INDEX "Ticket_status_idx" ON "Ticket"("status");
+CREATE INDEX "Ticket_type_idx" ON "Ticket"("type");
+CREATE INDEX "Ticket_createdById_idx" ON "Ticket"("createdById");
+CREATE INDEX "Ticket_assignedToId_idx" ON "Ticket"("assignedToId");
+CREATE INDEX "Ticket_type_status_idx" ON "Ticket"("type", "status");
+CREATE INDEX "TicketComment_ticketId_idx" ON "TicketComment"("ticketId");
+CREATE INDEX "TicketComment_ticketId_createdAt_idx" ON "TicketComment"("ticketId", "createdAt");
+CREATE INDEX "TicketAttachment_ticketId_idx" ON "TicketAttachment"("ticketId");
 
 -- ============ FOREIGN KEYS ============
 
@@ -222,6 +290,33 @@ ALTER TABLE "Delivery" ADD CONSTRAINT "Delivery_hostId_fkey"
 
 ALTER TABLE "AuditLog" ADD CONSTRAINT "AuditLog_userId_fkey"
     FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+ALTER TABLE "Host" ADD CONSTRAINT "Host_createdById_fkey"
+    FOREIGN KEY ("createdById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+ALTER TABLE "Ticket" ADD CONSTRAINT "Ticket_createdById_fkey"
+    FOREIGN KEY ("createdById") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+ALTER TABLE "Ticket" ADD CONSTRAINT "Ticket_assignedToId_fkey"
+    FOREIGN KEY ("assignedToId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+ALTER TABLE "Ticket" ADD CONSTRAINT "Ticket_relatedVisitId_fkey"
+    FOREIGN KEY ("relatedVisitId") REFERENCES "Visit"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+ALTER TABLE "Ticket" ADD CONSTRAINT "Ticket_relatedDeliveryId_fkey"
+    FOREIGN KEY ("relatedDeliveryId") REFERENCES "Delivery"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+ALTER TABLE "TicketComment" ADD CONSTRAINT "TicketComment_ticketId_fkey"
+    FOREIGN KEY ("ticketId") REFERENCES "Ticket"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+ALTER TABLE "TicketComment" ADD CONSTRAINT "TicketComment_userId_fkey"
+    FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+ALTER TABLE "TicketAttachment" ADD CONSTRAINT "TicketAttachment_ticketId_fkey"
+    FOREIGN KEY ("ticketId") REFERENCES "Ticket"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+ALTER TABLE "TicketAttachment" ADD CONSTRAINT "TicketAttachment_uploadedById_fkey"
+    FOREIGN KEY ("uploadedById") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- ============ LOOKUP DATA ============
 
