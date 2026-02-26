@@ -794,24 +794,85 @@ export class TicketsService {
     return admins.map((a) => a.email);
   }
 
+  /** Modern HTML email wrapper — card style, works in Gmail/Outlook */
+  private emailCard(
+    title: string,
+    badgeColor: string,
+    badgeBg: string,
+    content: string,
+  ): string {
+    return `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background:#f1f5f9;padding:24px">
+  <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 6px rgba(0,0,0,0.07)">
+    <div style="background:linear-gradient(135deg,#1e40af 0%,#3b82f6 100%);padding:24px;text-align:center">
+      <span style="display:inline-block;background:${badgeBg};color:${badgeColor};font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;padding:6px 12px;border-radius:6px">${title}</span>
+    </div>
+    <div style="padding:24px 28px;color:#334155;line-height:1.6">
+      ${content}
+    </div>
+    <div style="padding:16px 28px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:12px;color:#64748b">
+      Arafat Visitor Management System
+    </div>
+  </div>
+</body>
+</html>`;
+  }
+
   private async notifyNewTicket(ticket: any) {
     const adminEmails = await this.getAdminEmails();
     const typeLabel =
       ticket.type === TicketType.SUGGESTION
         ? "Suggestion"
         : "Complaint";
+    const badgeColor =
+      ticket.type === TicketType.SUGGESTION ? "#6d28d9" : "#c2410c";
+    const badgeBg =
+      ticket.type === TicketType.SUGGESTION ? "#ede9fe" : "#ffedd5";
+
+    const content = `
+      <p style="margin:0 0 20px;font-size:16px;color:#1e293b">
+        A new <strong>${typeLabel}</strong> has been submitted and needs your attention.
+      </p>
+      <div style="background:#f8fafc;border-radius:8px;padding:16px;margin:0 0 16px;border:1px solid #e2e8f0">
+        <table style="width:100%;border-collapse:collapse">
+          <tr><td style="padding:6px 0;font-size:12px;color:#64748b;width:90px">Ticket</td><td style="padding:6px 0;font-weight:600;color:#1e293b">${ticket.ticketNumber}</td></tr>
+          <tr><td style="padding:6px 0;font-size:12px;color:#64748b">Subject</td><td style="padding:6px 0;color:#1e293b">${this.escapeHtml(ticket.subject)}</td></tr>
+          <tr><td style="padding:6px 0;font-size:12px;color:#64748b">Submitted by</td><td style="padding:6px 0;color:#1e293b">${this.escapeHtml(ticket.createdBy?.name || "Unknown")}</td></tr>
+        </table>
+      </div>
+      <p style="margin:0;font-size:14px;color:#64748b">
+        Log in to the admin panel to view and respond.
+      </p>`;
+
+    const html = this.emailCard(
+      `New ${typeLabel}`,
+      badgeColor,
+      badgeBg,
+      content,
+    );
 
     for (const email of adminEmails) {
       this.emailService
         .send({
           to: email,
           subject: `New ${typeLabel}: ${ticket.ticketNumber} — ${ticket.subject}`,
-          html: `<p>A new ${typeLabel.toLowerCase()} <strong>${ticket.ticketNumber}</strong> has been submitted.</p>
-<p><strong>Subject:</strong> ${ticket.subject}</p>
-<p><strong>By:</strong> ${ticket.createdBy?.name || "Unknown"}</p>`,
+          html,
         })
         .catch(() => {});
     }
+  }
+
+  private escapeHtml(text: string): string {
+    if (!text) return "";
+    return text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
   }
 
   private async notifyStatusChange(
@@ -825,14 +886,35 @@ export class TicketsService {
     if (!creator) return;
 
     const subject = `Ticket ${ticket.ticketNumber} — Status updated to ${ticket.status}`;
-    let html = `<p>Your ticket <strong>${ticket.ticketNumber}</strong> status has been updated from <em>${previousStatus}</em> to <em>${ticket.status}</em>.</p>`;
+    let content = `
+      <p style="margin:0 0 20px;font-size:16px;color:#1e293b">
+        Your ticket status has been updated.
+      </p>
+      <div style="background:#f8fafc;border-radius:8px;padding:16px;margin:0 0 16px;border:1px solid #e2e8f0">
+        <table style="width:100%;border-collapse:collapse">
+          <tr><td style="padding:6px 0;font-size:12px;color:#64748b;width:90px">Ticket</td><td style="padding:6px 0;font-weight:600">${ticket.ticketNumber}</td></tr>
+          <tr><td style="padding:6px 0;font-size:12px;color:#64748b">Previous</td><td style="padding:6px 0;color:#64748b">${previousStatus}</td></tr>
+          <tr><td style="padding:6px 0;font-size:12px;color:#64748b">New status</td><td style="padding:6px 0;font-weight:600;color:#059669">${ticket.status}</td></tr>
+        </table>
+      </div>`;
 
     if (
       ticket.status === TicketStatus.RESOLVED &&
       ticket.resolution
     ) {
-      html += `<p><strong>Resolution:</strong> ${ticket.resolution}</p>`;
+      content += `
+      <div style="background:#ecfdf5;border-radius:8px;padding:16px;border:1px solid #a7f3d0;margin:0 0 16px">
+        <p style="margin:0 0 8px;font-size:12px;font-weight:600;color:#047857">Resolution</p>
+        <p style="margin:0;font-size:14px;color:#065f46;white-space:pre-wrap">${this.escapeHtml(ticket.resolution)}</p>
+      </div>`;
     }
+
+    const html = this.emailCard(
+      "Status Updated",
+      "#059669",
+      "#d1fae5",
+      content,
+    );
 
     this.emailService.send({ to: creator.email, subject, html }).catch(() => {});
   }
@@ -845,11 +927,32 @@ export class TicketsService {
     });
     if (!assignee) return;
 
+    const content = `
+      <p style="margin:0 0 20px;font-size:16px;color:#1e293b">
+        A ticket has been assigned to you.
+      </p>
+      <div style="background:#f8fafc;border-radius:8px;padding:16px;border:1px solid #e2e8f0">
+        <table style="width:100%;border-collapse:collapse">
+          <tr><td style="padding:6px 0;font-size:12px;color:#64748b;width:90px">Ticket</td><td style="padding:6px 0;font-weight:600">${ticket.ticketNumber}</td></tr>
+          <tr><td style="padding:6px 0;font-size:12px;color:#64748b">Subject</td><td style="padding:6px 0;color:#1e293b">${this.escapeHtml(ticket.subject)}</td></tr>
+        </table>
+      </div>
+      <p style="margin:0;font-size:14px;color:#64748b">
+        Log in to the admin panel to view and respond.
+      </p>`;
+
+    const html = this.emailCard(
+      "Assigned to You",
+      "#4f46e5",
+      "#e0e7ff",
+      content,
+    );
+
     this.emailService
       .send({
         to: assignee.email,
         subject: `Ticket ${ticket.ticketNumber} assigned to you`,
-        html: `<p>Ticket <strong>${ticket.ticketNumber}</strong> — "${ticket.subject}" has been assigned to you.</p>`,
+        html,
       })
       .catch(() => {});
   }
@@ -861,12 +964,34 @@ export class TicketsService {
     });
     if (!creator) return;
 
+    const content = `
+      <p style="margin:0 0 20px;font-size:16px;color:#1e293b">
+        A new reply has been added to your ticket.
+      </p>
+      <div style="background:#f8fafc;border-radius:8px;padding:16px;margin:0 0 16px;border:1px solid #e2e8f0">
+        <table style="width:100%;border-collapse:collapse">
+          <tr><td style="padding:6px 0;font-size:12px;color:#64748b;width:90px">Ticket</td><td style="padding:6px 0;font-weight:600">${ticket.ticketNumber}</td></tr>
+        </table>
+      </div>
+      <div style="background:#f1f5f9;border-radius:8px;padding:16px;border-left:4px solid #3b82f6">
+        <p style="margin:0;font-size:14px;color:#334155;white-space:pre-wrap">${this.escapeHtml(comment.message)}</p>
+      </div>
+      <p style="margin:16px 0 0;font-size:14px;color:#64748b">
+        Log in to the admin panel to view the full conversation.
+      </p>`;
+
+    const html = this.emailCard(
+      "New Reply",
+      "#2563eb",
+      "#dbeafe",
+      content,
+    );
+
     this.emailService
       .send({
         to: creator.email,
         subject: `New reply on ticket ${ticket.ticketNumber}`,
-        html: `<p>A new reply has been added to your ticket <strong>${ticket.ticketNumber}</strong>.</p>
-<p><em>"${comment.message}"</em></p>`,
+        html,
       })
       .catch(() => {});
   }

@@ -11,7 +11,6 @@ interface TicketDetailProps {
   ticket: Ticket
   isAdmin: boolean
   currentUserId: number
-  adminUsers: { id: number; name: string }[]
   onUpdate: (data: Record<string, unknown>) => Promise<void>
   onAddComment: (message: string, isInternal: boolean) => Promise<void>
   onReopen: (comment: string) => Promise<void>
@@ -32,7 +31,6 @@ export default function TicketDetail({
   ticket,
   isAdmin,
   currentUserId,
-  adminUsers,
   onUpdate,
   onAddComment,
   onReopen,
@@ -81,15 +79,6 @@ export default function TicketDetail({
       await onUpdate(data)
       setResolution('')
       setRejectionReason('')
-    } finally {
-      setIsUpdating(false)
-    }
-  }
-
-  const handleAssign = async (assignedToId: number | null) => {
-    setIsUpdating(true)
-    try {
-      await onUpdate({ assignedToId, updatedAt: ticket.updatedAt })
     } finally {
       setIsUpdating(false)
     }
@@ -164,7 +153,7 @@ export default function TicketDetail({
               <p className="text-sm text-green-700 whitespace-pre-wrap">{ticket.resolution}</p>
               {ticket.resolvedAt && (
                 <p className="text-xs text-green-600 mt-2">
-                  Resolved by {ticket.assignedTo?.name || 'Admin'} on {formatDate(ticket.resolvedAt)}
+                  Resolved on {formatDate(ticket.resolvedAt)}
                 </p>
               )}
             </div>
@@ -271,10 +260,6 @@ export default function TicketDetail({
                     <p className="text-sm text-gray-900">{ticket.host.name} ({ticket.host.company})</p>
                   </div>
                 )}
-                <div>
-                  <p className="text-xs text-gray-500 uppercase font-medium">Assigned To</p>
-                  <p className="text-sm text-gray-900">{ticket.assignedTo?.name || 'Unassigned'}</p>
-                </div>
               </>
             )}
             {ticket.closedAt && (
@@ -289,24 +274,6 @@ export default function TicketDetail({
           {isAdmin && validNextStatuses.length > 0 && (
             <div className="bg-white rounded-lg border border-gray-200 p-4 space-y-3">
               <h4 className="text-sm font-semibold text-gray-900">Admin Actions</h4>
-
-              {/* Assign */}
-              {isComplaint && (
-                <div>
-                  <label className="block text-xs text-gray-500 uppercase font-medium mb-1">Assign To</label>
-                  <select
-                    value={ticket.assignedTo?.id || ''}
-                    onChange={(e) => handleAssign(e.target.value ? Number(e.target.value) : null)}
-                    disabled={isUpdating}
-                    className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
-                  >
-                    <option value="">Unassigned</option>
-                    {adminUsers.map((u) => (
-                      <option key={u.id} value={u.id}>{u.name}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
 
               {/* Resolution text */}
               {validNextStatuses.includes('RESOLVED' as TicketStatus) && (

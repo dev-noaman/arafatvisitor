@@ -187,18 +187,6 @@ export default function Dashboard() {
           <h2 className="text-lg font-semibold text-gray-900">Ticket Overview</h2>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <KpiCard
-              label="Unassigned"
-              value={ticketStats?.unassignedComplaints ?? 0}
-              isLoading={ticketStatsLoading}
-              bgColor="bg-white"
-              iconBgColor="bg-amber-100"
-              icon={
-                <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-              }
-            />
-            <KpiCard
               label="Open Complaints"
               value={ticketStats?.openComplaints ?? 0}
               isLoading={ticketStatsLoading}

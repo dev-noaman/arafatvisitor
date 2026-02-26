@@ -15,9 +15,6 @@ interface TicketsListProps {
   onStatusFilter: (status: TicketStatus | '') => void
   onPageChange: (page: number) => void
   onTicketClick: (ticket: Ticket) => void
-  // New filter props
-  adminUsers?: { id: number; name: string }[]
-  onAssigneeFilter?: (assigneeId: number | '') => void
   onDateRangeFilter?: (dateFrom: string, dateTo: string) => void
   dateFrom?: string
   dateTo?: string
@@ -33,8 +30,6 @@ export default function TicketsList({
   onStatusFilter,
   onPageChange,
   onTicketClick,
-  adminUsers,
-  onAssigneeFilter,
   onDateRangeFilter,
   dateFrom = '',
   dateTo = '',
@@ -104,20 +99,6 @@ export default function TicketsList({
           ))}
         </select>
 
-        {activeTab === 'COMPLAINT' && adminUsers && adminUsers.length > 0 && onAssigneeFilter && (
-          <>
-            <select
-              onChange={(e) => onAssigneeFilter(e.target.value ? Number(e.target.value) as number : '')}
-              className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">All Assignees</option>
-              {adminUsers.map((u) => (
-                <option key={u.id} value={u.id}>{u.name}</option>
-              ))}
-            </select>
-          </>
-        )}
-
         {onDateRangeFilter && (
           <div className="flex items-center gap-2">
             <input
@@ -147,10 +128,7 @@ export default function TicketsList({
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ticket #</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Subject</th>
               {activeTab === 'COMPLAINT' && (
-                <>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Host</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Assigned To</th>
-                </>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Host</th>
               )}
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created By</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
@@ -180,14 +158,9 @@ export default function TicketsList({
                   <td className="px-4 py-3 text-sm font-mono text-gray-900">{ticket.ticketNumber}</td>
                   <td className="px-4 py-3 text-sm text-gray-900 max-w-[200px] truncate">{ticket.subject}</td>
                   {activeTab === 'COMPLAINT' && (
-                    <>
-                      <td className="px-4 py-3 text-sm text-gray-600">
-                        {ticket.host ? `${ticket.host.name} (${ticket.host.company})` : <span className="text-gray-400">—</span>}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">
-                        {ticket.assignedTo?.name || <span className="text-gray-400">Unassigned</span>}
-                      </td>
-                    </>
+                    <td className="px-4 py-3 text-sm text-gray-600">
+                      {ticket.host ? `${ticket.host.name} (${ticket.host.company})` : <span className="text-gray-400">—</span>}
+                    </td>
                   )}
                   <td className="px-4 py-3 text-sm text-gray-600">
                     {ticket.createdBy.name}

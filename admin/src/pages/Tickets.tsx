@@ -11,13 +11,11 @@ import {
   uploadAttachment,
   reopenTicket,
 } from '@/services/tickets'
-import { get } from '@/services/api'
 import type {
   Ticket,
   TicketType,
   TicketStatus,
   TicketFormData,
-  User,
 } from '@/types'
 
 export default function Tickets() {
@@ -28,7 +26,6 @@ export default function Tickets() {
   // Data
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null)
-  const [adminUsers, setAdminUsers] = useState<{ id: number; name: string }[]>([])
 
   // Loading
   const [isLoading, setIsLoading] = useState(false)
@@ -43,7 +40,6 @@ export default function Tickets() {
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, totalPages: 1 })
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<TicketStatus | ''>('')
-  const [assigneeFilter, setAssigneeFilter] = useState<number | ''>('')
   const [dateFromFilter, setDateFromFilter] = useState('')
   const [dateToFilter, setDateToFilter] = useState('')
 
@@ -53,7 +49,6 @@ export default function Tickets() {
     search = '',
     type: TicketType = activeTab,
     status: TicketStatus | '' = '',
-    assignedToId: number | '' = '',
     dateFrom = '',
     dateTo = '',
   ) => {
@@ -68,7 +63,6 @@ export default function Tickets() {
       }
       if (search) params.search = search
       if (status) params.status = status
-      if (assignedToId) params.assignedToId = assignedToId
       if (dateFrom) params.dateFrom = dateFrom
       if (dateTo) params.dateTo = dateTo
 
@@ -87,25 +81,9 @@ export default function Tickets() {
     }
   }, [activeTab, pagination.limit, error])
 
-  // Fetch admin users for assignment dropdown
-  const fetchAdminUsers = useCallback(async () => {
-    if (!isAdmin) return
-    try {
-      const users = await get<User[]>('/admin/api/users?role=ADMIN&limit=100')
-      if (Array.isArray(users)) {
-        setAdminUsers(users.map((u: any) => ({ id: Number(u.id), name: u.name || u.email })))
-      } else if ((users as any)?.data) {
-        setAdminUsers(((users as any).data as any[]).map((u: any) => ({ id: Number(u.id), name: u.name || u.email })))
-      }
-    } catch {
-      // Silently fail — admin users list is optional
-    }
-  }, [isAdmin])
-
   // Initial load
   useEffect(() => {
     fetchTickets(1, '', activeTab)
-    fetchAdminUsers()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Tab change
@@ -113,36 +91,31 @@ export default function Tickets() {
     setActiveTab(tab)
     setSearchQuery('')
     setStatusFilter('')
-    setAssigneeFilter('')
     setDateFromFilter('')
     setDateToFilter('')
-    fetchTickets(1, '', tab, '', '', '', '')
+    fetchTickets(1, '', tab, '', '', '')
   }
 
   // Search
   const handleSearch = (search: string) => {
     setSearchQuery(search)
-    fetchTickets(1, search, activeTab, statusFilter, assigneeFilter, dateFromFilter, dateToFilter)
+    fetchTickets(1, search, activeTab, statusFilter, dateFromFilter, dateToFilter)
   }
 
   // Filters
   const handleStatusFilter = (status: TicketStatus | '') => {
     setStatusFilter(status)
-    fetchTickets(1, searchQuery, activeTab, status, assigneeFilter, dateFromFilter, dateToFilter)
-  }
-  const handleAssigneeFilter = (assigneeId: number | '') => {
-    setAssigneeFilter(assigneeId)
-    fetchTickets(1, searchQuery, activeTab, statusFilter, assigneeId, dateFromFilter, dateToFilter)
+    fetchTickets(1, searchQuery, activeTab, status, dateFromFilter, dateToFilter)
   }
   const handleDateRangeFilter = (dateFrom: string, dateTo: string) => {
     setDateFromFilter(dateFrom)
     setDateToFilter(dateTo)
-    fetchTickets(1, searchQuery, activeTab, statusFilter, assigneeFilter, dateFrom, dateTo)
+    fetchTickets(1, searchQuery, activeTab, statusFilter, dateFrom, dateTo)
   }
 
   // Pagination
   const handlePageChange = (page: number) => {
-    fetchTickets(page, searchQuery, activeTab, statusFilter, assigneeFilter, dateFromFilter, dateToFilter)
+    fetchTickets(page, searchQuery, activeTab, statusFilter, dateFromFilter, dateToFilter)
   }
 
   // View ticket detail
@@ -171,7 +144,7 @@ export default function Tickets() {
       }
       success(`Ticket ${created.ticketNumber} created successfully`)
       setIsModalOpen(false)
-      fetchTickets(1, searchQuery, activeTab, statusFilter, assigneeFilter, dateFromFilter, dateToFilter)
+      fetchTickets(1, searchQuery, activeTab, statusFilter, dateFromFilter, dateToFilter)
     } catch (err: any) {
       error(err?.message || 'Failed to create ticket')
     } finally {
@@ -227,7 +200,7 @@ export default function Tickets() {
   const handleBackToList = () => {
     setView('list')
     setSelectedTicket(null)
-    fetchTickets(pagination.page, searchQuery, activeTab, statusFilter, assigneeFilter, dateFromFilter, dateToFilter)
+    fetchTickets(pagination.page, searchQuery, activeTab, statusFilter, dateFromFilter, dateToFilter)
   }
 
   return (
@@ -257,8 +230,6 @@ export default function Tickets() {
           onStatusFilter={handleStatusFilter}
           onPageChange={handlePageChange}
           onTicketClick={handleTicketClick}
-          adminUsers={adminUsers}
-          onAssigneeFilter={handleAssigneeFilter}
           onDateRangeFilter={handleDateRangeFilter}
           dateFrom={dateFromFilter}
           dateTo={dateToFilter}
@@ -268,7 +239,6 @@ export default function Tickets() {
           ticket={selectedTicket}
           isAdmin={isAdmin}
           currentUserId={Number(user?.id) || 0}
-          adminUsers={adminUsers}
           onUpdate={handleUpdate}
           onAddComment={handleAddComment}
           onReopen={handleReopen}
