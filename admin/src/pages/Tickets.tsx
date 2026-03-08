@@ -10,6 +10,7 @@ import {
   addComment,
   uploadAttachment,
   reopenTicket,
+  cleanAllTickets,
 } from '@/services/tickets'
 import type {
   Ticket,
@@ -30,6 +31,7 @@ export default function Tickets() {
   // Loading
   const [isLoading, setIsLoading] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isCleaning, setIsCleaning] = useState(false)
 
   // UI state
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -196,6 +198,23 @@ export default function Tickets() {
     }
   }
 
+  // Clean all (one-time, ADMIN only)
+  const handleCleanAll = async () => {
+    if (!window.confirm('Delete ALL suggestions and complaints? This cannot be undone.')) return
+    setIsCleaning(true)
+    try {
+      const result = await cleanAllTickets()
+      success(result.message)
+      setSelectedTicket(null)
+      setView('list')
+      fetchTickets(1, '', activeTab, statusFilter, dateFromFilter, dateToFilter)
+    } catch (err: any) {
+      error(err?.message || 'Failed to clean tickets')
+    } finally {
+      setIsCleaning(false)
+    }
+  }
+
   // Back to list
   const handleBackToList = () => {
     setView('list')
@@ -209,12 +228,23 @@ export default function Tickets() {
       {view === 'list' && (
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-gray-900">Tickets</h1>
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700"
-          >
-            New Ticket
-          </button>
+          <div className="flex gap-2">
+            {isAdmin && (
+              <button
+                onClick={handleCleanAll}
+                disabled={isCleaning}
+                className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isCleaning ? 'Cleaning...' : 'Clean All'}
+              </button>
+            )}
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700"
+            >
+              New Ticket
+            </button>
+          </div>
         </div>
       )}
 

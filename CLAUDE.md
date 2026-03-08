@@ -1,4 +1,4 @@
-﻿> ⚠️ BEFORE writing any code, read the relevant files in `read/` directory. See `read/workflow.md` for guidance.
+> ⚠️ BEFORE writing any code, read the relevant files in `read/` directory. See `read/workflow.md` for guidance.
 
 
 # CLAUDE.md
@@ -66,7 +66,7 @@ docker-compose up                        # Start PostgreSQL 16 on :5432
 ### Guards (applied globally via APP_GUARD in app.module.ts)
 - **JwtAuthGuard**: Validates Bearer tokens. Public routes whitelisted in guard.
 - **RolesGuard**: Checks `@Roles()` decorator against `request.user.role`.
-- **ThrottlerGuard**: Three strategies — `default` (60/min), `login-account` (5/15min), `login-ip` (20/15min).
+- **ThrottlerGuard**: Three strategies — `default` (60/min), `login-account` (15/15min), `login-ip` (60/15min). Login limits configurable via `THROTTLE_LOGIN_ACCOUNT_LIMIT` and `THROTTLE_LOGIN_IP_LIMIT`.
 
 ### Role Permissions
 - **ADMIN**: Full access to everything
@@ -78,9 +78,9 @@ docker-compose up                        # Start PostgreSQL 16 on :5432
 `auth/` `users/` `hosts/` `visits/` `deliveries/` `dashboard/` `lookups/` `notifications/` (email + WhatsApp) `reports/` `tasks/` (OfficeRND hourly cron sync) `audit/` `tickets/`
 
 ### Database Schema (`backend/prisma/schema.prisma`)
-Core models: User, Host, Visit, Delivery, QrToken, CheckEvent, RefreshToken, AuditLog, Lookup tables.
+Core models: User, Host, Visit, Delivery, QrToken, CheckEvent, RefreshToken, AuditLog, Lookup tables, Ticket.
 
-Key enums: `Role` (ADMIN/RECEPTION/HOST/STAFF), `HostType` (EXTERNAL/STAFF), `VisitStatus` (PRE_REGISTERED → PENDING_APPROVAL → APPROVED → CHECKED_IN → CHECKED_OUT), `DeliveryStatus` (RECEIVED/PICKED_UP).
+Key enums: `Role` (ADMIN/RECEPTION/HOST/STAFF), `HostType` (EXTERNAL/STAFF), `VisitStatus` (PRE_REGISTERED → PENDING_APPROVAL → APPROVED → CHECKED_IN → CHECKED_OUT), `DeliveryStatus` (RECEIVED/PICKED_UP), `TicketType` (COMPLAINT/SUGGESTION), `TicketStatus`.
 
 ## Mobile App Architecture (`MOBILE/`)
 
@@ -178,19 +178,25 @@ RECEPTION and ADMIN users can manage sub-members on behalf of any host company. 
 
 ## Ticket System
 
-Staff/hosts submit complaints and suggestions via the Tickets page (`admin/src/pages/Tickets.tsx`).
+Staff/hosts submit complaints and suggestions via the Tickets page (`admin/src/pages/Tickets.tsx`). Tickets are visitor-system related; HOST/STAFF tickets auto-link `hostId` from their user.
+
+### Schema
+- **Ticket** — `type` (COMPLAINT/SUGGESTION), `subject`, `description`, `status`, `hostId` (FK → Host), `assignedToId` (FK → User). No category, priority, relatedVisitId, or relatedDeliveryId.
+- **CreateTicketDto** — `type`, `subject`, `description` only. `hostId` set server-side from `User.hostId` for HOST/STAFF.
 
 ### Backend (`backend/src/tickets/`)
 - `tickets.controller.ts` — `GET /admin/api/tickets/stats` and `GET /admin/api/tickets/badge-count` MUST appear before `GET /admin/api/tickets/:id` to avoid NestJS route conflict.
 - `tickets.service.ts` — `notifyStatusChange()` sends email via SMTP for ALL status transitions (not WhatsApp — user preference). Do NOT add WhatsApp back.
 - `getBadgeCount(userId, role)` — ADMIN sees all non-terminal tickets; others see own only. Terminal statuses: CLOSED, REJECTED, REVIEWED, DISMISSED.
+- `getStats()` — Returns `openComplaints`, `inProgressComplaints`, `unassignedComplaints` (assignedToId=null, status OPEN/IN_PROGRESS), `pendingSuggestions`, `resolvedThisWeek`, `averageResolutionHours`. No `urgentComplaints`.
 
 ### Frontend
 - `admin/src/components/tickets/` — `TicketForm`, `TicketsList`, `TicketDetail`, `CommentTimeline`, `TicketModal`
 - `admin/src/services/tickets.ts` — `getTickets`, `getTicket`, `createTicket`, `updateTicket`, `addComment`, `uploadAttachment`, `reopenTicket`, `getTicketStats`, `downloadAttachment`
-- **TicketForm** — visit/delivery linking dropdowns (complaint only) use `SearchableSelect` with lazy fetch triggered when `selectedType === 'COMPLAINT'`
+- **TicketForm** — type, subject, description; attachments for both complaint and suggestion. HOST/STAFF see "Visitor system complaint" banner (no visit/delivery linking).
+- **TicketsList** — Host column; no category/priority filters.
 - **AppSidebar** — polls `GET /admin/api/tickets/badge-count` every 60s, renders red pill when count > 0
-- **Dashboard** — ADMIN-only "Ticket Overview" section using `getTicketStats()` (7 KPI cards)
+- **Dashboard** — ADMIN-only "Ticket Overview" with 6 KPI cards: **Unassigned** (first, prominent), Open Complaints, In Progress, Pending Suggestions, Resolved This Week, Avg Resolution Time.
 
 ### Ticket Status Flows
 - **Complaint**: OPEN → IN_PROGRESS → RESOLVED → CLOSED (or REJECTED at OPEN/IN_PROGRESS; creator can reopen RESOLVED → OPEN)

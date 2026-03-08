@@ -622,6 +622,36 @@ export class TicketsService {
     return this.findOne(id, userId, Role.ADMIN);
   }
 
+  // ========== CLEAN ALL (one-time) ==========
+  async cleanAll() {
+    const attachments = await this.prisma.ticketAttachment.findMany({
+      select: { id: true, filePath: true },
+    });
+    for (const att of attachments) {
+      const fullPath = path.join(process.cwd(), att.filePath);
+      if (fs.existsSync(fullPath)) {
+        try {
+          fs.unlinkSync(fullPath);
+        } catch {
+          this.logger.warn(`Could not delete file: ${att.filePath}`);
+        }
+      }
+    }
+    const result = await this.prisma.ticket.deleteMany({});
+    const ticketsDir = path.join(process.cwd(), "uploads", "tickets");
+    if (fs.existsSync(ticketsDir)) {
+      try {
+        fs.rmSync(ticketsDir, { recursive: true });
+      } catch {
+        this.logger.warn("Could not remove uploads/tickets directory");
+      }
+    }
+    return {
+      deleted: result.count,
+      message: `Deleted ${result.count} tickets (suggestions and complaints).`,
+    };
+  }
+
   // ========== BADGE COUNT ==========
   async getBadgeCount(userId: number, userRole: Role) {
     const terminalStatuses = [

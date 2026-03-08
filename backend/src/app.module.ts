@@ -2,6 +2,11 @@ import { Module } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
 import { ConfigModule } from "@nestjs/config";
 import { ThrottlerModule, ThrottlerGuard } from "@nestjs/throttler";
+
+// Login rate limits: configurable via env to avoid blocking legitimate users
+// Defaults: 15 attempts per account per 15min, 60 per IP per 15min
+const LOGIN_ACCOUNT_LIMIT = parseInt(process.env.THROTTLE_LOGIN_ACCOUNT_LIMIT || "15", 10);
+const LOGIN_IP_LIMIT = parseInt(process.env.THROTTLE_LOGIN_IP_LIMIT || "60", 10);
 import { CacheModule } from "@nestjs/cache-manager";
 import { TerminusModule } from "@nestjs/terminus";
 import { ScheduleModule } from "@nestjs/schedule";
@@ -35,12 +40,12 @@ import { RolesGuard } from "./common/guards/roles.guard";
       {
         name: "login-account",
         ttl: 15 * 60 * 1000, // 15 minutes
-        limit: 5,
+        limit: LOGIN_ACCOUNT_LIMIT,
       },
       {
         name: "login-ip",
         ttl: 15 * 60 * 1000, // 15 minutes
-        limit: 20,
+        limit: LOGIN_IP_LIMIT,
       },
     ]),
     CacheModule.register({ isGlobal: true }),

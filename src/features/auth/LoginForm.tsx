@@ -48,12 +48,17 @@ export function LoginForm(props: { onLoginSuccess?: (role: "admin" | "reception"
       if (apiBase) {
         try {
           const { token: newToken, user } = await apiLogin(data.email, data.password)
-          setAuthToken(newToken)
+          setAuthToken(null)
           if (user.role === "HOST") {
-            toast.error("Host accounts use Admin only", { description: `Log in at ${getAdminUrl()}/login for limited access.` })
+            toast.error("Host accounts use Admin panel", { description: `Log in at ${getAdminUrl()}/login` })
             return
           }
-          const role = (user.role === "ADMIN" || user.role === "RECEPTION" ? user.role.toLowerCase() : "admin") as "admin" | "reception"
+          if (user.role === "ADMIN") {
+            toast.error("Admin accounts use Admin panel", { description: `Log in at ${getAdminUrl()}/login for full access` })
+            return
+          }
+          setAuthToken(newToken)
+          const role = (user.role === "RECEPTION" ? "reception" : "admin") as "admin" | "reception"
           toast.success("Login successful", { description: "Welcome back to the VMS Dashboard." })
           props.onLoginSuccess?.(role)
           return

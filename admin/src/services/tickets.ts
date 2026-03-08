@@ -83,6 +83,10 @@ export const reopenTicket = async (id: number, comment: string) => {
   return api.post<Ticket>(`${BASE}/${id}/reopen`, { comment })
 }
 
+export const cleanAllTickets = async (): Promise<{ deleted: number; message: string }> => {
+  return api.post<{ deleted: number; message: string }>(`${BASE}/clean-all`, {})
+}
+
 export const getTicketStats = async () => {
   return api.get<TicketStats>(`${BASE}/stats`)
 }

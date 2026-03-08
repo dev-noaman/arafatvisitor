@@ -48,6 +48,13 @@ export class TicketsController {
     return this.ticketsService.getStats();
   }
 
+  /** One-time cleanup: delete all suggestions and complaints (ADMIN only) */
+  @Post("clean-all")
+  @Roles(Role.ADMIN)
+  async cleanAll() {
+    return this.ticketsService.cleanAll();
+  }
+
   @Get("badge-count")
   @Roles(Role.ADMIN, Role.RECEPTION, Role.HOST, Role.STAFF)
   async getBadgeCount(@Req() req: any) {

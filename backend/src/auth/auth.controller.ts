@@ -13,8 +13,14 @@ export class AuthController {
 
   @Public()
   @Throttle({
-    "login-account": { limit: 5, ttl: 900000 },
-    "login-ip": { limit: 20, ttl: 900000 },
+    "login-account": {
+      limit: parseInt(process.env.THROTTLE_LOGIN_ACCOUNT_LIMIT || "15", 10),
+      ttl: 900000,
+    },
+    "login-ip": {
+      limit: parseInt(process.env.THROTTLE_LOGIN_IP_LIMIT || "60", 10),
+      ttl: 900000,
+    },
   })
   @Post("login")
   async login(
