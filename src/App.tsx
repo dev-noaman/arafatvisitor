@@ -15,7 +15,7 @@ import { useIdleTimeout } from "@/hooks/useIdleTimeout"
 import { Toaster } from "sonner"
 import { Truck, LogOut, ArrowLeft, User, ArrowRight, AlertTriangle } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { setAuthToken, getAdminUrl, getAuthToken, validateSession } from "@/lib/api"
+import { setAuthToken, getAdminUrl, getAuthToken, validateSession, stopTokenRefresh } from "@/lib/api"
 import QRCode from "react-qr-code"
 
 type Role = "admin" | "reception"
@@ -109,6 +109,7 @@ function App() {
   }
 
   const handleLogout = () => {
+    stopTokenRefresh()
     setAuthToken(null)
     localStorage.removeItem("vms_role")
     setIsLoggedIn(false)

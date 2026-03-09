@@ -61,6 +61,12 @@ API_URL=https://arafatvisitor.cloud npx expo start
 docker-compose up                        # Start PostgreSQL 16 on :5432
 ```
 
+### E2E (Playwright)
+```bash
+npx playwright install                   # One-time: install browsers
+npx playwright test                     # Run e2e tests (e2e/*.spec.ts)
+```
+
 ## Backend Architecture
 
 ### Guards (applied globally via APP_GUARD in app.module.ts)
@@ -185,16 +191,18 @@ Staff/hosts submit complaints and suggestions via the Tickets page (`admin/src/p
 - **CreateTicketDto** — `type`, `subject`, `description` only. `hostId` set server-side from `User.hostId` for HOST/STAFF.
 
 ### Backend (`backend/src/tickets/`)
-- `tickets.controller.ts` — `GET /admin/api/tickets/stats` and `GET /admin/api/tickets/badge-count` MUST appear before `GET /admin/api/tickets/:id` to avoid NestJS route conflict.
+- `tickets.controller.ts` — `GET /admin/api/tickets/stats` and `GET /admin/api/tickets/badge-count` MUST appear before `GET /admin/api/tickets/:id` to avoid NestJS route conflict. `DELETE :id` also before `:id/reopen`.
 - `tickets.service.ts` — `notifyStatusChange()` sends email via SMTP for ALL status transitions (not WhatsApp — user preference). Do NOT add WhatsApp back.
+- `remove(id)` — ADMIN-only hard delete. Deletes ticket + cascade (comments, attachments), cleans up attachment files and ticket directory from disk.
 - `getBadgeCount(userId, role)` — ADMIN sees all non-terminal tickets; others see own only. Terminal statuses: CLOSED, REJECTED, REVIEWED, DISMISSED.
 - `getStats()` — Returns `openComplaints`, `inProgressComplaints`, `unassignedComplaints` (assignedToId=null, status OPEN/IN_PROGRESS), `pendingSuggestions`, `resolvedThisWeek`, `averageResolutionHours`. No `urgentComplaints`.
 
 ### Frontend
 - `admin/src/components/tickets/` — `TicketForm`, `TicketsList`, `TicketDetail`, `CommentTimeline`, `TicketModal`
-- `admin/src/services/tickets.ts` — `getTickets`, `getTicket`, `createTicket`, `updateTicket`, `addComment`, `uploadAttachment`, `reopenTicket`, `getTicketStats`, `downloadAttachment`
+- `admin/src/services/tickets.ts` — `getTickets`, `getTicket`, `createTicket`, `updateTicket`, `deleteTicket`, `addComment`, `uploadAttachment`, `reopenTicket`, `getTicketStats`, `downloadAttachment`
 - **TicketForm** — type, subject, description; attachments for both complaint and suggestion. HOST/STAFF see "Visitor system complaint" banner (no visit/delivery linking).
 - **TicketsList** — Host column; no category/priority filters.
+- **TicketDetail** — ADMIN sees red "Delete Ticket" button in sidebar (with confirmation dialog). Calls `DELETE /admin/api/tickets/:id`.
 - **AppSidebar** — polls `GET /admin/api/tickets/badge-count` every 60s, renders red pill when count > 0
 - **Dashboard** — ADMIN-only "Ticket Overview" with 6 KPI cards: **Unassigned** (first, prominent), Open Complaints, In Progress, Pending Suggestions, Resolved This Week, Avg Resolution Time.
 
@@ -268,7 +276,8 @@ Sub-routes like `/stats` and `/badge-count` MUST be declared **before** `@Get(':
 
 ## Deployment
 
-- **CI/CD**: GitHub Actions (`.github/workflows/deploy.yml` for VPS, `build.yml` for mobile APK/IPA)
+- **CI/CD**: GitHub Actions (`.github/workflows/deploy.yml` for VPS, `build.yml` for mobile APK/IPA, `mock-data.yml` for manual mock data)
+- **Checkout**: `actions/checkout@v4` uses default `GITHUB_TOKEN`. No `GH_TOKEN` secret needed for public repo.
 - **Production**: PM2 process on VPS, Nginx reverse proxy with Let's Encrypt SSL
 - **Domain**: arafatvisitor.cloud (and www.arafatvisitor.cloud — both must work; CORS allows both)
 - **Nginx routes**: `/api/*`, `/admin`, `/hosts`, `/visits`, `/deliveries`, `/lookups`, `/health`, `/socket.io` → backend:3000; `/` → kiosk static files

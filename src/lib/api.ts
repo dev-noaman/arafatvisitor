@@ -47,6 +47,52 @@ export type Delivery = {
 }
 
 let authToken: string | null = null
+let refreshTimer: ReturnType<typeof setInterval> | null = null
+
+/** Refresh the access token using the httpOnly refresh cookie */
+async function refreshAccessToken(): Promise<string | null> {
+  const base = getApiBase()
+  if (!base) return null
+
+  try {
+    const res = await fetchWithTimeout(`${base}/api/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include', // send httpOnly cookies
+      timeout: 6000,
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    if (data.token) {
+      setAuthToken(data.token)
+      return data.token
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
+/** Start periodic token refresh (every 12 minutes, token expires at 15) */
+export function startTokenRefresh() {
+  stopTokenRefresh()
+  // Refresh every 12 minutes (token has 15-min lifetime)
+  refreshTimer = setInterval(async () => {
+    const token = getAuthToken()
+    if (!token) {
+      stopTokenRefresh()
+      return
+    }
+    await refreshAccessToken()
+  }, 12 * 60 * 1000)
+}
+
+export function stopTokenRefresh() {
+  if (refreshTimer) {
+    clearInterval(refreshTimer)
+    refreshTimer = null
+  }
+}
 
 function getConfig() {
   if (typeof sessionStorage === 'undefined') return null
@@ -122,16 +168,35 @@ export async function validateSession(): Promise<{ role: string } | null> {
   try {
     const res = await fetchWithTimeout(`${base}/admin/api/profile`, {
       headers: { Authorization: `Bearer ${token}` },
+      credentials: 'include',
       timeout: 6000,
     })
     if (!res.ok) {
+      // Token expired — try refreshing before giving up
+      if (res.status === 401) {
+        const newToken = await refreshAccessToken()
+        if (newToken) {
+          const retryRes = await fetchWithTimeout(`${base}/admin/api/profile`, {
+            headers: { Authorization: `Bearer ${newToken}` },
+            credentials: 'include',
+            timeout: 6000,
+          })
+          if (retryRes.ok) {
+            const user = await retryRes.json()
+            startTokenRefresh()
+            return { role: user.role?.toLowerCase() }
+          }
+        }
+      }
       setAuthToken(null)
       return null
     }
     const user = await res.json()
+    startTokenRefresh()
     return { role: user.role?.toLowerCase() }
   } catch {
     // Network error — keep token, don't force re-login
+    startTokenRefresh()
     return { role: localStorage.getItem('vms_role') ?? 'admin' }
   }
 }
@@ -186,7 +251,8 @@ async function apiFetch<T>(
   endpoint: string,
   options: RequestInit = {},
   retryCount = 0,
-  retryDelays = DEFAULT_RETRY_DELAYS
+  retryDelays = DEFAULT_RETRY_DELAYS,
+  _triedRefresh = false,
 ): Promise<T> {
   const base = getApiBase()
   if (!base) throw new Error('API not configured')
@@ -209,9 +275,17 @@ async function apiFetch<T>(
     const res = await fetchWithTimeout(`${base}${endpoint}`, {
       ...options,
       headers,
+      credentials: 'include', // send httpOnly refresh cookie
       timeout: FETCH_TIMEOUT_MS,
     })
     if (!res.ok) {
+      // On 401, try refreshing the token once before failing
+      if (res.status === 401 && !_triedRefresh && !endpoint.includes('/auth/login')) {
+        const newToken = await refreshAccessToken()
+        if (newToken) {
+          return apiFetch<T>(endpoint, options, 0, retryDelays, true)
+        }
+      }
       const error = await res.json().catch(() => ({ message: res.statusText }))
       throw new Error(error.message || 'Request failed')
     }
@@ -236,7 +310,7 @@ async function apiFetch<T>(
       }
 
       await new Promise(resolve => setTimeout(resolve, delay))
-      return apiFetch<T>(endpoint, options, retryCount + 1, retryDelays)
+      return apiFetch<T>(endpoint, options, retryCount + 1, retryDelays, _triedRefresh)
     }
 
     // Final error message
@@ -249,10 +323,13 @@ async function apiFetch<T>(
 }
 
 export async function login(email: string, password: string): Promise<{ token: string; role: string; user: { name: string; email: string; role: string } }> {
-  return apiFetch('/api/auth/login', {
+  const result = await apiFetch<{ token: string; role: string; user: { name: string; email: string; role: string } }>('/api/auth/login', {
     method: 'POST',
     body: JSON.stringify({ email, password }),
   }, 0, LOGIN_RETRY_DELAYS)
+  // Start periodic token refresh after successful login
+  startTokenRefresh()
+  return result
 }
 
 export async function forgotPassword(email: string): Promise<void> {
