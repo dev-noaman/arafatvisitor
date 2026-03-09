@@ -104,7 +104,21 @@ export class UsersService {
   }
 
   async remove(id: number) {
-    await this.findOne(id);
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      select: { id: true, hostId: true, role: true },
+    });
+    if (!user) throw new NotFoundException("User not found");
+
+    // Deactivate linked host record when deleting a STAFF user
+    // (STAFF users have auto-created Host records that should not remain active)
+    if (user.hostId && user.role === Role.STAFF) {
+      await this.prisma.host.update({
+        where: { id: user.hostId },
+        data: { status: 0 },
+      });
+    }
+
     await this.prisma.user.delete({ where: { id } });
     return { message: "User deleted" };
   }
