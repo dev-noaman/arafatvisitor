@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Param,
   Body,
   Query,
@@ -182,6 +183,13 @@ export class TicketsController {
 
     const stream = fs.createReadStream(filePath);
     stream.pipe(res);
+  }
+
+  @Delete(":id")
+  @Roles(Role.ADMIN)
+  @UseInterceptors(AuditInterceptor)
+  async remove(@Param("id", ParseIntPipe) id: number) {
+    return this.ticketsService.remove(id);
   }
 
   @Post(":id/reopen")

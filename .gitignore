@@ -26,6 +26,8 @@ backend/.coverage
 
 # Test artifacts
 .vitest/
+test-results/
+.playwright-mcp/
 
 # Editor directories and files
 .vscode/*

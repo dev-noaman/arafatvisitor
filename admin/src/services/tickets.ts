@@ -79,6 +79,10 @@ export const downloadAttachment = (ticketId: number, attachId: number) => {
   })
 }
 
+export const deleteTicket = async (id: number) => {
+  return api.delete<{ message: string }>(`${BASE}/${id}`)
+}
+
 export const reopenTicket = async (id: number, comment: string) => {
   return api.post<Ticket>(`${BASE}/${id}/reopen`, { comment })
 }

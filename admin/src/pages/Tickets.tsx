@@ -10,6 +10,7 @@ import {
   addComment,
   uploadAttachment,
   reopenTicket,
+  deleteTicket,
   cleanAllTickets,
 } from '@/services/tickets'
 import type {
@@ -198,6 +199,20 @@ export default function Tickets() {
     }
   }
 
+  // Delete single ticket (ADMIN only)
+  const handleDelete = async () => {
+    if (!selectedTicket) return
+    try {
+      const result = await deleteTicket(selectedTicket.id)
+      success(result.message)
+      setSelectedTicket(null)
+      setView('list')
+      fetchTickets(pagination.page, searchQuery, activeTab, statusFilter, dateFromFilter, dateToFilter)
+    } catch (err: any) {
+      error(err?.message || 'Failed to delete ticket')
+    }
+  }
+
   // Clean all (one-time, ADMIN only)
   const handleCleanAll = async () => {
     if (!window.confirm('Delete ALL suggestions and complaints? This cannot be undone.')) return
@@ -272,6 +287,7 @@ export default function Tickets() {
           onUpdate={handleUpdate}
           onAddComment={handleAddComment}
           onReopen={handleReopen}
+          onDelete={isAdmin ? handleDelete : undefined}
           onBack={handleBackToList}
         />
       ) : null}

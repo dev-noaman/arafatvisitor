@@ -622,6 +622,51 @@ export class TicketsService {
     return this.findOne(id, userId, Role.ADMIN);
   }
 
+  // ========== DELETE SINGLE TICKET ==========
+  async remove(id: number) {
+    const ticket = await this.prisma.ticket.findUnique({
+      where: { id },
+      include: { attachments: { select: { id: true, filePath: true } } },
+    });
+
+    if (!ticket) {
+      throw new NotFoundException("Ticket not found");
+    }
+
+    // Delete attachment files from disk
+    for (const att of ticket.attachments) {
+      const fullPath = path.join(process.cwd(), att.filePath);
+      if (fs.existsSync(fullPath)) {
+        try {
+          fs.unlinkSync(fullPath);
+        } catch {
+          this.logger.warn(`Could not delete file: ${att.filePath}`);
+        }
+      }
+    }
+
+    // Clean up ticket directory if empty
+    const ticketDir = path.join(
+      process.cwd(),
+      "uploads",
+      "tickets",
+      String(id),
+    );
+    if (fs.existsSync(ticketDir)) {
+      try {
+        fs.rmSync(ticketDir, { recursive: true });
+      } catch {
+        this.logger.warn(`Could not remove ticket directory: ${ticketDir}`);
+      }
+    }
+
+    await this.prisma.ticket.delete({ where: { id } });
+
+    return {
+      message: `Ticket ${ticket.ticketNumber} deleted successfully.`,
+    };
+  }
+
   // ========== CLEAN ALL (one-time) ==========
   async cleanAll() {
     const attachments = await this.prisma.ticketAttachment.findMany({

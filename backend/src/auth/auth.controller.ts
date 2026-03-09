@@ -5,13 +5,14 @@ import { LoginDto } from "./dto/login.dto";
 import { ForgotPasswordDto } from "./dto/forgot-password.dto";
 import { ResetPasswordDto } from "./dto/reset-password.dto";
 import { Public } from "../common/decorators/public.decorator";
-import { Throttle } from "@nestjs/throttler";
+import { SkipThrottle, Throttle } from "@nestjs/throttler";
 
 @Controller("api/auth")
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Public()
+  @SkipThrottle({ default: true }) // Only use login-account + login-ip, not default 60/min
   @Throttle({
     "login-account": {
       limit: parseInt(process.env.THROTTLE_LOGIN_ACCOUNT_LIMIT || "15", 10),

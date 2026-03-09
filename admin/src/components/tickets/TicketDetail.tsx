@@ -14,6 +14,7 @@ interface TicketDetailProps {
   onUpdate: (data: Record<string, unknown>) => Promise<void>
   onAddComment: (message: string, isInternal: boolean) => Promise<void>
   onReopen: (comment: string) => Promise<void>
+  onDelete?: () => Promise<void>
   onBack: () => void
 }
 
@@ -34,6 +35,7 @@ export default function TicketDetail({
   onUpdate,
   onAddComment,
   onReopen,
+  onDelete,
   onBack,
 }: TicketDetailProps) {
   const [isUpdating, setIsUpdating] = useState(false)
@@ -269,6 +271,27 @@ export default function TicketDetail({
               </div>
             )}
           </div>
+
+          {/* Delete (ADMIN only) */}
+          {isAdmin && onDelete && (
+            <div className="bg-white rounded-lg border border-gray-200 p-4">
+              <button
+                onClick={async () => {
+                  if (!window.confirm(`Delete ticket ${ticket.ticketNumber}? This cannot be undone.`)) return
+                  setIsUpdating(true)
+                  try {
+                    await onDelete()
+                  } finally {
+                    setIsUpdating(false)
+                  }
+                }}
+                disabled={isUpdating}
+                className="w-full px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 disabled:opacity-50"
+              >
+                {isUpdating ? 'Deleting...' : 'Delete Ticket'}
+              </button>
+            </div>
+          )}
 
           {/* Admin Actions */}
           {isAdmin && validNextStatuses.length > 0 && (
