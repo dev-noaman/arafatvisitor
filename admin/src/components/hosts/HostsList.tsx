@@ -44,8 +44,10 @@ export default function HostsList({
   const isAdmin = user?.role === 'ADMIN'
   const isHost = user?.role === 'HOST'
   const isReception = user?.role === 'RECEPTION'
-  const actionsVisible = showActions ?? isAdmin
-  const canManageTeam = showTeamAction && onManageTeam && (isAdmin || isHost || isReception)
+  const isStaff = user?.role === 'STAFF'
+  const canEditDelete = isAdmin || isReception || isStaff
+  const actionsVisible = showActions ?? canEditDelete
+  const canManageTeam = showTeamAction && onManageTeam && (isAdmin || isHost || isReception || isStaff)
   const [searchQuery, setSearchQuery] = useState('')
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -178,7 +180,7 @@ export default function HostsList({
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                         </button>
-                        {isAdmin && (
+                        {(isAdmin || isReception || isStaff) && (
                           <button
                             onClick={() => onDelete(host)}
                             className="inline-flex items-center p-1.5 rounded-md text-red-600 hover:bg-red-50 transition"

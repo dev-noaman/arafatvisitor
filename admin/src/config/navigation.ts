@@ -19,7 +19,7 @@ export const NAV_ITEMS: NavItem[] = [
     path: '/admin/hosts',
     label: 'Hosts',
     icon: 'Users',
-    roles: ['ADMIN', 'HOST', 'RECEPTION'],
+    roles: ['ADMIN', 'HOST', 'RECEPTION', 'STAFF'],
   },
   {
     path: '/admin/visitors',

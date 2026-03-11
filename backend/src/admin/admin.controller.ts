@@ -2939,7 +2939,8 @@ export class AdminApiController {
       where.status = parseInt(status, 10);
     }
 
-    if (hostScope) {
+    // Only scope by company for HOST role; RECEPTION and STAFF have full access
+    if (hostScope && req.user?.role === "HOST") {
       where.company = hostScope.company;
     }
 
@@ -2973,16 +2974,16 @@ export class AdminApiController {
       throw new HttpException("Host not found", HttpStatus.NOT_FOUND);
     }
 
-    // HOST can only view hosts in their company
+    // Only HOST is scoped to their company; RECEPTION and STAFF have full access
     const hostScope = await this.getHostScope(req);
-    if (hostScope && host.company !== hostScope.company) {
+    if (hostScope && req.user?.role === "HOST" && host.company !== hostScope.company) {
       throw new ForbiddenException("Access denied");
     }
 
     return host;
   }
 
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.RECEPTION, Role.STAFF)
   @Post("hosts")
   async createHost(
     @Body()
@@ -3057,7 +3058,7 @@ export class AdminApiController {
     return { ...host, userCreated };
   }
 
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.RECEPTION, Role.STAFF)
   @Put("hosts/:id")
   async updateHost(
     @Param("id") id: string,
@@ -3098,7 +3099,7 @@ export class AdminApiController {
     return host;
   }
 
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.RECEPTION, Role.STAFF)
   @Delete("hosts/:id")
   async deleteHost(@Param("id") id: string) {
     const existing = await this.prisma.host.findUnique({
@@ -3118,7 +3119,7 @@ export class AdminApiController {
     return { success: true, message: "Host deleted" };
   }
 
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.RECEPTION, Role.STAFF)
   @Post("hosts/bulk/delete")
   async bulkDeleteHosts(@Body() body: { ids: string[] }) {
     const { ids } = body;
@@ -4718,7 +4719,7 @@ export class AdminApiController {
 
   // ============ MY TEAM (Host Sub-Members) ============
 
-  @Roles(Role.ADMIN, Role.HOST, Role.RECEPTION)
+  @Roles(Role.ADMIN, Role.HOST, Role.RECEPTION, Role.STAFF)
   @UseInterceptors(AuditInterceptor)
   @Post("my-team")
   async createTeamMember(
@@ -4755,7 +4756,7 @@ export class AdminApiController {
     else if (req.user?.role === "RECEPTION" || req.user?.role === "ADMIN") {
       if (!body.hostId) {
         throw new HttpException(
-          "hostId is required for RECEPTION/ADMIN users",
+          "hostId is required for RECEPTION/ADMIN/STAFF users",
           HttpStatus.BAD_REQUEST,
         );
       }
@@ -4823,7 +4824,7 @@ export class AdminApiController {
     return subMember;
   }
 
-  @Roles(Role.ADMIN, Role.HOST, Role.RECEPTION)
+  @Roles(Role.ADMIN, Role.HOST, Role.RECEPTION, Role.STAFF)
   @Get("my-team")
   async getMyTeam(
     @Req() req: any,
@@ -4845,8 +4846,8 @@ export class AdminApiController {
       }
       targetCompany = hostScope.company;
     }
-    // For RECEPTION/ADMIN: require hostId to determine company
-    else if (req.user?.role === "RECEPTION" || req.user?.role === "ADMIN") {
+    // For RECEPTION/ADMIN/STAFF: require hostId to determine company
+    else if (req.user?.role === "RECEPTION" || req.user?.role === "ADMIN" || req.user?.role === "STAFF") {
       if (!hostId) {
         throw new HttpException(
           "hostId query parameter is required",
@@ -4923,7 +4924,7 @@ export class AdminApiController {
     };
   }
 
-  @Roles(Role.ADMIN, Role.HOST, Role.RECEPTION)
+  @Roles(Role.ADMIN, Role.HOST, Role.RECEPTION, Role.STAFF)
   @UseInterceptors(AuditInterceptor)
   @Patch("my-team/:id")
   async updateTeamMember(
@@ -4990,7 +4991,7 @@ export class AdminApiController {
     return updated;
   }
 
-  @Roles(Role.ADMIN, Role.HOST, Role.RECEPTION)
+  @Roles(Role.ADMIN, Role.HOST, Role.RECEPTION, Role.STAFF)
   @UseInterceptors(AuditInterceptor)
   @Patch("my-team/:id/status")
   async toggleTeamMemberStatus(
