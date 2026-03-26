@@ -76,9 +76,14 @@ npx playwright test                     # Run e2e tests (e2e/*.spec.ts)
 
 ### Role Permissions
 - **ADMIN**: Full access to everything
-- **RECEPTION**: Create visitors/deliveries, cannot approve/reject, manages sub-members on behalf of hosts via "My Team"
+- **RECEPTION**: Full host CRUD (create, update, delete hosts), create visitors/deliveries, cannot approve/reject, manages sub-members on behalf of hosts via "My Team"
 - **HOST**: Company-scoped CRUD (auto-filtered by hostId), manages sub-members via "My Team"
-- **STAFF**: Limited access, company-scoped, auto-linked to "Arafat Group"
+- **STAFF**: Full host CRUD (same as RECEPTION), visitors/deliveries/dashboard access, company-scoped for visits, manages sub-members via "My Team" (requires hostId)
+
+### Hosts CRUD Access
+- **GET hosts**, **GET hosts/:id**: `@Roles(ADMIN, RECEPTION, HOST, STAFF)` — company scope applied only for HOST (RECEPTION/STAFF see all)
+- **POST/PUT/DELETE hosts**, **POST hosts/bulk/delete**: `@Roles(ADMIN, RECEPTION, STAFF)` — full CRUD for RECEPTION and STAFF
+- **POST hosts/import**: ADMIN only (bulk import)
 
 ### Key Modules
 `auth/` `users/` `hosts/` `visits/` `deliveries/` `dashboard/` `lookups/` `notifications/` (email + WhatsApp) `reports/` `tasks/` (OfficeRND hourly cron sync) `audit/` `tickets/`
@@ -145,7 +150,7 @@ HOST users manage company contacts ("sub-members") directly from the Hosts page 
 | PATCH | `/admin/api/my-team/:id` | Edit name/email/phone |
 | PATCH | `/admin/api/my-team/:id/status` | Toggle active/inactive (self-deactivation blocked) |
 
-All endpoints use `@Roles(Role.ADMIN, Role.HOST, Role.RECEPTION)` + `getHostScope(req)` for company isolation and `@UseInterceptors(AuditInterceptor)` for audit logging.
+All endpoints use `@Roles(Role.ADMIN, Role.HOST, Role.RECEPTION, Role.STAFF)` + `getHostScope(req)` for company isolation and `@UseInterceptors(AuditInterceptor)` for audit logging.
 
 ### Validation Rules
 - **Email**: Required, unique case-insensitively across all hosts (`prisma.host.findFirst`)
@@ -153,13 +158,13 @@ All endpoints use `@Roles(Role.ADMIN, Role.HOST, Role.RECEPTION)` + `getHostScop
 - **Type**: Hardcoded `EXTERNAL` — HOST cannot create STAFF records
 - **Creator tracking**: `Host.createdById` (Int?, FK → User.id) set on create
 
-### Reception-to-Host Delegation
-RECEPTION and ADMIN users can manage sub-members on behalf of any host company. The `hostId` parameter determines company scope:
-- **POST**: `hostId` in request body (required for RECEPTION/ADMIN, ignored for HOST)
-- **GET**: `hostId` as query parameter (required for RECEPTION/ADMIN, ignored for HOST)
+### Reception/Staff-to-Host Delegation
+RECEPTION, STAFF, and ADMIN users can manage sub-members on behalf of any host company. The `hostId` parameter determines company scope:
+- **POST**: `hostId` in request body (required for RECEPTION/ADMIN/STAFF, ignored for HOST)
+- **GET**: `hostId` as query parameter (required for RECEPTION/ADMIN/STAFF, ignored for HOST)
 - **PATCH/PATCH-status**: No `hostId` needed — target identified by `:id`
 
-`getHostScope(req)` returns `null` for RECEPTION (no `hostId` on JWT). Each endpoint has inline role-checking: HOST uses `getHostScope()`, RECEPTION/ADMIN resolves company from provided `hostId`.
+`getHostScope(req)` returns `null` for RECEPTION (no `hostId` on JWT). Each endpoint has inline role-checking: HOST uses `getHostScope()`, RECEPTION/ADMIN/STAFF resolves company from provided `hostId`.
 
 ### Frontend Files (Integrated into Hosts Page)
 - `admin/src/components/hosts/TeamMembersModal.tsx` — Modal for managing team members of a specific host (opened from HostsList "Manage Team" button)
@@ -179,6 +184,7 @@ RECEPTION and ADMIN users can manage sub-members on behalf of any host company. 
 ### Role Permissions for My Team
 - **HOST**: Add, edit, deactivate/reactivate (toggle status) — **no delete**, auto-scoped to own company
 - **RECEPTION**: Same as HOST but manages team via modal from Hosts page — **no delete**
+- **STAFF**: Same as RECEPTION — manages team via modal, requires hostId for company scope
 - **ADMIN**: Full CRUD including soft delete (sets `deletedAt`)
 - Deactivated hosts (status=0) are excluded from all host dropdowns via `hosts.service.ts` `findAll()` filtering `status: 1`
 
@@ -292,3 +298,31 @@ Sub-routes like `/stats` and `/badge-count` MUST be declared **before** `@Get(':
 
 ## OfficeRND Integration
 Hourly cron in `backend/src/tasks/officernd-sync.service.ts` syncs external hosts. Only inserts NEW companies, never updates existing. Phone cleaning: strips formatting, adds country prefixes (974 for Qatar 8-digit, 2 for Egypt 11-digit).
+
+## Email Handling Convention
+
+All email addresses are stored in lowercase throughout the system for case-insensitive uniqueness and lookups.
+
+### Frontend Forms (Auto-lowercase on Submit)
+| Form | Location |
+|------|----------|
+| Login (kiosk) | `src/features/auth/LoginForm.tsx` |
+| Forgot Password (kiosk) | `src/features/auth/LoginForm.tsx` |
+| Walk-in Check-in | `src/features/visitors/WalkInForm.tsx` |
+| Admin Host Form | `admin/src/components/hosts/HostForm.tsx` |
+| Admin Team Member Form | `admin/src/components/hosts/TeamMemberForm.tsx` |
+| Admin User Form | `admin/src/components/users/UserForm.tsx` |
+| Admin Visit Form | `admin/src/components/visitors/VisitForm.tsx` |
+| Admin Pre-registration Form | `admin/src/components/preregistrations/PreRegistrationForm.tsx` |
+
+### Backend (Auto-lowercase Before Save)
+All email fields are lowercased in the following endpoints before saving or checking uniqueness:
+- **Users**: `createUser`, `updateUser` (also checks duplicates case-insensitively)
+- **Hosts**: `createHost`, `updateHost`, `createStaff`, `updateStaff`
+- **My Team**: `createTeamMember`, `updateTeamMember` (already implemented with `.toLowerCase().trim()`)
+- **Bulk Import**: User bulk import already lowercases emails
+
+### Already Handled
+- `UsersService.create()` — lowercases email before save and duplicate check
+- OfficeRND sync — lowercases company and member emails
+- Duplicate checks use `mode: "insensitive"` or `.toLowerCase()` comparison

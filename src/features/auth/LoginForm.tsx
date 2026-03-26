@@ -47,7 +47,7 @@ export function LoginForm(props: { onLoginSuccess?: (role: "admin" | "reception"
       const apiBase = getApiBase()
       if (apiBase) {
         try {
-          const { token: newToken, user } = await apiLogin(data.email, data.password)
+          const { token: newToken, user } = await apiLogin(data.email.toLowerCase().trim(), data.password)
           setAuthToken(null)
           if (user.role === "HOST") {
             toast.error("Host accounts use Admin panel", { description: `Log in at ${getAdminUrl()}/login` })
@@ -78,7 +78,7 @@ export function LoginForm(props: { onLoginSuccess?: (role: "admin" | "reception"
     setIsResetting(true)
     if (getApiBase()) {
       try {
-        await apiForgotPassword(data.email)
+        await apiForgotPassword(data.email.toLowerCase().trim())
         toast.success("Reset link sent", {
           description: "If an account exists, you will receive a password reset link shortly.",
         })

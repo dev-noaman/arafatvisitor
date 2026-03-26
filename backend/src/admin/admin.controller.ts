@@ -3001,7 +3001,7 @@ export class AdminApiController {
       data: {
         name: body.name,
         company: body.company,
-        email: body.email,
+        email: body.email?.toLowerCase().trim(),
         phone: body.phone,
         location: body.location as
           | "BARWA_TOWERS"
@@ -3014,7 +3014,7 @@ export class AdminApiController {
     });
 
     // Auto-create User account for the new Host
-    const userEmail = body.email || `host_${host.id}@system.local`;
+    const userEmail = body.email?.toLowerCase().trim() || `host_${host.id}@system.local`;
     let userCreated = false;
 
     const existingUserByEmail = await this.prisma.user.findUnique({
@@ -3085,7 +3085,7 @@ export class AdminApiController {
       data: {
         name: body.name,
         company: body.company,
-        email: body.email,
+        email: body.email?.toLowerCase().trim(),
         phone: body.phone,
         location: body.location as
           | "BARWA_TOWERS"
@@ -3207,11 +3207,12 @@ export class AdminApiController {
       externalId?: string;
     },
   ) {
+    const normalizedEmail = body.email?.toLowerCase().trim();
     const staff = await this.prisma.host.create({
       data: {
         name: body.name,
         company: body.company || "Arafat Group",
-        email: body.email,
+        email: normalizedEmail,
         phone: body.phone,
         location: body.location as
           | "BARWA_TOWERS"
@@ -3225,7 +3226,7 @@ export class AdminApiController {
     });
 
     // Auto-create User account for the new Staff member
-    const userEmail = body.email || `staff_${staff.id}@system.local`;
+    const userEmail = normalizedEmail || `staff_${staff.id}@system.local`;
     let userCreated = false;
 
     const existingUserByEmail = await this.prisma.user.findUnique({
@@ -3296,7 +3297,7 @@ export class AdminApiController {
       data: {
         name: body.name,
         company: body.company,
-        email: body.email,
+        email: body.email?.toLowerCase().trim(),
         phone: body.phone,
         location: body.location as
           | "BARWA_TOWERS"
@@ -4232,9 +4233,11 @@ export class AdminApiController {
       hostId?: string;
     },
   ) {
+    const normalizedEmail = body.email.toLowerCase().trim();
+
     // Check if email already exists
     const existing = await this.prisma.user.findUnique({
-      where: { email: body.email },
+      where: { email: normalizedEmail },
     });
 
     if (existing) {
@@ -4248,16 +4251,16 @@ export class AdminApiController {
     // For STAFF role, auto-create a Host record (type=STAFF, company="Arafat Group")
     if (body.role === "STAFF" && !hostId) {
       const existingHost = await this.prisma.host.findFirst({
-        where: { email: body.email, type: "STAFF" },
+        where: { email: normalizedEmail, type: "STAFF" },
       });
       if (existingHost) {
         hostId = existingHost.id;
       } else {
         const createdHost = await this.prisma.host.create({
           data: {
-            name: body.name || body.email,
+            name: body.name || normalizedEmail,
             company: "Arafat Group",
-            email: body.email,
+            email: normalizedEmail,
             phone: "",
             location: "BARWA_TOWERS",
             status: 1,
@@ -4270,7 +4273,7 @@ export class AdminApiController {
 
     const user = await this.prisma.user.create({
       data: {
-        email: body.email,
+        email: normalizedEmail,
         name: body.name,
         password: hashedPassword,
         role: body.role as "ADMIN" | "RECEPTION" | "HOST" | "STAFF",
@@ -4314,10 +4317,12 @@ export class AdminApiController {
       throw new HttpException("User not found", HttpStatus.NOT_FOUND);
     }
 
+    const normalizedEmail = body.email?.toLowerCase().trim();
+
     // Check if new email already exists
-    if (body.email && body.email !== existing.email) {
+    if (normalizedEmail && normalizedEmail !== existing.email.toLowerCase()) {
       const emailExists = await this.prisma.user.findUnique({
-        where: { email: body.email },
+        where: { email: normalizedEmail },
       });
       if (emailExists) {
         throw new HttpException("Email already exists", HttpStatus.BAD_REQUEST);
@@ -4325,7 +4330,7 @@ export class AdminApiController {
     }
 
     const updateData: Prisma.UserUpdateInput = {};
-    if (body.email !== undefined) updateData.email = body.email;
+    if (normalizedEmail !== undefined) updateData.email = normalizedEmail;
     if (body.name !== undefined) updateData.name = body.name;
     if (body.role !== undefined)
       updateData.role = body.role as "ADMIN" | "RECEPTION" | "HOST";

@@ -114,7 +114,7 @@ export default function VisitForm({
   }
 
   const handleFormSubmit = async (data: VisitFormData) => {
-    await onSubmit(data)
+    await onSubmit({ ...data, visitorEmail: data.visitorEmail?.toLowerCase().trim() })
     reset()
     setSelectedCompany('')
   }

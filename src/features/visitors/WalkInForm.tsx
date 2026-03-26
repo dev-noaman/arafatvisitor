@@ -82,6 +82,7 @@ export function WalkInForm() {
     const config = configRaw ? JSON.parse(configRaw) : {}
     const location = config.location || "Barwa Towers"
     const purposeText = data.purpose === "Other" ? (data.purposeOther || "Other") : data.purpose
+    const visitorEmail = data.email ? data.email.toLowerCase().trim() : undefined
 
     if (config.apiBase && getAuthToken()) {
       try {
@@ -89,7 +90,7 @@ export function WalkInForm() {
           visitorName: data.fullName,
           visitorCompany: data.company,
           visitorPhone: `${data.phoneCode}${data.phoneNumber}`,
-          visitorEmail: data.email || undefined,
+          visitorEmail,
           hostId: data.hostPerson,
           purpose: purposeText,
           location,
@@ -109,7 +110,7 @@ export function WalkInForm() {
     }
 
     const sessionId = `VMS-${Date.now()}-${Math.floor(Math.random()*1000)}`
-    const payload = { sessionId, visitor: { name: data.fullName, company: data.company, phone: `${data.phoneCode}${data.phoneNumber}`, email: data.email }, host: hosts.find(h => h.id === data.hostPerson), purpose: purposeText }
+    const payload = { sessionId, visitor: { name: data.fullName, company: data.company, phone: `${data.phoneCode}${data.phoneNumber}`, email: visitorEmail }, host: hosts.find(h => h.id === data.hostPerson), purpose: purposeText }
     const enc = new TextEncoder().encode(JSON.stringify(payload))
     const b64 = btoa(String.fromCharCode(...enc))
     const url = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(b64)}`

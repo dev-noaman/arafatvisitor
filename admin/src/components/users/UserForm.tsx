@@ -47,7 +47,7 @@ export default function UserForm({ onSubmit, initialData, isLoading }: UserFormP
     if (initialData && (!data.password || data.password.trim() === '')) {
       delete data.password
     }
-    await onSubmit(data)
+    await onSubmit({ ...data, email: data.email.toLowerCase().trim() })
     reset()
   }
 

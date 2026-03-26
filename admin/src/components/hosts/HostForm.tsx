@@ -41,7 +41,7 @@ export default function HostForm({ onSubmit, initialData, isLoading, entityLabel
   })
 
   const handleFormSubmit = async (data: HostFormData) => {
-    await onSubmit(data)
+    await onSubmit({ ...data, email: data.email.toLowerCase().trim() })
     reset()
   }
 

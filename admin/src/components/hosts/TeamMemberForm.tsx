@@ -61,7 +61,7 @@ export default function TeamMemberForm({
   }, [initialData, reset])
 
   const handleFormSubmit = async (data: TeamMemberFormData) => {
-    await onSubmit(data)
+    await onSubmit({ ...data, email: data.email.toLowerCase().trim() })
     reset()
   }
 

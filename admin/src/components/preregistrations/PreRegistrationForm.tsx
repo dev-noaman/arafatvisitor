@@ -98,7 +98,7 @@ export default function PreRegistrationForm({
   }
 
   const handleFormSubmit = async (data: PreRegistrationFormData) => {
-    await onSubmit(data)
+    await onSubmit({ ...data, visitorEmail: data.visitorEmail?.toLowerCase().trim() })
     reset()
     setSelectedCompany('')
   }
